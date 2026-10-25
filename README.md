@@ -20,6 +20,8 @@ no plugin, no patch, no fork of the agent.
 - **Switch model** from a picker built from `/api/chat/models`, rename entries, and flip
   auto-approval without leaving the phone (réglages).
 - **Watch the bill**: daily tokens, remaining budget and the per-channel breakdown.
+- **Read its memory**: search what it remembers, add a fact by hand, forget one, confirm or correct
+  a belief, restore what the brain set aside — and see the identity/budget the runtime runs with.
 - **Supervise the daemon** from the console tab: state, uptime, loop lag, providers, bots and
   their queue, background tasks, schedules, agents, skills on/off, plugins, workspace, restart.
 - **Dictate** with the system speech recogniser — the text lands in the composer, never auto-sent.
@@ -116,7 +118,7 @@ core/src/main/kotlin/io/github/tournierjc/mercury/     (JVM, no Android — unit
 app/src/main/java/io/github/tournierjc/mercury/
 ├── vm/                       ChatViewModel, SettingsViewModel, ConsoleViewModel
 └── ui/                       Compose: Connect, Chat, Composer, InteractionCard, drawer,
-                              Réglages, Console, Bridge, MarkdownText
+                              Réglages, Console, Mémoire, Bridge, MarkdownText
 ```
 
 ### API coverage
@@ -135,7 +137,8 @@ that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree ent
 | Runtime | `GET /api/health`, `/status`, `/usage`, `POST /api/restart` |
 | Capabilities | `GET /api/permissions`, `/providers`, `/skills`, `POST /api/skills/{name}/activate|deactivate`, `GET /api/plugins`, `/plugins/health`, `GET /api/code/status`, `POST /api/code/set` |
 | Work | `GET /api/bots`, `POST /api/bots/{id}/start|stop|message|run`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
-| Memory & workspace | `GET /api/brain/status`, `/brain/memory/search`, `/workspace/info`, `/workspace/tree` |
+| Second brain | `GET /api/brain/status`, `/brain/memory` (+ `q`, `type`, `scope`), `GET|PUT|DELETE /brain/memory/{id}`, `POST /api/brain/memory`, `GET /brain/beliefs`, `POST /brain/beliefs/{id}/confirm|correct|forget`, `GET /brain/persons`, `/brain/graph`, `/brain/quarantine`, `POST /brain/quarantine/{id}/restore` |
+| Config & workspace | `GET /api/config`, `GET /api/workspace/info`, `/workspace/tree`, `/workspace/file?path=` |
 
 SSE events handled: `connected`, `text_delta`, `text_done`, `thinking`, `step_start`, `step_done`,
 `permission_request`, `permission_continue`, `choice_prompt`, `permission_mode`,

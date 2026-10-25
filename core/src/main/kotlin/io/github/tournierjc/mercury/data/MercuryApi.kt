@@ -9,19 +9,26 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
 import io.github.tournierjc.mercury.data.dto.AgentsResponse
+import io.github.tournierjc.mercury.data.dto.AddMemoryRequest
+import io.github.tournierjc.mercury.data.dto.BeliefGraphDto
+import io.github.tournierjc.mercury.data.dto.BeliefsPage
 import io.github.tournierjc.mercury.data.dto.BgResponse
 import io.github.tournierjc.mercury.data.dto.BotsResponse
+import io.github.tournierjc.mercury.data.dto.ConfigDto
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.ChatSettings
 import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
 import io.github.tournierjc.mercury.data.dto.DeleteThreadRequest
 import io.github.tournierjc.mercury.data.dto.HealthDto
+import io.github.tournierjc.mercury.data.dto.MemoriesPage
 import io.github.tournierjc.mercury.data.dto.MemoriesResponse
+import io.github.tournierjc.mercury.data.dto.MemoryDto
 import io.github.tournierjc.mercury.data.dto.ModelPrefsRequest
 import io.github.tournierjc.mercury.data.dto.ModelsResponse
 import io.github.tournierjc.mercury.data.dto.PasswordChangeRequest
 import io.github.tournierjc.mercury.data.dto.PermissionsDto
+import io.github.tournierjc.mercury.data.dto.PersonsPage
 import io.github.tournierjc.mercury.data.dto.PluginDto
 import io.github.tournierjc.mercury.data.dto.PluginHealthDto
 import io.github.tournierjc.mercury.data.dto.PluginsResponse
@@ -32,8 +39,10 @@ import io.github.tournierjc.mercury.data.dto.SkillDto
 import io.github.tournierjc.mercury.data.dto.SkillsResponse
 import io.github.tournierjc.mercury.data.dto.StatusDto
 import io.github.tournierjc.mercury.data.dto.SwitchModelRequest
+import io.github.tournierjc.mercury.data.dto.UpdateMemoryRequest
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import io.github.tournierjc.mercury.data.dto.UsernameChangeRequest
+import io.github.tournierjc.mercury.data.dto.WorkspaceFileDto
 import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
 import io.github.tournierjc.mercury.data.dto.WorkspaceTreeDto
 import kotlinx.serialization.SerializationException
@@ -314,6 +323,97 @@ class MercuryApi(
         mapOf("q" to query),
     )
 
+    // Second brain: memories, beliefs, persons, graph — browsable and editable.
+
+    suspend fun memories(
+        limit: Int = 50,
+        offset: Int = 0,
+        query: String? = null,
+        type: String? = null,
+        scope: String = "conscious",
+    ): MemoriesPage = getDecoded(
+        "/api/brain/memory",
+        MemoriesPage.serializer(),
+        buildMap {
+            put("limit", limit.toString())
+            put("offset", offset.toString())
+            put("scope", scope)
+            if (!query.isNullOrBlank()) put("q", query)
+            if (!type.isNullOrBlank()) put("type", type)
+        },
+    )
+
+    suspend fun memory(id: String): MemoryDto =
+        getDecoded("/api/brain/memory/${encode(id)}", MemoryDto.serializer())
+
+    suspend fun addMemory(type: String, summary: String, detail: String? = null): MemoryDto = postJson(
+        "/api/brain/memory",
+        AddMemoryRequest(type, summary, detail),
+        MemoryDto.serializer(),
+    )
+
+    suspend fun updateMemory(id: String, update: UpdateMemoryRequest): SimpleResponse = putJson(
+        "/api/brain/memory/${encode(id)}",
+        update,
+        SimpleResponse.serializer(),
+    )
+
+    /** Soft delete: Mercury keeps the row but drops it from recall. */
+    suspend fun forgetMemory(id: String): SimpleResponse =
+        deleteJson("/api/brain/memory/${encode(id)}", SimpleResponse.serializer())
+
+    suspend fun beliefs(status: String? = null, kind: String? = null, limit: Int = 200): BeliefsPage =
+        getDecoded(
+            "/api/brain/beliefs",
+            BeliefsPage.serializer(),
+            buildMap {
+                put("limit", limit.toString())
+                if (!status.isNullOrBlank()) put("status", status)
+                if (!kind.isNullOrBlank()) put("kind", kind)
+            },
+        )
+
+    suspend fun confirmBelief(id: String): SimpleResponse =
+        postJson("/api/brain/beliefs/${encode(id)}/confirm", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun correctBelief(id: String, statement: String): SimpleResponse = postJson(
+        "/api/brain/beliefs/${encode(id)}/correct",
+        JsonObject(mapOf("statement" to kotlinx.serialization.json.JsonPrimitive(statement))),
+        SimpleResponse.serializer(),
+    )
+
+    suspend fun forgetBelief(id: String): SimpleResponse =
+        postJson("/api/brain/beliefs/${encode(id)}/forget", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun persons(query: String = "", limit: Int = 100): PersonsPage = getDecoded(
+        "/api/brain/persons",
+        PersonsPage.serializer(),
+        buildMap {
+            put("limit", limit.toString())
+            if (query.isNotBlank()) put("q", query)
+        },
+    )
+
+    suspend fun beliefGraph(): BeliefGraphDto = getDecoded("/api/brain/graph", BeliefGraphDto.serializer())
+
+    /** Memories the brain set aside because they contradicted something stronger. */
+    suspend fun quarantine(): MemoriesPage = getDecoded("/api/brain/quarantine", MemoriesPage.serializer())
+
+    suspend fun restoreQuarantined(id: String): SimpleResponse = postJson(
+        "/api/brain/quarantine/${encode(id)}/restore",
+        JsonObject(emptyMap()),
+        SimpleResponse.serializer(),
+    )
+
+    suspend fun config(): ConfigDto = getDecoded("/api/config", ConfigDto.serializer())
+
+    /** Reads one workspace file; Mercury refuses anything outside the workspace root. */
+    suspend fun workspaceFile(path: String): WorkspaceFileDto = getDecoded(
+        "/api/workspace/file",
+        WorkspaceFileDto.serializer(),
+        mapOf("path" to path),
+    )
+
     suspend fun workspaceInfo(): WorkspaceInfoDto = getDecoded("/api/workspace/info", WorkspaceInfoDto.serializer())
 
     suspend fun workspaceTree(path: String? = null): WorkspaceTreeDto = getDecoded(
@@ -416,6 +516,13 @@ class MercuryApi(
             .build()
         json.decodeFromString(responseSerializer, execute(request))
     }
+
+    /** DELETE that decodes its answer (Mercury answers `{success:true}`). */
+    private suspend fun <T> deleteJson(path: String, deserializer: DeserializationStrategy<T>): T =
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder().url(url(path)).delete().build()
+            json.decodeFromString(deserializer, execute(request))
+        }
 
     private suspend fun executeRaw(method: String, path: String): String = withContext(Dispatchers.IO) {
         val builder = Request.Builder().url(url(path))
