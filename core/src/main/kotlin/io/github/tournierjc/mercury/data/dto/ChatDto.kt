@@ -2,7 +2,6 @@ package io.github.tournierjc.mercury.data.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Chat-domain payloads, mirroring the JSON Mercury 1.4.2 actually returns.
@@ -129,10 +128,3 @@ data class SimpleResponse(
     val isOk: Boolean get() = ok || success || resolved || accepted || status == "accepted"
 }
 
-/** Opaque payloads (schedules, bots, background tasks) keep their tree form. */
-@Serializable
-data class ItemsResponse(
-    val items: List<JsonObject> = emptyList(),
-    val total: Int = 0,
-    val available: Boolean = true,
-)

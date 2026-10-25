@@ -228,7 +228,7 @@ class MercuryApi(
         getDecoded("/api/skills", SkillsResponse.serializer()).skills.filter { it.name.isNotBlank() }
 
     suspend fun setSkillActive(name: String, active: Boolean): SimpleResponse = postJson(
-        "/api/skills/${encode(name)}/${ if (active) "activate" else "deactivate" }",
+        "/api/skills/${encode(name)}/${if (active) "activate" else "deactivate"}",
         JsonObject(emptyMap()),
         SimpleResponse.serializer(),
     )
