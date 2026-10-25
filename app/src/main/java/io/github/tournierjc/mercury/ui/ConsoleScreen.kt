@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,6 +53,8 @@ fun ConsoleScreen(onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val colors = LocalMercuryColors.current
     var confirmRestart by remember { mutableStateOf(false) }
+    var showCreateBot by remember { mutableStateOf(false) }
+    val botDetail = state.botDetail
 
     Column(
         modifier = Modifier
@@ -77,7 +80,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             RuntimeSection(state)
             BrainSection(state)
             CodeSection(state, viewModel)
-            BotsSection(state, viewModel)
+            BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
             TasksSection(state, viewModel)
             SchedulesSection(state, viewModel)
             AgentsSection(state, viewModel)
@@ -104,6 +107,57 @@ fun ConsoleScreen(onBack: () -> Unit) {
                 modifier = Modifier.padding(bottom = 24.dp),
             )
         }
+    }
+
+    if (showCreateBot) {
+        CreateBotDialog(
+            tiers = state.tiers,
+            onDismiss = { showCreateBot = false },
+            onConfirm = { id, name, description, tier ->
+                showCreateBot = false
+                viewModel.createBot(id, name, description, tier)
+            },
+        )
+    }
+
+    if (botDetail != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::closeBot,
+            containerColor = colors.surface,
+            title = {
+                Text(
+                    botDetail.bot?.titleHint()?.ifBlank { "Équipier" } ?: "Équipier",
+                    color = colors.textPrimary,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val manifest = botDetail.bot
+                    if (manifest != null) {
+                        KeyValueRow("Modèle", (manifest["model"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { "défaut" })
+                        KeyValueRow("Palier", (manifest["tier"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { "—" })
+                        KeyValueRow("Activé", (manifest["enabled"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: "—")
+                    }
+                    KeyValueRow("Journal", "${botDetail.journal.size} dernières entrées")
+                    botDetail.journal.take(4).forEach { entry ->
+                        Text(
+                            text = "· " + entry.titleHint(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            maxLines = 2,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                val id = botDetail.bot?.get("id")?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }.orEmpty()
+                TextButton(onClick = {
+                    viewModel.closeBot()
+                    if (id.isNotBlank()) viewModel.runBot(id)
+                }) { Text("Exécuter") }
+            },
+            dismissButton = { TextButton(onClick = viewModel::closeBot) { Text("Fermer") } },
+        )
     }
 
     if (confirmRestart) {
@@ -221,32 +275,53 @@ private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BotsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+private fun BotsSection(
+    state: ConsoleUiState,
+    viewModel: ConsoleViewModel,
+    onCreate: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    val colors = LocalMercuryColors.current
     SectionTitle("Équipiers")
     CardBlock {
         KeyValueRow("File d'attente", "${state.queue.pending} en attente · ${state.queue.claimed} en cours")
         if (state.queue.dlq > 0) KeyValueRow("Échecs", state.queue.dlq.toString(), highlight = true)
+        if (state.bots.isEmpty()) {
+            Text(
+                text = "Aucun bot configuré. Un équipier tourne en boucle : il réveille l'agent selon son planning, avec ses propres permissions.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+        }
         state.bots.forEach { bot ->
             val id = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
+            val enabled = (bot["enabled"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
             ActionRow(
                 title = bot.titleHint(),
-                subtitle = bot.detailHint(),
-                onClick = { viewModel.runBot(id) },
+                subtitle = listOf(bot.detailHint(), if (enabled == "false") "désactivé" else null)
+                    .filterNotNull().joinToString(" · "),
+                trailing = "détails",
+                onClick = { if (id.isNotBlank()) onOpen(id) },
             )
             if (id.isNotBlank()) {
                 ButtonRow {
                     TextButton(onClick = { viewModel.startBot(id) }) { Text("Démarrer") }
                     TextButton(onClick = { viewModel.stopBot(id) }) { Text("Arrêter") }
+                    TextButton(onClick = { viewModel.runBot(id) }) { Text("Exécuter") }
+                    TextButton(onClick = { viewModel.setBotEnabled(id, enabled != "true") }) {
+                        Text(if (enabled == "true") "Désactiver" else "Activer")
+                    }
                 }
             }
         }
-        if (state.bots.isEmpty()) {
-            Text(
-                text = "Aucun bot configuré.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textSecondary,
-            )
+        ButtonRow {
+            TextButton(onClick = onCreate) { Text("Nouvel équipier") }
+            if (state.bots.isNotEmpty()) {
+                TextButton(onClick = viewModel::startAllBots) { Text("Tout démarrer") }
+                TextButton(onClick = viewModel::stopAllBots) { Text("Tout arrêter") }
+            }
         }
     }
 }
@@ -389,4 +464,68 @@ private fun ButtonRow(content: @Composable () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) { content() }
+}
+
+/** `POST /api/bots` only needs an id and a name; tier is a permission preset. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CreateBotDialog(
+    tiers: List<io.github.tournierjc.mercury.data.dto.BotTierDto>,
+    onDismiss: () -> Unit,
+    onConfirm: (id: String, name: String, description: String, tier: String?) -> Unit,
+) {
+    var id by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var tier by remember { mutableStateOf<String?>(null) }
+    val colors = LocalMercuryColors.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text("Nouvel équipier", color = colors.textPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = id,
+                    onValueChange = { id = it.filter { c -> c.isLetterOrDigit() || c == '-' || c == '_' } },
+                    label = { Text("Identifiant") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nom") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Rôle (optionnel)") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (tiers.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        tiers.forEach { candidate ->
+                            FilterChip(
+                                selected = tier == candidate.id,
+                                onClick = { tier = if (tier == candidate.id) null else candidate.id },
+                                label = { Text(candidate.label) },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(id.trim(), name.trim(), description, tier) },
+                enabled = id.isNotBlank() && name.isNotBlank(),
+            ) { Text("Créer") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+    )
 }

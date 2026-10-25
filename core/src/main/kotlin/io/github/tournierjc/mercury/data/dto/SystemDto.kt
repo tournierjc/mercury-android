@@ -100,6 +100,52 @@ data class BotsResponse(
     val available: Boolean = true,
 )
 
+/** `GET /api/bots/:id` — the manifest and its live state, both untyped. */
+@Serializable
+data class BotDetailDto(
+    val bot: JsonObject? = null,
+    val state: JsonObject? = null,
+    val journal: List<JsonObject> = emptyList(),
+    val error: String = "",
+)
+
+@Serializable
+data class BotRunsPage(val runs: List<JsonObject> = emptyList(), val error: String = "")
+
+@Serializable
+data class BotOutputsPage(val outputs: List<JsonObject> = emptyList(), val error: String = "")
+
+@Serializable
+data class BotJournalPage(val journal: List<JsonObject> = emptyList(), val error: String = "")
+
+@Serializable
+data class BotTierDto(
+    val id: String = "",
+    val label: String = "",
+    val description: String = "",
+    val deny: List<String> = emptyList(),
+)
+
+@Serializable
+data class BotTiersPage(val tiers: List<BotTierDto> = emptyList())
+
+/** `POST /api/bots` — `id` and `name` are the only required fields. */
+@Serializable
+data class CreateBotRequest(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val tier: String? = null,
+)
+
+/** `PATCH /api/bots/:id` — absent fields keep their value. */
+@Serializable
+data class UpdateBotRequest(
+    val enabled: Boolean? = null,
+    val description: String? = null,
+    val model: String? = null,
+)
+
 @Serializable
 data class BgResponse(val tasks: List<JsonObject> = emptyList(), val available: Boolean = true)
 

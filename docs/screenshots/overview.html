@@ -94,30 +94,30 @@
       <div class="icon">＋</div>
     </div>
     <div class="chat">
-      <div class="bubble-user">Qu'est-ce qui tourne sur le Spark ?</div>
+      <div class="bubble-user">What's running on the Spark?</div>
       <div class="chips">
         <span class="chip">shell <span class="tool">· docker ps</span></span>
         <span class="chip">fetch_url <span class="tool">· /health</span></span>
       </div>
-      <div class="answer">Trois conteneurs : <code>mercury</code> (l'agent), <code>tensorfold-spark</code> (le moteur d'inférence) et <code>redis</code>. Le pont appareil répond sur le tailnet.</div>
+      <div class="answer">Three containers: <code>mercury</code> (the agent), <code>tensorfold-spark</code> (the inference engine) and <code>redis</code>. The device bridge answers on the tailnet.</div>
       <div class="card">
-        <div class="kicker">AUTORISATION DEMANDÉE</div>
-        <p>Exécuter <code style="font-size:12.5px">docker restart tensorfold-spark</code> ?</p>
+        <div class="kicker">APPROVAL REQUIRED</div>
+        <p>Run <code style="font-size:12.5px">docker restart tensorfold-spark</code>?</p>
         <div class="btns">
-          <span class="btn primary">Autoriser</span>
-          <span class="btn ghost">Toujours</span>
-          <span class="btn outline">Refuser</span>
+          <span class="btn primary">Allow</span>
+          <span class="btn ghost">Always</span>
+          <span class="btn outline">Deny</span>
         </div>
-        <div class="foot">Le runtime attend ta réponse pour continuer.</div>
+        <div class="foot">The runtime waits for your answer to continue.</div>
       </div>
     </div>
     <div class="composer">
-      <div class="field">Écris à Mercury</div>
+      <div class="field">Message Mercury</div>
       <div class="mic">◍</div>
       <div class="send">↑</div>
     </div>
   </div>
-  <div class="caption">Chat · streaming, outils, approbations</div>
+  <div class="caption">Chat · streaming, tool steps, approvals</div>
   </div>
 
   <!-- ── Mémoire ──────────────────────────────────────────── -->
@@ -126,40 +126,40 @@
     <div class="statusbar"><span>9:41</span><span class="right">▲ ▮▮▮ <span class="dot"></span></span></div>
     <div class="topbar">
       <div class="icon">←</div>
-      <div class="titles"><div class="h1">Mémoire</div><div class="sub">3 souvenirs · 1 croyance</div></div>
+      <div class="titles"><div class="h1">Memory</div><div class="sub">3 memories · 1 belief</div></div>
       <div class="icon">⟳</div>
     </div>
     <div class="screen">
       <div class="tabs">
-        <span class="tab on">Souvenirs</span><span class="tab">Croyances</span>
-        <span class="tab">Quarantaine</span><span class="tab">À propos</span>
+        <span class="tab on">Memories</span><span class="tab">Beliefs</span>
+        <span class="tab">Quarantine</span><span class="tab">About</span>
       </div>
-      <div class="search">Rechercher dans la mémoire</div>
-      <div class="section">Souvenirs</div>
+      <div class="search">Search memory</div>
+      <div class="section">Memories</div>
       <div class="block" style="padding-top:8px;padding-bottom:8px">
         <div class="mem">
           <div class="type">PREFERENCE</div>
-          <div class="txt">Écrit à l'agent en français et attend des réponses en français.</div>
-          <div class="meta">confiance 66 % · importance 50 % · active</div>
-          <div class="act">Oublier</div>
+          <div class="txt">Prefers French for conversation and replies.</div>
+          <div class="meta">confidence 66 % · importance 50 % · active</div>
+          <div class="act">Forget</div>
         </div>
         <div class="mem">
           <div class="type">GOAL</div>
-          <div class="txt">Tester Mercury en remplacement de Hermes sur le Spark.</div>
-          <div class="meta">confiance 72 % · importance 80 % · active</div>
-          <div class="act">Oublier</div>
+          <div class="txt">Evaluate Mercury as a replacement for Hermes on the Spark.</div>
+          <div class="meta">confidence 72 % · importance 80 % · active</div>
+          <div class="act">Forget</div>
         </div>
         <div class="mem">
           <div class="type">PROJECT</div>
-          <div class="txt">Client Android Mercury : chat, mémoire, console, pont appareil.</div>
-          <div class="meta">confiance 61 % · importance 65 % · active</div>
-          <div class="act">Oublier</div>
+          <div class="txt">Mercury Android client: chat, memory, console, device bridge.</div>
+          <div class="meta">confidence 61 % · importance 65 % · active</div>
+          <div class="act">Forget</div>
         </div>
-        <div style="font-size:13px;color:var(--accent);font-weight:600;padding:10px 2px 2px">Ajouter un souvenir</div>
+        <div style="font-size:13px;color:var(--accent);font-weight:600;padding:10px 2px 2px">Add a memory</div>
       </div>
     </div>
   </div>
-  <div class="caption">Mémoire · souvenirs, croyances, quarantaine</div>
+  <div class="caption">Memory · memories, beliefs, quarantine</div>
   </div>
 
   <!-- ── Console ──────────────────────────────────────────── -->
@@ -168,18 +168,18 @@
     <div class="statusbar"><span>9:41</span><span class="right">▲ ▮▮▮ <span class="dot"></span></span></div>
     <div class="topbar">
       <div class="icon">←</div>
-      <div class="titles"><div class="h1">Console</div><div class="sub">idle · 3 h 12 min</div></div>
+      <div class="titles"><div class="h1">Console</div><div class="sub">idle · 3h 12m</div></div>
       <div class="icon">⟳</div>
     </div>
     <div class="screen">
       <div class="section">Runtime</div>
       <div class="block">
-        <div class="row"><span class="k">État</span><span style="color:var(--accent)">idle</span></div>
-        <div class="row"><span class="k">Uptime</span><span>3 h 12 min</span></div>
-        <div class="row"><span class="k">Tokens du jour</span><span>12,2k / 200k</span></div>
-        <div class="row"><span class="k">deepseek</span><span>prêt</span></div>
-        <div class="row"><span class="k">Boucle (p99)</span><span>21 ms</span></div>
-        <div class="row"><span class="k">Plugins</span><span>0 actifs · 0 outils</span></div>
+        <div class="row"><span class="k">State</span><span style="color:var(--accent)">idle</span></div>
+        <div class="row"><span class="k">Uptime</span><span>3h 12m</span></div>
+        <div class="row"><span class="k">Tokens today</span><span>12.2k / 200k</span></div>
+        <div class="row"><span class="k">deepseek</span><span>ready</span></div>
+        <div class="row"><span class="k">Event loop (p99)</span><span>21 ms</span></div>
+        <div class="row"><span class="k">Plugins</span><span>0 active · 0 tools</span></div>
       </div>
       <div class="section">Skills</div>
       <div class="block">
@@ -190,16 +190,16 @@
         <div class="skill"><div style="flex:1"><div class="name">tweet-notifier</div>
           <div class="desc">1.2.0 · schedule_tweet</div></div><div class="switch off"></div></div>
       </div>
-      <div class="section">Automatisations</div>
-      <div class="block"><div style="font-size:13.5px;color:var(--muted)">Aucune automatisation programmée.</div></div>
-      <div class="section">Espace de travail</div>
+      <div class="section">Schedules</div>
+      <div class="block"><div style="font-size:13.5px;color:var(--muted)">No scheduled automations.</div></div>
+      <div class="section">Workspace</div>
       <div class="block">
-        <div class="row"><span class="k">Dossier</span><span>/work</span></div>
-        <div class="row"><span class="k">Git</span><span>aucun</span></div>
+        <div class="row"><span class="k">Folder</span><span>/work</span></div>
+        <div class="row"><span class="k">Git</span><span>none</span></div>
       </div>
     </div>
   </div>
-  <div class="caption">Console · runtime, skills, planning</div>
+  <div class="caption">Console · runtime, skills, schedules</div>
   </div>
 
 </div>
