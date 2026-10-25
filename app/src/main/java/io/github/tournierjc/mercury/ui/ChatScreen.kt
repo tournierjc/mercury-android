@@ -77,6 +77,11 @@ fun ChatScreen(
     onDismissError: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
+    var showBridge by remember { mutableStateOf(false) }
+    if (showBridge) {
+        BridgeScreen(onBack = { showBridge = false })
+        return
+    }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -132,6 +137,10 @@ fun ChatScreen(
                 },
                 onOpenThread = { thread ->
                     onOpenThread(thread)
+                    scope.launch { drawerState.close() }
+                },
+                onOpenBridge = {
+                    showBridge = true
                     scope.launch { drawerState.close() }
                 },
                 onSignOut = {

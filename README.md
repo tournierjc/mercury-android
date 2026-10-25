@@ -33,6 +33,39 @@ no plugin, no patch, no fork of the agent.
 2. A dashboard user. `docker exec -it mercury mercury web-reset-password` sets the password;
    the username is in `~/.mercury/web-config.json` (usually `mercury`).
 
+## Pont appareil (device bridge)
+
+The app can expose the phone's own data to Mercury, read-only, over the tailnet —
+so the agent on the Spark can answer "what's on my agenda tomorrow?" or "who texted
+me?" without any server-side plugin.
+
+Toggle **Pont appareil** in the drawer:
+
+- **Calendrier** (`READ_CALENDAR`) — events, `GET /calendar?from=&to=&limit=`
+- **Contacts** (`READ_CONTACTS`) — names, numbers, e-mails, `GET /contacts?q=&limit=`
+- **SMS** (`READ_SMS`) — inbox, `GET /sms?limit=&address=`
+- **Messages d'apps** — notification access, `GET /messages?limit=` (SMS + notifications,
+  the only way to see WhatsApp/Signal/Messenger content: Android has no readable store for them)
+- **Statut** — battery, network, timezone, `GET /device/status`
+- `GET /health` — version, device, active providers (no token)
+
+Security model:
+
+- every route except `/health` requires the bearer token (constant-time compare) in
+  `Authorization: Bearer …` — or `?token=` because Mercury's `fetch_url` sends no headers;
+- the token is generated on the device, stored in Keystore-backed encrypted prefs, and
+  revocable in one tap;
+- the socket binds to the Tailscale address when present, 120 requests/minute cap;
+- nothing is cached, nothing is written to disk: each request re-reads the provider.
+
+Mercury side: `MERCURY_ALLOW_PRIVATE_FETCH=1` in `mercury.env` (SSRF protection
+otherwise blocks private addresses), then copy `mercury-skills/phone-bridge/SKILL.md`
+into `~/.mercury/skills/phone-bridge/` and paste the URL + token from the app.
+
+Caveat: `READ_SMS` is a **restricted permission** for Google Play — an app whose core
+function is not SMS cannot ship there with it. Sideloading is unaffected. The
+notification-based message access has no such restriction.
+
 ## Build
 
 JDK 17+ and the Android SDK (compileSdk 35) are required.

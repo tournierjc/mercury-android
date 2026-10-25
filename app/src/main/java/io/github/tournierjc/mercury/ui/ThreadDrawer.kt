@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ fun ThreadDrawer(
     currentSessionId: String?,
     onNewChat: () -> Unit,
     onOpenThread: (ThreadDto) -> Unit,
+    onOpenBridge: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
@@ -91,6 +93,27 @@ fun ThreadDrawer(
             }
             Spacer(modifier = Modifier.padding(top = 8.dp))
             HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable { onOpenBridge() }
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    text = "Pont appareil",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.Rounded.PhoneAndroid,
+                    contentDescription = null,
+                    tint = colors.textSecondary,
+                )
+            }
+            HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 6.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
