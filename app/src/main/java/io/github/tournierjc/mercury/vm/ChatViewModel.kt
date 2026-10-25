@@ -157,6 +157,24 @@ class ChatViewModel(
         }
     }
 
+    /** Deletes a thread server-side, then drops it from the drawer. */
+    fun deleteThread(thread: ThreadDto) {
+        viewModelScope.launch {
+            runCatching { api.deleteThread(thread.id) }
+                .onSuccess {
+                    _threads.value = _threads.value.filterNot { it.id == thread.id }
+                    if (_state.value.sessionId == thread.id) newChat()
+                }
+                .onFailure { e ->
+                    _state.update { ChatReducer.setError(it, e.message ?: "Suppression impossible") }
+                }
+        }
+    }
+
+    fun dismissWarning() {
+        _state.update { ChatReducer.dismissWarning(it) }
+    }
+
     fun dismissError() {
         _state.update { ChatReducer.setError(it, null) }
     }

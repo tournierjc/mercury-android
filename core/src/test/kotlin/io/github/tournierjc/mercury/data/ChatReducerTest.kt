@@ -57,9 +57,58 @@ class ChatReducerTest {
     @Test
     fun `permission request is exposed and cleared`() {
         var state = ChatReducer.onEvent(initial, ChatEvent.PermissionRequest("perm_1", "rm?", listOf("yes", "no")))
-        assertNotNull(state.pendingPermission)
-        state = ChatReducer.clearPermission(state)
-        assertNull(state.pendingPermission)
+        assertNotNull(state.interaction)
+        assertEquals(InteractionKind.Permission, state.interaction?.kind)
+        state = ChatReducer.clearPermission(state, "perm_1")
+        assertNull(state.interaction)
+    }
+
+    @Test
+    fun `choice prompts are queued behind the pending permission`() {
+        var state = ChatReducer.onEvent(initial, ChatEvent.PermissionRequest("perm_1", "rm?", listOf("yes", "no")))
+        state = ChatReducer.onEvent(state, ChatEvent.ChoicePrompt("choice_1", "Quel fichier ?", listOf("a", "b")))
+
+        assertEquals(2, state.interactions.size)
+        assertEquals("perm_1", state.interaction?.id)
+        assertEquals(listOf("a", "b"), state.interactions[1].options)
+
+        state = ChatReducer.clearPermission(state, "perm_1")
+        assertEquals(InteractionKind.Choice, state.interaction?.kind)
+    }
+
+    @Test
+    fun `permission mode prompt is rendered as a mode interaction`() {
+        val state = ChatReducer.onEvent(
+            initial,
+            ChatEvent.PermissionModeRequest("mode_1", listOf("ask-me", "allow-all")),
+        )
+        assertEquals(InteractionKind.Mode, state.interaction?.kind)
+        assertEquals(listOf("ask-me", "allow-all"), state.interaction?.options)
+    }
+
+    @Test
+    fun `the same interaction id is not queued twice`() {
+        var state = ChatReducer.onEvent(initial, ChatEvent.PermissionRequest("perm_1", "rm?", listOf("yes")))
+        state = ChatReducer.onEvent(state, ChatEvent.PermissionRequest("perm_1", "rm?", listOf("yes")))
+        assertEquals(1, state.interactions.size)
+    }
+
+    @Test
+    fun `loop warnings surface without stopping the turn`() {
+        var state = ChatReducer.addUserMessage(initial, "salut")
+        state = ChatReducer.onEvent(state, ChatEvent.TextDelta("en cours"))
+        state = ChatReducer.onEvent(state, ChatEvent.Warning("boucle détectée"))
+
+        assertEquals("boucle détectée", state.warning)
+        assertTrue(state.streaming)
+        state = ChatReducer.dismissWarning(state)
+        assertNull(state.warning)
+    }
+
+    @Test
+    fun `provider info updates the model label`() {
+        val state = ChatReducer.onEvent(initial, ChatEvent.ProviderInfo("qwen", "qwen3.8-flash-next"))
+        assertEquals("qwen · qwen3.8-flash-next", state.modelLabel)
     }
 
     @Test

@@ -16,9 +16,27 @@ sealed interface ChatEvent {
     data object Thinking : ChatEvent
     data class StepStart(val tool: String, val label: String) : ChatEvent
     data class StepDone(val tool: String, val summary: String) : ChatEvent
+    /** Approval of a tool call: options are `yes` / `always` / `no`. */
     data class PermissionRequest(val id: String, val prompt: String, val options: List<String>) : ChatEvent
-    data class ContinueRequest(val id: String, val question: String) : ChatEvent
+
+    /** "Keep going?" after a loop guard tripped. */
+    data class ContinueRequest(
+        val id: String,
+        val question: String,
+        val options: List<String> = listOf("yes", "no"),
+    ) : ChatEvent
+
+    /** Free-form question the agent needs answered before it can continue. */
+    data class ChoicePrompt(val id: String, val question: String, val options: List<String>) : ChatEvent
+
+    /** The runtime asks whether to auto-approve every tool call from now on. */
+    data class PermissionModeRequest(val id: String, val options: List<String>) : ChatEvent
+
     data class SessionSwitched(val sessionId: String, val title: String) : ChatEvent
+    data class ProviderInfo(val name: String, val model: String) : ChatEvent
+
+    /** A guard rail fired (loop detection); informational, no reply expected. */
+    data class Warning(val message: String) : ChatEvent
     data class Failure(val message: String) : ChatEvent
     data class Ignored(val type: String?) : ChatEvent
 }
@@ -26,8 +44,9 @@ sealed interface ChatEvent {
 /**
  * Maps Mercury wire events to [ChatEvent].
  *
- * Only the events the app renders are decoded; unknown types are ignored rather
- * than guessed, so a Mercury release adding new events cannot crash the client.
+ * Every type Mercury's web channel broadcasts is decoded, so an interaction the
+ * agent is blocked on never disappears silently. Unknown types stay
+ * [ChatEvent.Ignored] so a Mercury release adding events cannot crash the client.
  */
 object MercuryEventParser {
 
@@ -37,6 +56,8 @@ object MercuryEventParser {
     }
 
     fun parse(raw: RawSseEvent, json: Json = defaultJson): ChatEvent {
+        // Keep-alives carry no payload; skip the JSON round-trip.
+        if (raw.type == "heartbeat") return ChatEvent.Ignored(raw.type)
         val obj = runCatching { json.parseToJsonElement(raw.data).jsonObject }.getOrNull()
             ?: return ChatEvent.Ignored(raw.type)
         return when (raw.type) {
@@ -65,12 +86,24 @@ object MercuryEventParser {
             "permission_request" -> ChatEvent.PermissionRequest(
                 id = obj.string("id"),
                 prompt = obj.string("prompt"),
-                options = obj.stringList("options"),
+                options = obj.stringList("options").ifEmpty { listOf("yes", "always", "no") },
             )
 
             "permission_continue" -> ChatEvent.ContinueRequest(
                 id = obj.string("id"),
                 question = obj.string("question"),
+                options = obj.stringList("options").ifEmpty { listOf("yes", "no") },
+            )
+
+            "choice_prompt" -> ChatEvent.ChoicePrompt(
+                id = obj.string("id"),
+                question = obj.string("question"),
+                options = obj.stringList("options"),
+            )
+
+            "permission_mode" -> ChatEvent.PermissionModeRequest(
+                id = obj.string("id"),
+                options = obj.stringList("options").ifEmpty { listOf("ask-me", "allow-all") },
             )
 
             "session_switched" -> ChatEvent.SessionSwitched(
@@ -78,6 +111,12 @@ object MercuryEventParser {
                 title = obj.string("title").ifBlank { obj.string("alias") },
             )
 
+            "provider" -> ChatEvent.ProviderInfo(
+                name = obj.string("name"),
+                model = obj.string("model"),
+            )
+
+            "loop_warning" -> ChatEvent.Warning(obj.string("message"))
             "error" -> ChatEvent.Failure(obj.string("message").ifBlank { "Unknown error" })
             else -> ChatEvent.Ignored(raw.type)
         }
