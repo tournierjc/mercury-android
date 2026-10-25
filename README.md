@@ -9,6 +9,17 @@ no plugin, no patch, no fork of the agent.
 
 > Status: early. The chat path (login → send → stream → approve) works against Mercury 1.4.2.
 
+## Aperçu
+
+![Écrans de l'application : chat, mémoire, console](docs/screenshots/overview.png)
+
+> **Maquette, pas une capture d'appareil.** Cette planche reprend les jetons exacts du thème
+> (`ui/theme/Theme.kt` : palette, tailles, rayons) et le contenu réel des écrans, mais elle est
+> dessinée hors Android : aucune machine de ce projet ne peut démarrer un émulateur (pas de paquet
+> `emulator` pour linux-aarch64, Robolectric refuse aarch64, `redroid` exige `binder_linux`).
+> La source est `docs/screenshots/overview.html` ; remplacer l'image par une capture réelle
+> (même nom de fichier) est un simple copier-coller.
+
 ## What it does
 
 - **Sign in** to your Mercury instance with the dashboard credentials (session cookie, stored encrypted).
