@@ -1,6 +1,35 @@
 ---
 name: phone-bridge
-description: Lire le téléphone Android de l'utilisateur (agenda, contacts, SMS, messages d'apps) via le pont Mercury Android, en lecture seule. Utiliser dès qu'une question porte sur son agenda, un contact, ou un message qu'il a reçu.
+description: Lire le téléphone Android de l'utilisateur (agenda, contacts, SMS, messages d'apps) via le pont Mercury Android, en lecture seule.
+version: 0.1.0
+category: device
+categories:
+  - device
+  - android
+intents:
+  - mon agenda
+  - mon calendrier
+  - qu'est-ce que j'ai demain
+  - mes rendez-vous
+  - qui m'a envoyé un message
+  - mes messages
+  - mes sms
+  - le numéro de
+  - les coordonnées de
+  - what's on my calendar
+  - my schedule
+  - who texted me
+  - my messages
+  - battery
+  - batterie du téléphone
+tags:
+  - android
+  - calendar
+  - contacts
+  - sms
+  - device
+allowed-tools:
+  - fetch_url
 ---
 
 # Pont téléphone (Mercury Android)
