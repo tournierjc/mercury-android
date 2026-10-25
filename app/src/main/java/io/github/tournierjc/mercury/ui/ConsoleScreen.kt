@@ -454,18 +454,6 @@ private fun WorkspaceSection(state: ConsoleUiState) {
     }
 }
 
-@Composable
-private fun ButtonRow(content: @Composable () -> Unit) {
-    androidx.compose.foundation.layout.Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp)
-            .background(LocalMercuryColors.current.surfaceMuted, RoundedCornerShape(14.dp))
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) { content() }
-}
-
 /** `POST /api/bots` only needs an id and a name; tier is a permission preset. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

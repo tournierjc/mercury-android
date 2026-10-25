@@ -161,6 +161,226 @@ class MercuryApi(
     }
 
     // ---------------------------------------------------------------------
+    // Boards: Mercury's kanban execution surface (43 routes).
+    // Shapes are navigated with BoardJson because no board exists on the
+    // reference instance, so nothing here has an observed contract.
+    // ---------------------------------------------------------------------
+
+    suspend fun boards(): JsonObject = getDecoded("/api/boards", JsonObject.serializer())
+
+    suspend fun board(id: String): JsonObject = getDecoded("/api/boards/${encode(id)}", JsonObject.serializer())
+
+    suspend fun createBoard(name: String, description: String? = null): JsonObject = postJson(
+        "/api/boards",
+        body("name" to name, "description" to description),
+        JsonObject.serializer(),
+    )
+
+    suspend fun updateBoard(id: String, patch: JsonObject): JsonObject =
+        patchJson("/api/boards/${encode(id)}", patch, JsonObject.serializer())
+
+    suspend fun deleteBoard(id: String): SimpleResponse =
+        deleteJson("/api/boards/${encode(id)}", SimpleResponse.serializer())
+
+    suspend fun activateBoard(id: String): JsonObject =
+        postJson("/api/boards/${encode(id)}/activate", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun deactivateBoard(id: String): JsonObject =
+        postJson("/api/boards/${encode(id)}/deactivate", JsonObject(emptyMap()), JsonObject.serializer())
+
+    /** Asks the runtime to break a goal into cards. */
+    suspend fun generateCards(id: String, prompt: String? = null): JsonObject = postJson(
+        "/api/boards/${encode(id)}/generate",
+        body("prompt" to prompt),
+        JsonObject.serializer(),
+    )
+
+    suspend fun addCard(
+        boardId: String,
+        task: String,
+        priority: String? = null,
+        tokenBudget: Int? = null,
+    ): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards",
+        body("task" to task, "priority" to priority, "tokenBudget" to tokenBudget),
+        JsonObject.serializer(),
+    )
+
+    suspend fun addCardsBulk(boardId: String, tasks: List<String>): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards/bulk",
+        JsonObject(mapOf("cards" to kotlinx.serialization.json.JsonArray(tasks.map { kotlinx.serialization.json.JsonPrimitive(it) }))),
+        JsonObject.serializer(),
+    )
+
+    suspend fun updateCard(boardId: String, cardId: String, patch: JsonObject): JsonObject =
+        patchJson("/api/boards/${encode(boardId)}/cards/${encode(cardId)}", patch, JsonObject.serializer())
+
+    suspend fun deleteCard(boardId: String, cardId: String): SimpleResponse =
+        deleteJson("/api/boards/${encode(boardId)}/cards/${encode(cardId)}", SimpleResponse.serializer())
+
+    suspend fun reorderCards(boardId: String, cardIds: List<String>): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards/reorder",
+        JsonObject(mapOf("cardIds" to kotlinx.serialization.json.JsonArray(cardIds.map { kotlinx.serialization.json.JsonPrimitive(it) }))),
+        JsonObject.serializer(),
+    )
+
+    suspend fun clearDoneCards(boardId: String): SimpleResponse =
+        postJson("/api/boards/${encode(boardId)}/cards/clear-done", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun runCard(boardId: String, cardId: String): JsonObject =
+        postJson("/api/boards/${encode(boardId)}/cards/${encode(cardId)}/run", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun haltCard(boardId: String, cardId: String): JsonObject =
+        postJson("/api/boards/${encode(boardId)}/cards/${encode(cardId)}/halt", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun cascadeCard(boardId: String, cardId: String): JsonObject =
+        postJson("/api/boards/${encode(boardId)}/cards/${encode(cardId)}/cascade", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun runAllCards(boardId: String): JsonObject =
+        postJson("/api/boards/${encode(boardId)}/run-all", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun haltAllCards(boardId: String): JsonObject =
+        postJson("/api/boards/${encode(boardId)}/halt-all", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun executionPlan(boardId: String): JsonObject =
+        getDecoded("/api/boards/${encode(boardId)}/execution-plan", JsonObject.serializer())
+
+    suspend fun smartExecute(boardId: String): JsonObject =
+        postJson("/api/boards/${encode(boardId)}/smart-execute", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun cardComments(boardId: String, cardId: String): JsonObject = getDecoded(
+        "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/comments",
+        JsonObject.serializer(),
+    )
+
+    suspend fun addComment(boardId: String, cardId: String, content: String, authorName: String? = null): JsonObject =
+        postJson(
+            "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/comments",
+            body("content" to content, "authorName" to authorName),
+            JsonObject.serializer(),
+        )
+
+    suspend fun deleteComment(boardId: String, cardId: String, commentId: String): JsonObject =
+        deleteJson(
+            "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/comments/${encode(commentId)}",
+            JsonObject.serializer(),
+        )
+
+    suspend fun cardAttachments(boardId: String, cardId: String): JsonObject = getDecoded(
+        "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/attachments",
+        JsonObject.serializer(),
+    )
+
+    suspend fun addAttachment(
+        boardId: String,
+        cardId: String,
+        name: String,
+        path: String,
+        type: String? = null,
+    ): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/attachments",
+        body("name" to name, "path" to path, "type" to type),
+        JsonObject.serializer(),
+    )
+
+    suspend fun deleteAttachment(boardId: String, cardId: String, attachmentId: String): JsonObject =
+        deleteJson(
+            "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/attachments/${encode(attachmentId)}",
+            JsonObject.serializer(),
+        )
+
+    suspend fun addLabel(boardId: String, cardId: String, name: String, color: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/labels",
+        body("name" to name, "color" to color),
+        JsonObject.serializer(),
+    )
+
+    suspend fun removeLabel(boardId: String, cardId: String, labelId: String): JsonObject =
+        deleteJson(
+            "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/labels/${encode(labelId)}",
+            JsonObject.serializer(),
+        )
+
+    /** `parentId = null` detaches the card. */
+    suspend fun setCardParent(boardId: String, cardId: String, parentId: String?): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/parent",
+        body("parentId" to parentId),
+        JsonObject.serializer(),
+    )
+
+    suspend fun addDependency(boardId: String, cardId: String, dependsOnCardId: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/dependencies",
+        body("dependsOnCardId" to dependsOnCardId),
+        JsonObject.serializer(),
+    )
+
+    suspend fun removeDependency(boardId: String, cardId: String, dependencyId: String): JsonObject =
+        deleteJson(
+            "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/dependencies/${encode(dependencyId)}",
+            JsonObject.serializer(),
+        )
+
+    suspend fun boardContext(boardId: String): JsonObject =
+        getDecoded("/api/boards/${encode(boardId)}/context", JsonObject.serializer())
+
+    suspend fun setContextDirectory(boardId: String, directory: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/context/directory",
+        body("directory" to directory),
+        JsonObject.serializer(),
+    )
+
+    suspend fun setContextInstructions(boardId: String, instructions: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/context/instructions",
+        body("instructions" to instructions),
+        JsonObject.serializer(),
+    )
+
+    suspend fun setContextVariable(boardId: String, key: String, value: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/context/variables",
+        body("key" to key, "value" to value),
+        JsonObject.serializer(),
+    )
+
+    suspend fun setContextKnowledge(boardId: String, knowledge: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/context/knowledge",
+        body("knowledge" to knowledge),
+        JsonObject.serializer(),
+    )
+
+    suspend fun setContextStructure(boardId: String, structure: JsonObject): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/context/structure",
+        JsonObject(mapOf("structure" to structure)),
+        JsonObject.serializer(),
+    )
+
+    suspend fun boardFeedback(boardId: String): JsonObject =
+        getDecoded("/api/boards/${encode(boardId)}/feedback", JsonObject.serializer())
+
+    suspend fun respondFeedback(boardId: String, feedbackId: String, response: String): JsonObject = postJson(
+        "/api/boards/${encode(boardId)}/feedback/${encode(feedbackId)}/respond",
+        body("response" to response),
+        JsonObject.serializer(),
+    )
+
+    /**
+     * Builds a request body, dropping null fields so Mercury keeps its defaults
+     * instead of receiving explicit nulls.
+     */
+    private fun body(vararg pairs: Pair<String, Any?>): JsonObject = JsonObject(
+        pairs.mapNotNull { (key, value) ->
+            when (value) {
+                null -> null
+                is String -> key to kotlinx.serialization.json.JsonPrimitive(value)
+                is Int -> key to kotlinx.serialization.json.JsonPrimitive(value)
+                is Long -> key to kotlinx.serialization.json.JsonPrimitive(value)
+                is Boolean -> key to kotlinx.serialization.json.JsonPrimitive(value)
+                is kotlinx.serialization.json.JsonElement -> key to value
+                else -> key to kotlinx.serialization.json.JsonPrimitive(value.toString())
+            }
+        }.toMap(),
+    )
+
+    // ---------------------------------------------------------------------
     // Chat surface: models, settings, history, account, budget
     // ---------------------------------------------------------------------
 
