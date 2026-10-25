@@ -14,7 +14,31 @@ data class ChatMessage(
 
 data class ToolStep(val tool: String, val label: String, val summary: String? = null)
 
-data class PermissionPrompt(val id: String, val prompt: String, val options: List<String>)
+enum class InteractionKind {
+    /** Approve a tool call (`yes` / `always` / `no`). */
+    Permission,
+
+    /** "Keep going?" after a loop guard. */
+    Continue,
+
+    /** The agent needs a free-form answer among [Interaction.options]. */
+    Choice,
+
+    /** Switch to auto-approval or stay interactive. */
+    Mode,
+}
+
+/**
+ * Something the agent is blocked on. All four kinds are answered through the same
+ * route (`POST /api/chat/permission/:id` with an `action`), so the app models them
+ * uniformly and only varies the wording.
+ */
+data class Interaction(
+    val id: String,
+    val kind: InteractionKind,
+    val text: String,
+    val options: List<String> = emptyList(),
+)
 
 data class ChatState(
     val serverUrl: String = "",
@@ -25,10 +49,21 @@ data class ChatState(
     val messages: List<ChatMessage> = emptyList(),
     val streaming: Boolean = false,
     val connected: Boolean = false,
-    val pendingPermission: PermissionPrompt? = null,
+    val interactions: List<Interaction> = emptyList(),
+    val warning: String? = null,
     val error: String? = null,
 ) {
     val isWelcome: Boolean get() = messages.isEmpty()
+
+    /** Oldest unanswered interaction; the UI shows one at a time. */
+    val interaction: Interaction? get() = interactions.firstOrNull()
+
+    val modelLabel: String
+        get() = when {
+            model.isNotBlank() && provider.isNotBlank() -> "$provider · $model"
+            model.isNotBlank() -> model
+            else -> provider
+        }
 }
 
 object ChatReducer {
@@ -38,16 +73,22 @@ object ChatReducer {
         return state.copy(messages = state.messages + message, error = null)
     }
 
-    fun clearPermission(state: ChatState): ChatState = state.copy(pendingPermission = null)
+    /** Drops the interaction the user just answered. */
+    fun clearPermission(state: ChatState, id: String? = null): ChatState = state.copy(
+        interactions = if (id == null) state.interactions.drop(1) else state.interactions.filterNot { it.id == id },
+    )
 
     fun setError(state: ChatState, message: String?): ChatState = state.copy(error = message)
+
+    fun dismissWarning(state: ChatState): ChatState = state.copy(warning = null)
 
     fun newChat(state: ChatState): ChatState = state.copy(
         sessionId = null,
         title = "",
         messages = emptyList(),
         streaming = false,
-        pendingPermission = null,
+        interactions = emptyList(),
+        warning = null,
         error = null,
     )
 
@@ -79,18 +120,42 @@ object ChatReducer {
             }
         }
 
-        is ChatEvent.PermissionRequest -> state.copy(
-            pendingPermission = PermissionPrompt(event.id, event.prompt, event.options),
+        is ChatEvent.PermissionRequest -> addInteraction(
+            state,
+            Interaction(event.id, InteractionKind.Permission, event.prompt, event.options),
         )
 
-        is ChatEvent.ContinueRequest -> state.copy(
-            pendingPermission = PermissionPrompt(event.id, event.question, listOf("yes", "no")),
+        is ChatEvent.ContinueRequest -> addInteraction(
+            state,
+            Interaction(event.id, InteractionKind.Continue, event.question, event.options),
+        )
+
+        is ChatEvent.ChoicePrompt -> addInteraction(
+            state,
+            Interaction(event.id, InteractionKind.Choice, event.question, event.options),
+        )
+
+        is ChatEvent.PermissionModeRequest -> addInteraction(
+            state,
+            Interaction(
+                event.id,
+                InteractionKind.Mode,
+                "Autoriser tous les outils sans confirmation ?",
+                event.options,
+            ),
         )
 
         is ChatEvent.SessionSwitched -> state.copy(
             sessionId = event.sessionId.ifBlank { state.sessionId },
             title = event.title.ifBlank { state.title },
         )
+
+        is ChatEvent.ProviderInfo -> state.copy(
+            provider = event.name.ifBlank { state.provider },
+            model = event.model.ifBlank { state.model },
+        )
+
+        is ChatEvent.Warning -> state.copy(warning = event.message.ifBlank { null })
 
         is ChatEvent.Failure -> state.copy(
             streaming = false,
@@ -100,6 +165,13 @@ object ChatReducer {
 
         is ChatEvent.Ignored -> state
     }
+
+    private fun addInteraction(state: ChatState, interaction: Interaction): ChatState =
+        if (state.interactions.any { it.id == interaction.id }) {
+            state
+        } else {
+            state.copy(interactions = state.interactions + interaction)
+        }
 
     private fun appendDelta(state: ChatState, delta: String): ChatState {
         if (delta.isEmpty()) return state

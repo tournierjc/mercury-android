@@ -14,7 +14,14 @@ no plugin, no patch, no fork of the agent.
 - **Sign in** to your Mercury instance with the dashboard credentials (session cookie, stored encrypted).
 - **Stream** answers token by token over Mercury's SSE feed, with tool steps shown as chips above the reply.
 - **Approve** permission requests (`yes` / `always` / `no`) from the phone, instead of walking back to the terminal.
-- **Browse sessions** in a drawer and resume any of them with its history.
+- **Browse sessions** in a drawer, resume any of them with its history, or delete one.
+- **Answer everything the runtime blocks on**: tool approvals, loop "keep going?", free-form
+  choices and the auto-approval prompt — all through the same permission route.
+- **Switch model** from a picker built from `/api/chat/models`, rename entries, and flip
+  auto-approval without leaving the phone (réglages).
+- **Watch the bill**: daily tokens, remaining budget and the per-channel breakdown.
+- **Supervise the daemon** from the console tab: state, uptime, loop lag, providers, bots and
+  their queue, background tasks, schedules, agents, skills on/off, plugins, workspace, restart.
 - **Dictate** with the system speech recogniser — the text lands in the composer, never auto-sent.
 - **Markdown** rendering for what agents actually emit: fenced code, lists, headings, `inline code`, **bold**, *italic*.
 
@@ -96,39 +103,63 @@ cache are warm.
 ## How it works
 
 ```
+core/src/main/kotlin/io/github/tournierjc/mercury/     (JVM, no Android — unit tested)
+├── data/MercuryApi.kt        one typed method per Mercury route
+├── data/SseParser.kt         SSE framing, chunk-boundary safe
+├── data/ChatEvent.kt         every wire event → typed event (unknown types ignored)
+├── data/ChatReducer.kt       pure state machine (streaming, steps, interactions)
+├── data/SessionCookieJar.kt  persists mercury_session, drops expired cookies
+├── data/dto/ChatDto.kt       models, settings, usage, account payloads
+├── data/dto/SystemDto.kt     status, health, skills, plugins, work payloads
+├── device/DeviceDtos.kt      bridge payloads
+└── util/Format.kt            uptime and token formatting
 app/src/main/java/io/github/tournierjc/mercury/
-├── data/
-│   ├── MercuryApi.kt        OkHttp client for /api/auth/login + /api/chat/*
-│   ├── SseParser.kt         SSE framing, chunk-boundary safe
-│   ├── ChatEvent.kt         wire events → typed events (unknown types ignored)
-│   ├── ChatReducer.kt       pure state machine (streaming, steps, approvals)
-│   ├── SessionCookieJar.kt  persists mercury_session, drops expired cookies
-│   └── Models.kt            kotlinx.serialization DTOs
-├── vm/ChatViewModel.kt      coroutines, one SSE subscription per session
-└── ui/                      Compose: Connect, Chat, Composer, PermissionCard, drawer
+├── vm/                       ChatViewModel, SettingsViewModel, ConsoleViewModel
+└── ui/                       Compose: Connect, Chat, Composer, InteractionCard, drawer,
+                              Réglages, Console, Bridge, MarkdownText
 ```
 
-Endpoints used — all of them already exist in the Mercury dashboard:
+### API coverage
 
-| Method | Path | Purpose |
-|---|---|---|
-| POST | `/api/auth/login` | form-encoded login, answers 302 + `Set-Cookie: mercury_session` |
-| GET | `/api/health` | runtime liveness |
-| GET | `/api/chat/threads` | session list |
-| GET | `/api/chat/threads/{id}` | history |
-| POST | `/api/chat/send` | `{content, sessionId}` → `{sessionId}` |
-| GET | `/api/chat/events?sessionId=` | SSE: `connected`, `text_delta`, `text_done`, `thinking`, `step_start`, `step_done`, `permission_request`, `permission_continue`, `session_switched`, `error` |
-| POST | `/api/chat/permission/{id}` | `{action: yes\|always\|no}` |
+Everything below is a route the Mercury 1.4.2 dashboard already serves; the client adds no
+server-side code. Payload shapes were captured from a live instance, not guessed — the ones
+that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree entries) stay
+`JsonObject` on purpose, so a schema change shows up as data instead of a crash.
 
-Things Mercury emits that this client deliberately ignores: `status`, `provider`, `bot_activity`,
-`loop_warning`, `heartbeat`, `choice_prompt`. Guessing their payload shape would be worse than waiting for a
-real sample.
+| Area | Routes |
+|---|---|
+| Auth | `POST /api/auth/login`, `/logout`, `/password`, `/username` |
+| Chat | `GET /api/chat/threads`, `/threads/{id}`, `POST /api/chat/send`, `GET /api/chat/events` (SSE), `POST /api/chat/permission/{id}`, `POST /api/chat/threads/{id}/delete` |
+| Models | `GET /api/chat/models`, `POST /api/chat/models/switch`, `POST /api/chat/models/prefs` |
+| Settings | `GET` + `PUT /api/chat/settings` (`bypassPermissions`, `restrictUser`, `workspace`) |
+| Runtime | `GET /api/health`, `/status`, `/usage`, `POST /api/restart` |
+| Capabilities | `GET /api/permissions`, `/providers`, `/skills`, `POST /api/skills/{name}/activate|deactivate`, `GET /api/plugins`, `/plugins/health`, `GET /api/code/status`, `POST /api/code/set` |
+| Work | `GET /api/bots`, `POST /api/bots/{id}/start|stop|message|run`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
+| Memory & workspace | `GET /api/brain/status`, `/brain/memory/search`, `/workspace/info`, `/workspace/tree` |
+
+SSE events handled: `connected`, `text_delta`, `text_done`, `thinking`, `step_start`, `step_done`,
+`permission_request`, `permission_continue`, `choice_prompt`, `permission_mode`,
+`session_switched`, `provider`, `loop_warning`, `error`; `heartbeat` is treated as a keep-alive.
+
+Deliberately **not** wired, and why:
+
+- `terminal/exec`, `git/*`, workspace writes, `restart`-adjacent shell routes — arbitrary code
+  execution from a phone is a footgun; the chat tools already cover the same ground under the
+  permission prompt.
+- Boards (37 routes), plugins install/update, bot creation, schedules create — desktop-shaped
+  workflows with large payloads that have no captured contract yet. They would be invented
+  schemas, which is exactly what this client refuses to ship.
+- `POST /api/shutdown` — returns 403 unless explicitly enabled; a mis-tap would kill the agent.
 
 ## Limitations
 
 - Streaming is text-only: no image/artifact rendering yet, no attachments out.
 - The SSE flow is not auto-reconnected; a dropped stream surfaces an error and the next send re-opens it.
-- Bots, kanban, scheduler and the memory explorer are not exposed.
+- Console lists (bots, tasks, schedules, agents) render the fields Mercury sends today; they are
+  deliberately untyped, so a richer layout needs a captured sample first.
+- Files in the workspace are listed only — no read/write/delete from the phone.
+- Nobody has run this on a physical device yet: unit tests and APK builds are green, the UI has
+  only been verified through compilation.
 - Voice is one-shot dictation via the system recogniser — no streaming speech, no wake word.
 - `usesCleartextTraffic` is on so that `http://` tunnels work in development; point it at the HTTPS
   tailnet URL and traffic stays TLS.

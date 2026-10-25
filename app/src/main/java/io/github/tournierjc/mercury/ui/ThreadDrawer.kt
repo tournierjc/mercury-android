@@ -12,15 +12,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,10 +44,14 @@ fun ThreadDrawer(
     currentSessionId: String?,
     onNewChat: () -> Unit,
     onOpenThread: (ThreadDto) -> Unit,
+    onDeleteThread: (ThreadDto) -> Unit,
     onOpenBridge: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenConsole: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
+    var pendingDelete by remember { mutableStateOf<ThreadDto?>(null) }
     ModalDrawerSheet(
         drawerContainerColor = colors.surface,
         drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
@@ -68,31 +81,46 @@ fun ThreadDrawer(
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(threads, key = { it.id }) { thread ->
                     val selected = thread.id == currentSessionId
-                    Column(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 2.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .clickable { onOpenThread(thread) }
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                            .clickable { onOpenThread(thread) },
                     ) {
-                        Text(
-                            text = thread.title.ifBlank { thread.alias.ifBlank { thread.shortId } },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (selected) colors.accent else colors.textPrimary,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = thread.updatedAt.take(16).replace('T', ' '),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
+                        ) {
+                            Text(
+                                text = thread.title.ifBlank { thread.alias.ifBlank { thread.shortId } },
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (selected) colors.accent else colors.textPrimary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = thread.updatedAt.take(16).replace('T', ' '),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                        }
+                        IconButton(onClick = { pendingDelete = thread }) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Supprimer la session",
+                                tint = colors.textSecondary,
+                            )
+                        }
                     }
                 }
             }
             Spacer(modifier = Modifier.padding(top = 8.dp))
             HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 10.dp))
+            DrawerEntry(label = "Console", icon = Icons.Rounded.Terminal, onClick = onOpenConsole)
+            DrawerEntry(label = "Réglages", icon = Icons.Rounded.Settings, onClick = onOpenSettings)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -114,6 +142,29 @@ fun ThreadDrawer(
                 )
             }
             HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 6.dp))
+            pendingDelete?.let { thread ->
+                AlertDialog(
+                    onDismissRequest = { pendingDelete = null },
+                    containerColor = colors.surface,
+                    title = { Text("Supprimer la session ?", color = colors.textPrimary) },
+                    text = {
+                        Text(
+                            text = thread.title.ifBlank { thread.shortId },
+                            color = colors.textSecondary,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val target = thread
+                            pendingDelete = null
+                            onDeleteThread(target)
+                        }) { Text("Supprimer", color = colors.danger) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pendingDelete = null }) { Text("Annuler") }
+                    },
+                )
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
@@ -129,5 +180,30 @@ fun ThreadDrawer(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DrawerEntry(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(icon, contentDescription = null, tint = colors.textSecondary)
     }
 }

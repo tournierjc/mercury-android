@@ -64,8 +64,10 @@ private fun MercuryRoot(container: AppContainer) {
                 viewModel.refreshThreads()
             },
             onOpenThread = viewModel::openThread,
+            onDeleteThread = viewModel::deleteThread,
             onSignOut = viewModel::signOut,
             onDismissError = viewModel::dismissError,
+            onDismissWarning = viewModel::dismissWarning,
         )
     }
 }

@@ -59,6 +59,8 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+private enum class Screen { Chat, Bridge, Settings, Console }
+
 private val suggestions = listOf(
     "Que sais-tu de ce Spark ?",
     "Résume ma dernière session",
@@ -73,14 +75,30 @@ fun ChatScreen(
     onPermission: (String, String) -> Unit,
     onNewChat: () -> Unit,
     onOpenThread: (ThreadDto) -> Unit,
+    onDeleteThread: (ThreadDto) -> Unit,
     onSignOut: () -> Unit,
     onDismissError: () -> Unit,
+    onDismissWarning: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    var showBridge by remember { mutableStateOf(false) }
-    if (showBridge) {
-        BridgeScreen(onBack = { showBridge = false })
-        return
+    var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
+    when (screen) {
+        Screen.Bridge -> {
+            BridgeScreen(onBack = { screen = Screen.Chat })
+            return
+        }
+
+        Screen.Settings -> {
+            SettingsScreen(onBack = { screen = Screen.Chat })
+            return
+        }
+
+        Screen.Console -> {
+            ConsoleScreen(onBack = { screen = Screen.Chat })
+            return
+        }
+
+        Screen.Chat -> Unit
     }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -140,7 +158,19 @@ fun ChatScreen(
                     scope.launch { drawerState.close() }
                 },
                 onOpenBridge = {
-                    showBridge = true
+                    screen = Screen.Bridge
+                    scope.launch { drawerState.close() }
+                },
+                onOpenSettings = {
+                    screen = Screen.Settings
+                    scope.launch { drawerState.close() }
+                },
+                onOpenConsole = {
+                    screen = Screen.Console
+                    scope.launch { drawerState.close() }
+                },
+                onDeleteThread = { thread ->
+                    onDeleteThread(thread)
                     scope.launch { drawerState.close() }
                 },
                 onSignOut = {
@@ -189,11 +219,20 @@ fun ChatScreen(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                 )
             }
-            state.pendingPermission?.let { prompt ->
+            state.warning?.let { warning ->
+                Box(modifier = Modifier.padding(horizontal = 14.dp)) {
+                    InlineBanner(
+                        message = warning,
+                        isError = false,
+                        onDismiss = onDismissWarning,
+                    )
+                }
+            }
+            state.interaction?.let { interaction ->
                 Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
-                    PermissionCard(
-                        prompt = prompt,
-                        onAction = { action -> onPermission(prompt.id, action) },
+                    InteractionCard(
+                        interaction = interaction,
+                        onAction = { action -> onPermission(interaction.id, action) },
                     )
                 }
             }
