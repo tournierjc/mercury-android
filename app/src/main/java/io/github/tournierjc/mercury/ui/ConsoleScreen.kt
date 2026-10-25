@@ -30,10 +30,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.util.isDestructiveCommand
+import kotlinx.serialization.json.JsonObject
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.util.formatUptime
 import io.github.tournierjc.mercury.vm.ConsoleUiState
@@ -54,6 +57,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
     val colors = LocalMercuryColors.current
     var confirmRestart by remember { mutableStateOf(false) }
     var showCreateBot by remember { mutableStateOf(false) }
+    var showAddCrew by remember { mutableStateOf(false) }
     val botDetail = state.botDetail
 
     Column(
@@ -81,6 +85,8 @@ fun ConsoleScreen(onBack: () -> Unit) {
             BrainSection(state)
             CodeSection(state, viewModel)
             BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
+            FleetSection(state, viewModel, onAddCrew = { showAddCrew = true })
+            TerminalSection(state, viewModel)
             TasksSection(state, viewModel)
             SchedulesSection(state, viewModel)
             AgentsSection(state, viewModel)
@@ -116,6 +122,18 @@ fun ConsoleScreen(onBack: () -> Unit) {
             onConfirm = { id, name, description, tier ->
                 showCreateBot = false
                 viewModel.createBot(id, name, description, tier)
+            },
+        )
+    }
+
+    if (showAddCrew) {
+        AddCrewDialog(
+            leads = state.bots,
+            tiers = state.tiers,
+            onDismiss = { showAddCrew = false },
+            onConfirm = { leadId, id, name, description, persona, tier ->
+                showAddCrew = false
+                viewModel.addCrew(leadId, id, name, description, persona, tier)
             },
         )
     }
@@ -513,6 +531,263 @@ private fun CreateBotDialog(
                 onClick = { onConfirm(id.trim(), name.trim(), description, tier) },
                 enabled = id.isNotBlank() && name.isNotBlank(),
             ) { Text("Créer") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+    )
+}
+
+/**
+ * Fleet controls: promote a bot to lead, inspect its crew, add a member, set the
+ * permission tier. A lead can also build its own crew (autocrew, 202 + background).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FleetSection(state: ConsoleUiState, viewModel: ConsoleViewModel, onAddCrew: () -> Unit) {
+    val colors = LocalMercuryColors.current
+    var selectedId by remember { mutableStateOf("") }
+    val crew = state.crew
+
+    SectionTitle("Flotte")
+    CardBlock {
+        if (state.bots.isEmpty()) {
+            Text(
+                text = "Aucun équipier : créez-en un pour former une flotte.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        Text(
+            text = "Un chef de flotte peut engendrer ses propres spécialistes. Sélectionnez un équipier :",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            state.bots.forEach { bot ->
+                val id = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
+                if (id.isNotBlank()) {
+                    FilterChip(
+                        selected = selectedId == id,
+                        onClick = {
+                            selectedId = id
+                            viewModel.loadCrew(id)
+                            viewModel.loadPermissions(id)
+                        },
+                        label = { Text(bot.titleHint()) },
+                    )
+                }
+            }
+        }
+        if (selectedId.isNotBlank()) {
+            ButtonRow {
+                TextButton(onClick = { viewModel.promoteBot(selectedId) }) { Text("Promouvoir") }
+                TextButton(onClick = { viewModel.autoCrew(selectedId) }) { Text("Flotte auto") }
+                TextButton(onClick = onAddCrew) { Text("Ajouter un membre") }
+            }
+        }
+
+        if (crew != null) {
+            if (crew.error.isNotBlank()) {
+                Text(crew.error, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+            } else {
+                KeyValueRow("Chef", crew.lead?.titleHint()?.ifBlank { "—" } ?: "—")
+                KeyValueRow("Membres", "${crew.crew.size} / ${crew.maxCrew}")
+                crew.crew.forEach { member ->
+                    ActionRow(
+                        title = member.titleHint(),
+                        subtitle = member.detailHint(),
+                        trailing = "",
+                        onClick = {},
+                    )
+                }
+            }
+        }
+
+        state.permissions?.let { permissions ->
+            val tier = (permissions["tier"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
+            if (tier.isNotBlank()) KeyValueRow("Palier", tier)
+        }
+        if (state.tiers.isNotEmpty() && selectedId.isNotBlank()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                state.tiers.forEach { tier ->
+                    FilterChip(
+                        selected = false,
+                        onClick = { viewModel.setTier(selectedId, tier.id) },
+                        label = { Text(tier.label) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Terminal: one command at a time, in the workspace, 30 s timeout.
+ * Destructive patterns ask for a second confirmation — this executes on the host.
+ */
+@Composable
+private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val colors = LocalMercuryColors.current
+    var command by remember { mutableStateOf("") }
+    var cwd by remember { mutableStateOf("") }
+    var pending by remember { mutableStateOf<String?>(null) }
+
+    SectionTitle("Terminal")
+    CardBlock {
+        Text(
+            text = "Exécute une commande shell dans l'espace de travail de Mercury (30 s max). " +
+                "Elle tourne sur l'hôte, pas sur le téléphone.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        OutlinedTextField(
+            value = command,
+            onValueChange = { command = it },
+            label = { Text("Commande") },
+            singleLine = false,
+            minLines = 1,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = cwd,
+            onValueChange = { cwd = it },
+            label = { Text("Dossier (optionnel, relatif au workspace)") },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        ButtonRow {
+            TextButton(
+                onClick = {
+                    val trimmed = command.trim()
+                    if (trimmed.isNotEmpty()) {
+                        if (isDestructiveCommand(trimmed)) pending = trimmed else viewModel.runCommand(trimmed, cwd)
+                    }
+                },
+                enabled = !state.terminalBusy && command.isNotBlank(),
+            ) { Text(if (state.terminalBusy) "Exécution…" else "Exécuter") }
+            TextButton(onClick = { viewModel.clearTerminal() }, enabled = state.terminal != null) { Text("Effacer") }
+        }
+        state.terminal?.let { result ->
+            KeyValueRow(
+                "Sortie",
+                "code ${result.exitCode}" + if (result.cwd.isNotBlank()) " · ${result.cwd}" else "",
+                highlight = result.success,
+            )
+            Text(
+                text = result.display,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = if (result.success) colors.textPrimary else colors.danger,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+                    .padding(10.dp),
+            )
+        }
+    }
+
+    if (pending != null) {
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            containerColor = colors.surface,
+            title = { Text("Commande destructive", color = colors.danger) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Cette commande peut supprimer des données ou arrêter un service :",
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        pending.orEmpty(),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        color = colors.textPrimary,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val cmd = pending
+                    pending = null
+                    if (cmd != null) viewModel.runCommand(cmd, cwd)
+                }) { Text("Exécuter quand même", color = colors.danger) }
+            },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Annuler") } },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AddCrewDialog(
+    leads: List<JsonObject>,
+    tiers: List<io.github.tournierjc.mercury.data.dto.BotTierDto>,
+    onDismiss: () -> Unit,
+    onConfirm: (leadId: String, id: String, name: String, description: String?, persona: String?, tier: String?) -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    var leadId by remember { mutableStateOf("") }
+    var id by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var persona by remember { mutableStateOf("") }
+    var tier by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text("Ajouter à une flotte", color = colors.textPrimary) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Chef de flotte", color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    leads.forEach { bot ->
+                        val botId = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
+                        if (botId.isNotBlank()) {
+                            FilterChip(
+                                selected = leadId == botId,
+                                onClick = { leadId = botId },
+                                label = { Text(bot.titleHint()) },
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(value = id, onValueChange = { id = it }, label = { Text("Identifiant") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nom") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Spécialité") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = persona, onValueChange = { persona = it }, label = { Text("Persona (optionnel)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                if (tiers.isNotEmpty()) {
+                    Text("Palier de permissions", color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        tiers.forEach { candidate ->
+                            FilterChip(
+                                selected = tier == candidate.id,
+                                onClick = { tier = if (tier == candidate.id) null else candidate.id },
+                                label = { Text(candidate.label) },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        leadId,
+                        id.trim(),
+                        name.trim(),
+                        description.trim().ifBlank { null },
+                        persona.trim().ifBlank { null },
+                        tier,
+                    )
+                },
+                enabled = leadId.isNotBlank() && id.isNotBlank() && name.isNotBlank(),
+            ) { Text("Ajouter") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
     )

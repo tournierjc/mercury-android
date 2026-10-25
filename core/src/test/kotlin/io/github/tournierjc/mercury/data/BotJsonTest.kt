@@ -1,0 +1,105 @@
+package io.github.tournierjc.mercury.data
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** Fixtures follow `getStatusSummaries()` in mercury 1.4.2, not observed traffic. */
+class BotJsonTest {
+
+    private fun obj(text: String) = Json.parseToJsonElement(text).jsonObject
+
+    private val lead = obj(
+        """{"id":"lead-1","name":"Quill","enabled":true,"state":"running","activity":"Drafting chapter 2",
+           "needsYou":false,"fleetRole":"lead","crewWorking":2,"lastRunState":"running"}""",
+    )
+    private val crew = obj("""{"id":"w1","name":"Scribe","enabled":true,"state":"idle","parent":"lead-1","fleetRole":"crew"}""")
+
+    @Test
+    fun `roster reads the bots array and ignores the envelope`() {
+        val root = obj("""{"bots":[$lead],"queue":{"pending":2,"claimed":1,"dlq":0},"available":true}""")
+        val bots = BotJson.roster(root)
+
+        assertEquals(1, bots.size)
+        assertEquals("lead-1", BotJson.id(bots[0]))
+        assertEquals("Quill", BotJson.name(bots[0]))
+        assertEquals("running", BotJson.state(bots[0]))
+        assertEquals("Drafting chapter 2", BotJson.activity(bots[0]))
+        assertTrue(BotJson.isLead(bots[0]))
+        assertEquals(2, BotJson.crewWorking(bots[0]))
+    }
+
+    @Test
+    fun `missing fields degrade to safe defaults`() {
+        val bare = obj("""{"id":"x"}""")
+        assertEquals("x", BotJson.name(bare))
+        assertEquals("idle", BotJson.state(bare))
+        assertEquals("", BotJson.activity(bare))
+        assertFalse(BotJson.needsYou(bare))
+        assertTrue(BotJson.enabled(bare))
+        assertFalse(BotJson.isLead(bare))
+    }
+
+    @Test
+    fun `state labels are french`() {
+        assertEquals("en cours", BotJson.stateLabel("running"))
+        assertEquals("en file", BotJson.stateLabel("queued"))
+        assertEquals("en pause", BotJson.stateLabel("paused"))
+        assertEquals("désactivé", BotJson.stateLabel("disabled"))
+        assertEquals("au repos", BotJson.stateLabel("idle"))
+        assertEquals("au repos", BotJson.stateLabel(""))
+    }
+
+    @Test
+    fun `monogram takes initials then falls back to the id`() {
+        assertEquals("QU", BotJson.monogram(obj("""{"id":"lead-1","name":"Quill"}""")))
+        assertEquals("DT", BotJson.monogram(obj("""{"id":"x","name":"Data Team"}""")))
+        assertEquals("XL", BotJson.monogram(obj("""{"id":"x-long-name"}""")))
+        assertEquals("?", BotJson.monogram(obj("""{}""")))
+        assertEquals("AB", BotJson.monogram(obj("""{"name":"Ab"}""")))
+    }
+
+    @Test
+    fun `hue is stable and differs between bots`() {
+        assertEquals(BotJson.hue(lead), BotJson.hue(lead))
+        assertTrue(BotJson.hue(lead) in 0..359)
+        assertNotEquals(BotJson.hue(lead), BotJson.hue(crew))
+        assertEquals(210, BotJson.hue(obj("""{}""")))
+    }
+
+    @Test
+    fun `attention raises once for needsYou`() {
+        val before = listOf(lead)
+        val after = listOf(obj(lead.toString().replace("\"needsYou\":false", "\"needsYou\":true")))
+
+        val raised = BotJson.attention(before, after)
+        assertEquals(1, raised.size)
+        assertEquals(BotAttention.Kind.NeedsYou, raised[0].kind)
+        assertEquals("Quill", raised[0].botName)
+        assertTrue(BotJson.attention(after, after).isEmpty())
+    }
+
+    @Test
+    fun `attention reports finished and failed runs`() {
+        val done = BotJson.attention(listOf(lead), listOf(obj(lead.toString().replace("\"running", "\"done"))))
+        val failed = BotJson.attention(
+            listOf(lead),
+            listOf(obj(lead.toString().replace("\"lastRunState\":\"running\"", "\"lastRunState\":\"failed\""))),
+        )
+
+        assertEquals(BotAttention.Kind.RunFinished, done.single().kind)
+        assertEquals(BotAttention.Kind.RunFailed, failed.single().kind)
+    }
+
+    @Test
+    fun `a new bot with needsYou is reported, a quiet new bot is not`() {
+        val noisy = obj("""{"id":"n1","name":"New","needsYou":true}""")
+        val quiet = obj("""{"id":"n2","name":"Quiet"}""")
+
+        assertEquals(1, BotJson.attention(emptyList(), listOf(noisy, quiet)).size)
+    }
+}

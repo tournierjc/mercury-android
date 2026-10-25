@@ -13,6 +13,9 @@ import io.github.tournierjc.mercury.data.dto.AddMemoryRequest
 import io.github.tournierjc.mercury.data.dto.BeliefGraphDto
 import io.github.tournierjc.mercury.data.dto.BeliefsPage
 import io.github.tournierjc.mercury.data.dto.BgResponse
+import io.github.tournierjc.mercury.data.dto.BotDispatch
+import io.github.tournierjc.mercury.data.dto.BotCrewResponse
+import io.github.tournierjc.mercury.data.dto.TerminalResult
 import io.github.tournierjc.mercury.data.dto.BotDetailDto
 import io.github.tournierjc.mercury.data.dto.BotJournalPage
 import io.github.tournierjc.mercury.data.dto.BotOutputsPage
@@ -55,6 +58,7 @@ import io.github.tournierjc.mercury.data.dto.WorkspaceTreeDto
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -159,6 +163,149 @@ class MercuryApi(
                 .build(),
         )
     }
+
+    // ---------------------------------------------------------------------
+    // Bot customization, supervision and background dispatch
+    // ---------------------------------------------------------------------
+
+    /**
+     * `PATCH /api/bots/:id` — the only route that rewrites a manifest. Accepted keys:
+     * `enabled`, `description`, `model`, `tools`, `memory`, `comms`, `schedules`,
+     * `autonomy`, `retention`. There is no name and no avatar field in Mercury 1.4.2.
+     */
+    suspend fun patchBot(id: String, patch: JsonObject): JsonObject =
+        patchJson("/api/bots/${encode(id)}", patch, JsonObject.serializer())
+
+    /**
+     * `POST /api/bots/:id/message` — the "do this in the background" route: the job is
+     * queued (202 `{accepted:true, jobId, status:"accepted"}`) and the bot's main thread is
+     * never blocked. A busy or paused bot answers 409 `{accepted:false, reasonCode}`; that
+     * body is decoded instead of thrown so the UI can explain the refusal.
+     */
+    suspend fun dispatchBot(id: String, message: String, from: String? = null): BotDispatch =
+        withContext(Dispatchers.IO) {
+            val payload = buildJsonObject {
+                put("message", kotlinx.serialization.json.JsonPrimitive(message))
+                if (!from.isNullOrBlank()) put("from", kotlinx.serialization.json.JsonPrimitive(from))
+            }.toString()
+            val request = Request.Builder()
+                .url(url("/api/bots/${encode(id)}/message"))
+                .post(payload.toRequestBody(jsonMedia))
+                .build()
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+                runCatching { json.decodeFromString(BotDispatch.serializer(), body) }.getOrNull()
+                    ?: BotDispatch(accepted = false, reasonCode = if (body.isBlank()) "HTTP ${response.code}" else body.take(120))
+            }
+        }
+
+    suspend fun botPersona(id: String): JsonObject =
+        getDecoded("/api/bots/${encode(id)}/persona", JsonObject.serializer())
+
+    suspend fun setBotPersona(id: String, persona: String): JsonObject = putJson(
+        "/api/bots/${encode(id)}/persona",
+        JsonObject(mapOf("persona" to kotlinx.serialization.json.JsonPrimitive(persona))),
+        JsonObject.serializer(),
+    )
+
+    /** Delegated tasks of a fleet lead: `{tasks:[{id,assignee,status,stage,goal,result}]}`. */
+    suspend fun botTasks(id: String): JsonObject =
+        getDecoded("/api/bots/${encode(id)}/tasks", JsonObject.serializer())
+
+    /** Pending bot-to-bot or owner mail for a bot. */
+    suspend fun botInbox(id: String): JsonObject =
+        getDecoded("/api/bots/${encode(id)}/inbox", JsonObject.serializer())
+
+    /**
+     * Live roster and activity of the whole bot fleet. Reconnection is the caller's job:
+     * the flow completes when the stream ends.
+     */
+    fun botEvents(): Flow<BotEvent> = callbackFlow {
+        val request = Request.Builder()
+            .url(url("/api/bots/events"))
+            .header("Accept", "text/event-stream")
+            .get()
+            .build()
+        val call = client.newCall(request)
+        val job = launch(Dispatchers.IO) {
+            try {
+                call.execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw if (response.code == 401) {
+                            AuthException("Session expirée")
+                        } else {
+                            MercuryException("Flux équipiers indisponible : HTTP ${response.code}")
+                        }
+                    }
+                    val source = response.body?.source() ?: run { close(); return@use }
+                    val parser = SseParser()
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: break
+                        for (raw in parser.feed(line + "\n")) {
+                            trySend(BotEvent.parse(raw.type, raw.data))
+                        }
+                    }
+                }
+                close()
+            } catch (e: Exception) {
+                close(e)
+            }
+        }
+        awaitClose { job.cancel(); call.cancel() }
+    }
+
+    // ---------------------------------------------------------------------
+    // Terminal: one shell command in the workspace
+    // ---------------------------------------------------------------------
+
+    /**
+     * `POST /api/terminal/exec` — runs [command] in the workspace (or [cwd] inside it)
+     * with a 30 s timeout. Arbitrary code execution on the host: the UI gates it.
+     */
+    suspend fun execTerminal(command: String, cwd: String? = null): TerminalResult = postJson(
+        "/api/terminal/exec",
+        body("command" to command, "cwd" to cwd),
+        TerminalResult.serializer(),
+    )
+
+    // ---------------------------------------------------------------------
+    // Fleets: a lead bot and its crew
+    // ---------------------------------------------------------------------
+
+    suspend fun botCrew(id: String): BotCrewResponse =
+        getDecoded("/api/bots/${encode(id)}/crew", BotCrewResponse.serializer())
+
+    /** `POST /api/bots/:id/crew` — adds a crew member under [leadId]. */
+    suspend fun addBotCrew(
+        leadId: String,
+        id: String,
+        name: String,
+        description: String? = null,
+        persona: String? = null,
+        tier: String? = null,
+    ): JsonObject = postJson(
+        "/api/bots/${encode(leadId)}/crew",
+        body("id" to id, "name" to name, "description" to description, "persona" to persona, "tier" to tier),
+        JsonObject.serializer(),
+    )
+
+    suspend fun promoteBot(id: String): JsonObject =
+        postJson("/api/bots/${encode(id)}/promote", JsonObject(emptyMap()), JsonObject.serializer())
+
+    /** `POST /api/bots/:id/autocrew` — 202: the runtime builds the crew in the background. */
+    suspend fun autoCrewBot(id: String): JsonObject =
+        postJson("/api/bots/${encode(id)}/autocrew", JsonObject(emptyMap()), JsonObject.serializer())
+
+    suspend fun botPermissions(id: String): JsonObject =
+        getDecoded("/api/bots/${encode(id)}/permissions", JsonObject.serializer())
+
+    /** `PUT /api/bots/:id/permissions` — a named tier replaces the whole file. */
+    suspend fun setBotPermissions(id: String, tier: String): JsonObject = putJson(
+        "/api/bots/${encode(id)}/permissions",
+        JsonObject(mapOf("tier" to kotlinx.serialization.json.JsonPrimitive(tier))),
+        JsonObject.serializer(),
+    )
 
     // ---------------------------------------------------------------------
     // Boards: Mercury's kanban execution surface (43 routes).

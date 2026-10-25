@@ -1,6 +1,10 @@
 package io.github.tournierjc.mercury
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,10 +23,15 @@ import io.github.tournierjc.mercury.ui.theme.MercuryTheme
 import io.github.tournierjc.mercury.vm.ChatViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* refus = pas de notif, l'app continue */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as MercuryApp).container
+        askForNotifications()
         setContent {
             MercuryTheme {
                 Box(
@@ -34,6 +43,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Bot notifications need POST_NOTIFICATIONS on Android 13+; a refusal is harmless. */
+    private fun askForNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 

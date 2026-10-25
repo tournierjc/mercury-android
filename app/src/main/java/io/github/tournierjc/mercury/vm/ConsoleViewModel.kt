@@ -9,6 +9,7 @@ import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.dto.BotDetailDto
+import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.data.dto.BotTierDto
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
@@ -17,6 +18,7 @@ import io.github.tournierjc.mercury.data.dto.PluginDto
 import io.github.tournierjc.mercury.data.dto.QueueCounts
 import io.github.tournierjc.mercury.data.dto.SkillDto
 import io.github.tournierjc.mercury.data.dto.StatusDto
+import io.github.tournierjc.mercury.data.dto.TerminalResult
 import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +42,10 @@ data class ConsoleUiState(
     val bots: List<JsonObject> = emptyList(),
     val tiers: List<BotTierDto> = emptyList(),
     val botDetail: BotDetailDto? = null,
+    val crew: BotCrewResponse? = null,
+    val permissions: JsonObject? = null,
+    val terminal: TerminalResult? = null,
+    val terminalBusy: Boolean = false,
     val queue: QueueCounts = QueueCounts(),
     val busy: Boolean = false,
     val message: String? = null,
@@ -171,6 +177,76 @@ class ConsoleViewModel(
     private fun Throwable.readable(): String = when (this) {
         is AuthException -> "Session expirée — reconnecte-toi"
         else -> message ?: "Requête refusée"
+    }
+
+    // -------------------------------------------------------------------
+    // Terminal: one command, at the owner's explicit request
+    // -------------------------------------------------------------------
+
+    /**
+     * Runs a command through `POST /api/terminal/exec`. This is real code execution on the
+     * host: the UI asks for confirmation on destructive commands before calling this.
+     */
+    fun runCommand(command: String, cwd: String?) {
+        if (command.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(terminalBusy = true, terminal = null, error = null) }
+            runCatching { api.execTerminal(command.trim(), cwd?.trim()?.ifBlank { null }) }
+                .onSuccess { result -> _state.update { it.copy(terminalBusy = false, terminal = result) } }
+                .onFailure { e -> _state.update { it.copy(terminalBusy = false, error = e.readable()) } }
+        }
+    }
+
+    fun clearTerminal() {
+        _state.update { it.copy(terminal = null) }
+    }
+
+    // -------------------------------------------------------------------
+    // Fleet: promote a bot, read its crew, add members, change its tier
+    // -------------------------------------------------------------------
+
+    fun loadCrew(id: String) {
+        viewModelScope.launch {
+            runCatching { api.botCrew(id) }
+                .onSuccess { crew -> _state.update { it.copy(crew = crew) } }
+                .onFailure { e -> _state.update { it.copy(crew = BotCrewResponse(error = e.readable())) } }
+        }
+    }
+
+    fun loadPermissions(id: String) {
+        viewModelScope.launch {
+            runCatching { api.botPermissions(id) }
+                .onSuccess { permissions -> _state.update { it.copy(permissions = permissions) } }
+                .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
+        }
+    }
+
+    fun promoteBot(id: String) = botAction("Équipier promu en chef de flotte") { api.promoteBot(id) }
+
+    fun autoCrew(id: String) = botAction("Construction de la flotte demandée") { api.autoCrewBot(id) }
+
+    fun setTier(id: String, tier: String) = botAction("Palier de permissions appliqué") {
+        api.setBotPermissions(id, tier)
+    }
+
+    fun addCrew(
+        leadId: String,
+        id: String,
+        name: String,
+        description: String?,
+        persona: String?,
+        tier: String?,
+    ) = botAction("Équipier ajouté à la flotte") {
+        api.addBotCrew(leadId, id, name, description, persona, tier)
+    }.also { loadCrew(leadId) }
+
+    private fun botAction(successMessage: String, block: suspend () -> Any?) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching { block() }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = successMessage) }; refresh() }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
     }
 
     companion object {
