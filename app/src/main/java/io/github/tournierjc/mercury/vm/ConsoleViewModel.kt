@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.dto.BotDetailDto
+import io.github.tournierjc.mercury.data.dto.BotTierDto
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
 import io.github.tournierjc.mercury.data.dto.HealthDto
@@ -36,6 +38,8 @@ data class ConsoleUiState(
     val agents: List<JsonObject> = emptyList(),
     val schedules: List<JsonObject> = emptyList(),
     val bots: List<JsonObject> = emptyList(),
+    val tiers: List<BotTierDto> = emptyList(),
+    val botDetail: BotDetailDto? = null,
     val queue: QueueCounts = QueueCounts(),
     val busy: Boolean = false,
     val message: String? = null,
@@ -74,6 +78,7 @@ class ConsoleViewModel(
                 val agents = runCatching { api.agents() }.getOrNull()
                 val schedules = runCatching { api.schedules() }.getOrDefault(emptyList())
                 val bots = runCatching { api.bots() }.getOrNull()
+                val tiers = runCatching { api.botTiers() }.getOrDefault(emptyList())
                 _state.update {
                     it.copy(
                         loading = false,
@@ -88,6 +93,7 @@ class ConsoleViewModel(
                         agents = agents?.agents.orEmpty(),
                         schedules = schedules,
                         bots = bots?.bots.orEmpty(),
+                        tiers = tiers,
                         queue = bots?.queue ?: QueueCounts(),
                     )
                 }
@@ -116,6 +122,33 @@ class ConsoleViewModel(
     fun stopBot(id: String) = action("Bot arrêté") { api.stopBot(id) }
 
     fun runBot(id: String) = action("Exécution demandée") { api.runBot(id) }
+
+    fun startAllBots() = action("Tous les bots démarrés") { api.startAllBots() }
+
+    fun stopAllBots() = action("Tous les bots arrêtés") { api.stopAllBots() }
+
+    fun setBotEnabled(id: String, enabled: Boolean) = action(
+        if (enabled) "Bot $id activé" else "Bot $id désactivé",
+    ) { api.setBotEnabled(id, enabled) }
+
+    fun deleteBot(id: String) = action("Bot $id supprimé") { api.deleteBot(id) }
+
+    fun createBot(id: String, name: String, description: String?, tier: String?) = action("Bot $name créé") {
+        api.createBot(id, name, description?.trim()?.ifBlank { null }, tier)
+    }
+
+    /** Opens the detail sheet: manifest, live state and the last journal lines. */
+    fun openBot(id: String) {
+        viewModelScope.launch {
+            runCatching { api.botDetail(id) }
+                .onSuccess { detail -> _state.update { it.copy(botDetail = detail) } }
+                .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
+        }
+    }
+
+    fun closeBot() {
+        _state.update { it.copy(botDetail = null) }
+    }
 
     fun setCodeMode(state: String) = action("Mode programmation : $state") { api.setCodeMode(state) }
 

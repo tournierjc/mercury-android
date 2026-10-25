@@ -9,16 +9,16 @@ no plugin, no patch, no fork of the agent.
 
 > Status: early. The chat path (login → send → stream → approve) works against Mercury 1.4.2.
 
-## Aperçu
+## Preview
 
-![Écrans de l'application : chat, mémoire, console](docs/screenshots/overview.png)
+![Mercury Android: chat with an approval card, memory, console](docs/screenshots/overview.png)
 
-> **Maquette, pas une capture d'appareil.** Cette planche reprend les jetons exacts du thème
-> (`ui/theme/Theme.kt` : palette, tailles, rayons) et le contenu réel des écrans, mais elle est
-> dessinée hors Android : aucune machine de ce projet ne peut démarrer un émulateur (pas de paquet
-> `emulator` pour linux-aarch64, Robolectric refuse aarch64, `redroid` exige `binder_linux`).
-> La source est `docs/screenshots/overview.html` ; remplacer l'image par une capture réelle
-> (même nom de fichier) est un simple copier-coller.
+> **Mockup, not a device capture.** The plate reuses the exact theme tokens
+> (`ui/theme/Theme.kt`: palette, type scale, radii) and the real screens' content, but it is drawn
+> outside Android: no machine attached to this project can boot an emulator (no `emulator` package
+> for linux-aarch64, Robolectric's native runtime refuses aarch64, `redroid` needs `binder_linux`).
+> Source: `docs/screenshots/overview.html`. Dropping a real screenshot over the same filename is all
+> that is needed to replace it.
 
 ## What it does
 
@@ -147,7 +147,7 @@ that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree ent
 | Settings | `GET` + `PUT /api/chat/settings` (`bypassPermissions`, `restrictUser`, `workspace`) |
 | Runtime | `GET /api/health`, `/status`, `/usage`, `POST /api/restart` |
 | Capabilities | `GET /api/permissions`, `/providers`, `/skills`, `POST /api/skills/{name}/activate|deactivate`, `GET /api/plugins`, `/plugins/health`, `GET /api/code/status`, `POST /api/code/set` |
-| Work | `GET /api/bots`, `POST /api/bots/{id}/start|stop|message|run`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
+| Work | `GET /api/bots`, `GET|PATCH|DELETE /api/bots/{id}`, `POST /api/bots`, `/bots/{id}/enable|disable`, `/bots/{id}/start|stop|message|run`, `GET /bots/{id}/journal|runs|outputs`, `GET /bots/tiers`, `POST /bots-start-all|stop-all`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
 | Second brain | `GET /api/brain/status`, `/brain/memory` (+ `q`, `type`, `scope`), `GET|PUT|DELETE /brain/memory/{id}`, `POST /api/brain/memory`, `GET /brain/beliefs`, `POST /brain/beliefs/{id}/confirm|correct|forget`, `GET /brain/persons`, `/brain/graph`, `/brain/quarantine`, `POST /brain/quarantine/{id}/restore` |
 | Config & workspace | `GET /api/config`, `GET /api/workspace/info`, `/workspace/tree`, `/workspace/file?path=` |
 

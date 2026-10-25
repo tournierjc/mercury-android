@@ -13,7 +13,14 @@ import io.github.tournierjc.mercury.data.dto.AddMemoryRequest
 import io.github.tournierjc.mercury.data.dto.BeliefGraphDto
 import io.github.tournierjc.mercury.data.dto.BeliefsPage
 import io.github.tournierjc.mercury.data.dto.BgResponse
+import io.github.tournierjc.mercury.data.dto.BotDetailDto
+import io.github.tournierjc.mercury.data.dto.BotJournalPage
+import io.github.tournierjc.mercury.data.dto.BotOutputsPage
+import io.github.tournierjc.mercury.data.dto.BotRunsPage
+import io.github.tournierjc.mercury.data.dto.BotTiersPage
 import io.github.tournierjc.mercury.data.dto.BotsResponse
+import io.github.tournierjc.mercury.data.dto.CreateBotRequest
+import io.github.tournierjc.mercury.data.dto.UpdateBotRequest
 import io.github.tournierjc.mercury.data.dto.ConfigDto
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.ChatSettings
@@ -286,6 +293,45 @@ class MercuryApi(
         SimpleResponse.serializer(),
     )
 
+    suspend fun botDetail(id: String): BotDetailDto =
+        getDecoded("/api/bots/${encode(id)}", BotDetailDto.serializer())
+
+    suspend fun botRuns(id: String): BotRunsPage =
+        getDecoded("/api/bots/${encode(id)}/runs", BotRunsPage.serializer())
+
+    suspend fun botOutputs(id: String): BotOutputsPage =
+        getDecoded("/api/bots/${encode(id)}/outputs", BotOutputsPage.serializer())
+
+    suspend fun botJournal(id: String, limit: Int = 20): BotJournalPage = getDecoded(
+        "/api/bots/${encode(id)}/journal",
+        BotJournalPage.serializer(),
+        mapOf("limit" to limit.toString()),
+    )
+
+    suspend fun botTiers(): List<io.github.tournierjc.mercury.data.dto.BotTierDto> =
+        getDecoded("/api/bots/tiers", BotTiersPage.serializer()).tiers
+
+    suspend fun createBot(id: String, name: String, description: String? = null, tier: String? = null): SimpleResponse =
+        postJson("/api/bots", CreateBotRequest(id, name, description, tier), SimpleResponse.serializer())
+
+    suspend fun updateBot(id: String, update: UpdateBotRequest): SimpleResponse =
+        patchJson("/api/bots/${encode(id)}", update, SimpleResponse.serializer())
+
+    suspend fun deleteBot(id: String): SimpleResponse =
+        deleteJson("/api/bots/${encode(id)}", SimpleResponse.serializer())
+
+    suspend fun setBotEnabled(id: String, enabled: Boolean): SimpleResponse = postJson(
+        "/api/bots/${encode(id)}/${if (enabled) "enable" else "disable"}",
+        JsonObject(emptyMap()),
+        SimpleResponse.serializer(),
+    )
+
+    suspend fun startAllBots(): SimpleResponse =
+        postJson("/api/bots-start-all", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun stopAllBots(): SimpleResponse =
+        postJson("/api/bots-stop-all", JsonObject(emptyMap()), SimpleResponse.serializer())
+
     suspend fun backgroundTasks(): BgResponse = getDecoded("/api/bg", BgResponse.serializer())
 
     suspend fun cancelTask(id: String): SimpleResponse =
@@ -514,6 +560,20 @@ class MercuryApi(
             .url(url(path))
             .put(payload.toRequestBody(jsonMedia))
             .build()
+        json.decodeFromString(responseSerializer, execute(request))
+    }
+
+    /** PATCH a JSON body and decode the answer. */
+    private suspend inline fun <reified Req, reified Res> patchJson(
+        path: String,
+        body: Req,
+        responseSerializer: kotlinx.serialization.KSerializer<Res>,
+    ): Res = withContext(Dispatchers.IO) {
+        val payload = json.encodeToString(
+            kotlinx.serialization.json.JsonElement.serializer(),
+            json.encodeToJsonElement(kotlinx.serialization.serializer<Req>(), body),
+        )
+        val request = Request.Builder().url(url(path)).patch(payload.toRequestBody(jsonMedia)).build()
         json.decodeFromString(responseSerializer, execute(request))
     }
 
