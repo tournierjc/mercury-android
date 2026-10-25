@@ -243,3 +243,16 @@ fun JsonObject.detailHint(): String {
     }
     return parts.joinToString(" · ")
 }
+
+/** Row of compact text actions under a list entry (start/stop/delete…). */
+@Composable
+fun ButtonRow(content: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .background(LocalMercuryColors.current.surfaceMuted, RoundedCornerShape(14.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) { content() }
+}

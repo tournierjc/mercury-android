@@ -20,6 +20,10 @@ no plugin, no patch, no fork of the agent.
 > Source: `docs/screenshots/overview.html`. Dropping a real screenshot over the same filename is all
 > that is needed to replace it.
 
+![Boards: cards grouped by status, each runnable](docs/screenshots/boards.png)
+
+*Boards — the kanban the runtime executes card by card (source: `docs/screenshots/boards.html`).*
+
 ## What it does
 
 - **Sign in** to your Mercury instance with the dashboard credentials (session cookie, stored encrypted).
@@ -148,6 +152,7 @@ that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree ent
 | Runtime | `GET /api/health`, `/status`, `/usage`, `POST /api/restart` |
 | Capabilities | `GET /api/permissions`, `/providers`, `/skills`, `POST /api/skills/{name}/activate|deactivate`, `GET /api/plugins`, `/plugins/health`, `GET /api/code/status`, `POST /api/code/set` |
 | Work | `GET /api/bots`, `GET|PATCH|DELETE /api/bots/{id}`, `POST /api/bots`, `/bots/{id}/enable|disable`, `/bots/{id}/start|stop|message|run`, `GET /bots/{id}/journal|runs|outputs`, `GET /bots/tiers`, `POST /bots-start-all|stop-all`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
+| Boards | all 43 `/api/boards` routes: list/create/patch/delete, activate/deactivate, generate, cards (add/bulk/patch/delete/reorder/clear-done), run/halt/cascade per card, run-all/halt-all, execution-plan, smart-execute, comments, attachments, labels, parent, dependencies, context (directory/instructions/variables/knowledge/structure), feedback + respond |
 | Second brain | `GET /api/brain/status`, `/brain/memory` (+ `q`, `type`, `scope`), `GET|PUT|DELETE /brain/memory/{id}`, `POST /api/brain/memory`, `GET /brain/beliefs`, `POST /brain/beliefs/{id}/confirm|correct|forget`, `GET /brain/persons`, `/brain/graph`, `/brain/quarantine`, `POST /brain/quarantine/{id}/restore` |
 | Config & workspace | `GET /api/config`, `GET /api/workspace/info`, `/workspace/tree`, `/workspace/file?path=` |
 
