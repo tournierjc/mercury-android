@@ -209,3 +209,24 @@ data class MemoriesResponse(
     val total: Int = 0,
     val available: Boolean = true,
 )
+
+/** `GET /api/bots/:id/crew` — a fleet lead, its crew and the configured cap. */
+@Serializable
+data class BotCrewResponse(
+    val lead: JsonObject? = null,
+    val crew: List<JsonObject> = emptyList(),
+    val maxCrew: Int = 0,
+    val error: String = "",
+)
+
+/**
+ * `POST /api/bots/:id/message` — 202 `{accepted:true, jobId, status:"accepted"}`,
+ * 409 `{accepted:false, reasonCode}` (busy, paused, cap reached).
+ */
+@Serializable
+data class BotDispatch(
+    val accepted: Boolean = false,
+    val jobId: String = "",
+    val status: String = "",
+    val reasonCode: String = "",
+)

@@ -24,6 +24,10 @@ no plugin, no patch, no fork of the agent.
 
 *Boards — the kanban the runtime executes card by card (source: `docs/screenshots/boards.html`).*
 
+![Teammates: live state, needs-you, background dispatch](docs/screenshots/bots.png)
+
+*Teammates — live state, needs-you block, background dispatch (source: `docs/screenshots/bots.html`).*
+
 ## What it does
 
 - **Sign in** to your Mercury instance with the dashboard credentials (session cookie, stored encrypted).
@@ -152,6 +156,9 @@ that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree ent
 | Runtime | `GET /api/health`, `/status`, `/usage`, `POST /api/restart` |
 | Capabilities | `GET /api/permissions`, `/providers`, `/skills`, `POST /api/skills/{name}/activate|deactivate`, `GET /api/plugins`, `/plugins/health`, `GET /api/code/status`, `POST /api/code/set` |
 | Work | `GET /api/bots`, `GET|PATCH|DELETE /api/bots/{id}`, `POST /api/bots`, `/bots/{id}/enable|disable`, `/bots/{id}/start|stop|message|run`, `GET /bots/{id}/journal|runs|outputs`, `GET /bots/tiers`, `POST /bots-start-all|stop-all`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
+| Terminal | `POST /api/terminal/exec` — one shell command in the workspace (30 s, 2 MB), with a second confirmation on destructive patterns |
+| Teammates | roster, detail, start/stop/run/enable/disable, create, delete, persona (read/write), permissions (read + tier), model, daily budget, journal, runs, outputs, inbox, delegated tasks, `PATCH /api/bots/:id` |
+| Fleets | `GET/POST /api/bots/:id/crew`, promote, autocrew, tier changes |
 | Boards | all 43 `/api/boards` routes: list/create/patch/delete, activate/deactivate, generate, cards (add/bulk/patch/delete/reorder/clear-done), run/halt/cascade per card, run-all/halt-all, execution-plan, smart-execute, comments, attachments, labels, parent, dependencies, context (directory/instructions/variables/knowledge/structure), feedback + respond |
 | Second brain | `GET /api/brain/status`, `/brain/memory` (+ `q`, `type`, `scope`), `GET|PUT|DELETE /brain/memory/{id}`, `POST /api/brain/memory`, `GET /brain/beliefs`, `POST /brain/beliefs/{id}/confirm|correct|forget`, `GET /brain/persons`, `/brain/graph`, `/brain/quarantine`, `POST /brain/quarantine/{id}/restore` |
 | Config & workspace | `GET /api/config`, `GET /api/workspace/info`, `/workspace/tree`, `/workspace/file?path=` |
@@ -191,3 +198,43 @@ third-party SDKs, and the session cookie is stored with `EncryptedSharedPreferen
 ## License
 
 MIT — see [LICENSE](LICENSE). "Mercury" here refers to the agent; the Grok app is only a visual reference.
+
+## Teammates, live
+
+The bots are the part of Mercury that keeps working when nothing is typed. The app gives them
+a real screen:
+
+- **Roster** with a monogram avatar, live state (`en cours`, `en file`, `en pause`, `désactivé`),
+  the current step ("step 2 · 10.5k tok in") and a **needs-you** block at the top.
+- **Background dispatch**: a task sent to a bot is *queued*, not awaited — the call answers
+  `202 {accepted:true, jobId}` and the bot's own thread is never blocked. A busy or paused bot
+  answers `409 {reasonCode}` and the app says so instead of pretending the task was accepted.
+- **Customization**: persona (read and rewritten), permission tier, model, daily token budget,
+  description, enabled. `PATCH /api/bots/:id` is the only manifest-writing route.
+- **Fleets**: promote a bot to lead, inspect its crew with each member's live activity, add a
+  member, or let the runtime propose the crew (`autocrew`, 202 + background build).
+- **Journal, runs, outputs, inbox, delegated tasks** for each bot.
+
+### Notifications, and their honest limit
+
+`/api/bots/events` streams `bot_roster` (state, activity, `needsYou`) and `bot_activity`
+(`step`, `thinking`, `turn-end`, with `reasoningTail`). The app keeps that stream open for the
+whole process and raises **one** notification per transition — "X a besoin de vous", "X a
+terminé", "X a échoué" — plus passive lines in the roster ("Scribe lit report.md").
+
+Mercury 1.4.2 has **no push transport**: notifications arrive while the app process is alive.
+Killing the app stops them. Making them survive would need either a foreground service holding
+the SSE stream or a server-side push channel — neither exists today, and the README does not
+pretend otherwise.
+
+**Avatars**: there is no avatar field anywhere in the Mercury API (grep returns zero). The app
+draws a deterministic monogram whose colour is derived from the bot id, so a bot keeps its
+identity across sessions without inventing data.
+
+## Terminal
+
+`POST /api/terminal/exec` runs one command in the workspace from the phone, 30 s timeout, 2 MB
+of output, `cwd` confined to the workspace. It is arbitrary code execution on the host, so the
+screen asks for a **second confirmation** on destructive patterns (`rm -rf`, `docker rm`,
+`git reset --hard`, `shutdown`, …). The denylist is deliberately short: a longer one only
+teaches you to click through it.

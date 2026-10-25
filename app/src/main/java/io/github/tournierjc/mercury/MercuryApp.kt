@@ -4,10 +4,15 @@ import android.app.Application
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import io.github.tournierjc.mercury.bots.BotNotifier
+import io.github.tournierjc.mercury.bots.BotWatcher
 import io.github.tournierjc.mercury.data.CookieStore
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.SessionCookieJar
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 
 /**
@@ -55,6 +60,13 @@ class AppContainer(context: Context) {
 
     val api: MercuryApi = MercuryApi(httpClient, cookieJar)
 
+    /** Process-wide scope for the bot event stream (roster + notifications). */
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    val botNotifier = BotNotifier(context.applicationContext)
+
+    val botWatcher = BotWatcher(api, botNotifier, appScope)
+
     var serverUrl: String
         get() = prefs.getString(KEY_SERVER_URL, "") ?: ""
         set(value) {
@@ -85,5 +97,6 @@ class MercuryApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.botWatcher.start()
     }
 }

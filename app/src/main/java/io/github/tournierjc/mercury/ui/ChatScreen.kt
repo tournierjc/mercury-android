@@ -59,7 +59,7 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class Screen { Chat, Bridge, Settings, Console, Memory, Boards }
+private enum class Screen { Chat, Bridge, Settings, Console, Memory, Boards, Bots }
 
 private val suggestions = listOf(
     "Que sais-tu de ce Spark ?",
@@ -105,6 +105,11 @@ fun ChatScreen(
 
         Screen.Boards -> {
             BoardsScreen(onBack = { screen = Screen.Chat })
+            return
+        }
+
+        Screen.Bots -> {
+            BotsScreen(onBack = { screen = Screen.Chat })
             return
         }
 
@@ -185,6 +190,10 @@ fun ChatScreen(
                 },
                 onOpenBoards = {
                     screen = Screen.Boards
+                    scope.launch { drawerState.close() }
+                },
+                onOpenBots = {
+                    screen = Screen.Bots
                     scope.launch { drawerState.close() }
                 },
                 onDeleteThread = { thread ->
