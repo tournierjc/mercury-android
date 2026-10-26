@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -54,7 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.data.ChatState
+import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.ThreadDto
+import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -72,6 +75,9 @@ fun ChatScreen(
     state: ChatState,
     threads: List<ThreadDto>,
     onSend: (String) -> Unit,
+    attachments: List<PendingFile>,
+    onPickAttachments: (List<PendingFile>) -> Unit,
+    onRemoveAttachment: (Int) -> Unit,
     onPermission: (String, String) -> Unit,
     onNewChat: () -> Unit,
     onOpenThread: (ThreadDto) -> Unit,
@@ -121,6 +127,20 @@ fun ChatScreen(
 
     var composerText by rememberSaveable { mutableStateOf("") }
     var voiceError by remember { mutableStateOf<String?>(null) }
+    var attachmentError by remember { mutableStateOf<String?>(null) }
+
+    // Photos and PDFs: the system picker needs no storage permission, and a picked
+    // file is read once, downscaled, and reduced to bytes — never copied to storage.
+    val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        val files = uris.mapNotNull { uri ->
+            MediaPicker.read(context, uri).getOrElse { error ->
+                attachmentError = error.message ?: "Pièce jointe illisible"
+                null
+            }
+        }
+        if (files.isNotEmpty()) onPickAttachments(files)
+    }
 
     val speechLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -238,6 +258,14 @@ fun ChatScreen(
             if (errorMessage != null) {
                 ErrorBar(message = errorMessage, onDismiss = onDismissError)
             }
+            attachmentError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.danger,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                )
+            }
             if (voiceError != null) {
                 Text(
                     text = voiceError.orEmpty(),
@@ -264,17 +292,21 @@ fun ChatScreen(
                 }
             }
 
+            AttachmentStrip(attachments = attachments, onRemove = onRemoveAttachment)
+
             Composer(
                 value = composerText,
                 onValueChange = { composerText = it },
                 onSend = {
                     val text = composerText
-                    if (text.isNotBlank()) {
+                    if (text.isNotBlank() || attachments.isNotEmpty()) {
                         composerText = ""
                         onSend(text)
                     }
                 },
                 onVoice = { startVoice() },
+                onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf")) },
+                attachmentCount = attachments.size,
                 busy = state.streaming,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             )
@@ -476,6 +508,51 @@ private fun ErrorBar(message: String, onDismiss: () -> Unit) {
         )
         IconButton(onClick = onDismiss) {
             Text(text = "✕", color = colors.textSecondary)
+        }
+    }
+}
+
+/**
+ * The files waiting to be sent, above the composer. A chip, not a thumbnail grid:
+ * the point is to see what will travel and drop the wrong one, not to admire it.
+ */
+@Composable
+private fun AttachmentStrip(attachments: List<PendingFile>, onRemove: (Int) -> Unit) {
+    if (attachments.isEmpty()) return
+    val colors = LocalMercuryColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        attachments.forEachIndexed { index, file ->
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(colors.surface)
+                    .padding(start = 10.dp, end = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = file.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 170.dp),
+                )
+                IconButton(onClick = { onRemove(index) }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Retirer ${file.name}",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+            }
         }
     }
 }

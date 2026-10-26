@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
+import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.data.ChatReducer
 import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.ThreadDto
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,14 +94,43 @@ class ChatViewModel(
         }
     }
 
+    private val _attachments = MutableStateFlow<List<PendingFile>>(emptyList())
+    val attachments: StateFlow<List<PendingFile>> = _attachments.asStateFlow()
+
+    /**
+     * Queues picked files. The caps are checked here so the user hears about a
+     * 20 MB PDF now rather than after a failed send.
+     */
+    fun attach(files: List<PendingFile>) {
+        val next = (_attachments.value + files).take(Attachments.MAX_FILES)
+        val problem = Attachments.problemWith(next) ?: if (files.size + _attachments.value.size > Attachments.MAX_FILES) {
+            "4 pièces jointes au maximum"
+        } else {
+            null
+        }
+        if (problem != null) {
+            _state.update { ChatReducer.setError(it, problem) }
+            return
+        }
+        _attachments.value = next
+    }
+
+    fun removeAttachment(index: Int) {
+        _attachments.value = _attachments.value.filterIndexed { position, _ -> position != index }
+    }
+
     fun send(text: String) {
         val trimmed = text.trim()
-        if (trimmed.isEmpty() || _state.value.streaming) return
-        _state.update { ChatReducer.addUserMessage(it, trimmed) }
+        val files = _attachments.value
+        if ((trimmed.isEmpty() && files.isEmpty()) || _state.value.streaming) return
+        // A photo with no caption still shows as a turn: say what travels.
+        val shown = trimmed.ifBlank { "(" + files.size + " pièce(s) jointe(s))" }
+        _state.update { ChatReducer.addUserMessage(it, shown) }
         viewModelScope.launch {
             try {
-                val sessionId = api.send(trimmed, _state.value.sessionId)
+                val sessionId = api.send(trimmed, _state.value.sessionId, files.map { it.toUpload() })
                 if (sessionId != null) {
+                    _attachments.value = emptyList()
                     _state.update { it.copy(sessionId = sessionId) }
                     ensureEvents(sessionId)
                 }

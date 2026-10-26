@@ -60,6 +60,7 @@ private fun MercuryRoot(container: AppContainer) {
     val threads by viewModel.threads.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val attachments by viewModel.attachments.collectAsStateWithLifecycle()
 
     if (!signedIn) {
         ConnectScreen(
@@ -74,6 +75,9 @@ private fun MercuryRoot(container: AppContainer) {
             state = state,
             threads = threads,
             onSend = viewModel::send,
+            attachments = attachments,
+            onPickAttachments = viewModel::attach,
+            onRemoveAttachment = viewModel::removeAttachment,
             onPermission = viewModel::answerPermission,
             onNewChat = {
                 viewModel.newChat()
