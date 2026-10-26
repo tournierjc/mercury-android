@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +34,8 @@ fun Composer(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     onVoice: () -> Unit,
+    onAttach: () -> Unit,
+    attachmentCount: Int,
     busy: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -45,6 +48,13 @@ fun Composer(
             .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        IconButton(onClick = onAttach, enabled = !busy) {
+            Icon(
+                imageVector = Icons.Rounded.AttachFile,
+                contentDescription = "Joindre une photo ou un PDF",
+                tint = colors.textSecondary,
+            )
+        }
         IconButton(onClick = onVoice) {
             Icon(
                 imageVector = Icons.Rounded.Mic,
@@ -76,7 +86,8 @@ fun Composer(
                 }
             },
         )
-        SendButton(enabled = value.isNotBlank() && !busy, onClick = onSend)
+        // A photo with no caption is a message: the server names the turn for it.
+        SendButton(enabled = (value.isNotBlank() || attachmentCount > 0) && !busy, onClick = onSend)
     }
 }
 

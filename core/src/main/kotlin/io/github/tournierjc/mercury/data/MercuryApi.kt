@@ -142,9 +142,21 @@ class MercuryApi(
         return thread.takeIf { it.id.isNotEmpty() }
     }
 
-    /** Sends a user turn. Returns the session id the turn was bound to. */
-    suspend fun send(content: String, sessionId: String?): String? {
-        val payload = json.encodeToString(SendRequest.serializer(), SendRequest(content, sessionId))
+    /**
+     * Sends a user turn, optionally with files. Returns the session id the turn was bound to.
+     *
+     * A photo may travel without text: the server then names the turn
+     * `(Attached: photo.jpg)` instead of sending an empty block a provider rejects.
+     */
+    suspend fun send(
+        content: String,
+        sessionId: String?,
+        attachments: List<AttachmentUpload> = emptyList(),
+    ): String? {
+        val payload = json.encodeToString(
+            SendRequest.serializer(),
+            SendRequest(content, sessionId, attachments.takeIf { it.isNotEmpty() }),
+        )
         val body = execute(
             Request.Builder()
                 .url(url("/api/chat/send"))

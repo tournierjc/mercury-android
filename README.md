@@ -43,6 +43,13 @@ no plugin, no patch, no fork of the agent.
   a belief, restore what the brain set aside — and see the identity/budget the runtime runs with.
 - **Supervise the daemon** from the console tab: state, uptime, loop lag, providers, bots and
   their queue, background tasks, schedules, agents, skills on/off, plugins, workspace, restart.
+- **Send photos and PDFs** with a turn (up to 4, 8 MB per image, 15 MB per PDF): the picker
+  needs no storage permission, an image is downscaled to 1600 px and re-encoded before it
+  leaves the phone, and a photo may travel with no caption. The route it needs
+  (`attachments[]` on `/api/chat/send`) is
+  [merged upstream](https://github.com/cosmicstack-labs/mercury-agent/pull/225) but **not yet in
+  an npm release**: 1.4.2 reads `content` only and silently ignores the field, so run Mercury
+  from `main` (or a build of it) until the version that ships it is out.
 - **Dictate** with the system speech recogniser — the text lands in the composer, never auto-sent.
 - **Markdown** rendering for what agents actually emit: fenced code, lists, headings, `inline code`, **bold**, *italic*.
 
@@ -150,7 +157,7 @@ that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree ent
 | Area | Routes |
 |---|---|
 | Auth | `POST /api/auth/login`, `/logout`, `/password`, `/username` |
-| Chat | `GET /api/chat/threads`, `/threads/{id}`, `POST /api/chat/send`, `GET /api/chat/events` (SSE), `POST /api/chat/permission/{id}`, `POST /api/chat/threads/{id}/delete` |
+| Chat | `GET /api/chat/threads`, `/threads/{id}`, `POST /api/chat/send` (with `attachments[]`), `GET /api/chat/events` (SSE), `POST /api/chat/permission/{id}`, `POST /api/chat/threads/{id}/delete` |
 | Models | `GET /api/chat/models`, `POST /api/chat/models/switch`, `POST /api/chat/models/prefs` |
 | Settings | `GET` + `PUT /api/chat/settings` (`bypassPermissions`, `restrictUser`, `workspace`) |
 | Runtime | `GET /api/health`, `/status`, `/usage`, `POST /api/restart` |

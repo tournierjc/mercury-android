@@ -26,8 +26,28 @@ data class MessageDto(
 @Serializable
 data class ThreadMessagesResponse(val messages: List<MessageDto> = emptyList())
 
+/**
+ * One file on the wire: base64 in `data`, no `data:` prefix. `mime` is a hint —
+ * the server reads the signature and refuses anything that is not png, jpeg,
+ * webp, gif or PDF.
+ */
 @Serializable
-data class SendRequest(val content: String, val sessionId: String? = null)
+data class AttachmentUpload(
+    val name: String,
+    val mime: String? = null,
+    val data: String,
+)
+
+/**
+ * A user turn. `attachments` stays absent for a text-only message, so the request
+ * is byte-identical to what earlier versions sent.
+ */
+@Serializable
+data class SendRequest(
+    val content: String,
+    val sessionId: String? = null,
+    val attachments: List<AttachmentUpload>? = null,
+)
 
 @Serializable
 data class SendResponse(val sessionId: String? = null, val error: String? = null)
