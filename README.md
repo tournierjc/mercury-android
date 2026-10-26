@@ -41,6 +41,11 @@ no plugin, no patch, no fork of the agent.
 - **Watch the bill**: daily tokens, remaining budget and the per-channel breakdown.
 - **Read its memory**: search what it remembers, add a fact by hand, forget one, confirm or correct
   a belief, restore what the brain set aside — and see the identity/budget the runtime runs with.
+- **Hand files to a bot.** A photo or a PDF travels with a background dispatch the same way it travels
+  with a chat turn — resized on the phone (1600 px, JPEG q80), capped at 4 files, and the file can go
+  alone: the server captions the turn itself. Needs the upstream route from
+  [mercury-agent#231](https://github.com/cosmicstack-labs/mercury-agent/pull/231); on an older daemon
+  the field is absent and the dispatch is a plain message.
 - **Hear about a bot that needs you while the app is closed.** Notifications used to stop with the
   process: the roster SSE only lives while the app runs, so a question posed at 3 am waited for you
   to open it. A `WorkManager` check (15/30/60 min, opt-in, offline-safe) reads `GET /api/bots` and

@@ -194,11 +194,26 @@ class MercuryApi(
      * never blocked. A busy or paused bot answers 409 `{accepted:false, reasonCode}`; that
      * body is decoded instead of thrown so the UI can explain the refusal.
      */
-    suspend fun dispatchBot(id: String, message: String, from: String? = null): BotDispatch =
+    suspend fun dispatchBot(
+        id: String,
+        message: String,
+        from: String? = null,
+        attachments: List<AttachmentUpload> = emptyList(),
+    ): BotDispatch =
         withContext(Dispatchers.IO) {
             val payload = buildJsonObject {
                 put("message", kotlinx.serialization.json.JsonPrimitive(message))
                 if (!from.isNullOrBlank()) put("from", kotlinx.serialization.json.JsonPrimitive(from))
+                // Only when there is something to send: a server without the feature
+                // ignores an absent field, but an empty array is still a new shape.
+                if (attachments.isNotEmpty()) {
+                    put(
+                        "attachments",
+                        kotlinx.serialization.json.JsonArray(
+                            attachments.map { json.encodeToJsonElement(AttachmentUpload.serializer(), it) },
+                        ),
+                    )
+                }
             }.toString()
             val request = Request.Builder()
                 .url(url("/api/bots/${encode(id)}/message"))

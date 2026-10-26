@@ -10,6 +10,7 @@ import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -162,13 +163,23 @@ class BotsViewModel(
             ?.mapNotNull { entry -> runCatching { entry as JsonObject }.getOrNull() }
             ?: emptyList()
 
-    /** Queues a message for the bot: the call returns in milliseconds, the work runs after. */
-    fun dispatch(message: String) {
+    /**
+     * Queues a message for the bot: the call returns in milliseconds, the work runs after.
+     *
+     * Files can go alone — the route accepts an empty prompt when something is attached,
+     * and the server captions the turn itself.
+     */
+    fun dispatch(message: String, files: List<PendingFile> = emptyList()) {
         val id = _state.value.selectedId ?: return
-        if (message.isBlank()) return
+        if (message.isBlank() && files.isEmpty()) return
+        val problem = Attachments.problemWith(files)
+        if (problem != null) {
+            _state.update { it.copy(error = problem) }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(busy = true, dispatchFeedback = null, error = null) }
-            runCatching { api.dispatchBot(id, message.trim()) }
+            runCatching { api.dispatchBot(id, message.trim(), attachments = files.map { it.toUpload() }) }
                 .onSuccess { result ->
                     _state.update {
                         it.copy(

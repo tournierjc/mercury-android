@@ -50,6 +50,8 @@ import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.BotWatchState
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.data.Attachments
+import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.vm.BotsUiState
 import io.github.tournierjc.mercury.vm.BotsViewModel
@@ -218,6 +220,26 @@ private fun BotDetail(
     val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
 
     var dispatchText by remember { mutableStateOf("") }
+    var dispatchFiles by remember(id) { mutableStateOf<List<PendingFile>>(emptyList()) }
+    var dispatchFileError by remember(id) { mutableStateOf<String?>(null) }
+
+    // 1600 px / JPEG q80 like the chat composer: a photo from a 50 MP sensor must not
+    // travel at full size, and the server's 8 MB image cap is a guard, not a routine stop.
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        MediaPicker.read(context, uri, maxDimension = 1600)
+            .onSuccess { file ->
+                val batch = dispatchFiles + file
+                val problem = Attachments.problemWith(batch)
+                if (problem != null) {
+                    dispatchFileError = problem
+                } else {
+                    dispatchFiles = batch
+                    dispatchFileError = null
+                }
+            }
+            .onFailure { error -> dispatchFileError = error.message ?: "Fichier illisible" }
+    }
     var personaText by remember(state.personaLoaded, id) { mutableStateOf(state.persona) }
     var showAddCrew by remember { mutableStateOf(false) }
     var modelText by remember(id) { mutableStateOf("") }
@@ -291,6 +313,25 @@ private fun BotDetail(
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
+        if (dispatchFiles.isNotEmpty()) {
+            ButtonRow {
+                dispatchFiles.forEach { file ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "📎 ${file.name}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                        )
+                        TextButton(onClick = { dispatchFiles = dispatchFiles - file }) {
+                            Text("✕", color = colors.danger)
+                        }
+                    }
+                }
+            }
+        }
+        dispatchFileError?.let { message ->
+            Text(message, color = colors.danger, style = MaterialTheme.typography.labelSmall)
+        }
         state.dispatchFeedback?.let { feedback ->
             Text(
                 text = feedback,
@@ -300,9 +341,19 @@ private fun BotDetail(
             )
         }
         ButtonRow {
+            TextButton(onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) }) {
+                Text("Joindre")
+            }
             TextButton(
-                onClick = { viewModel.dispatch(dispatchText); dispatchText = "" },
-                enabled = !state.busy && dispatchText.isNotBlank(),
+                onClick = {
+                    viewModel.dispatch(dispatchText, dispatchFiles)
+                    // Cleared at once: a refusal comes back in the feedback line with its
+                    // reason, and re-picking a file is cheaper than a stale batch.
+                    dispatchText = ""
+                    dispatchFiles = emptyList()
+                    dispatchFileError = null
+                },
+                enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty()),
             ) { Text("Mettre en file") }
         }
     }
