@@ -15,6 +15,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,6 +33,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.bots.AttentionPrefs
+import io.github.tournierjc.mercury.bots.AttentionSchedule
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.vm.SettingsViewModel
@@ -134,6 +138,72 @@ fun SettingsScreen(onBack: () -> Unit) {
                         checked = state.settings?.restrictUser ?: false,
                         onCheckedChange = viewModel::setRestrictUser,
                         enabled = !state.busy,
+                    )
+                }
+            }
+
+            SectionTitle("Arrière-plan")
+            CardBlock {
+                // Réglage purement local (aucune route Mercury) : la vérification de fond
+                // interroge le roster toutes les N minutes quand l'app est fermée.
+                val attention = remember { AttentionPrefs(context) }
+                var attentionOn by remember { mutableStateOf(attention.enabled) }
+                var interval by remember { mutableIntStateOf(attention.intervalMinutes) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Alerter quand l'app est fermée",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            text = if (attentionOn) {
+                                "Un équipier qui attend une réponse vous notifie, vérifié toutes les $interval minutes."
+                            } else {
+                                "Sans ça, les notifications n'arrivent que si l'app est ouverte."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    Switch(
+                        checked = attentionOn,
+                        onCheckedChange = { on ->
+                            attentionOn = on
+                            attention.enabled = on
+                            if (on) attention.forget() // une nouvelle activation ré-annonce l'état courant
+                            AttentionSchedule.apply(context)
+                        },
+                    )
+                }
+                if (attentionOn) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) {
+                        Text(
+                            text = "Intervalle",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        listOf(15, 30, 60).forEach { minutes ->
+                            TextButton(onClick = {
+                                interval = minutes
+                                attention.intervalMinutes = minutes
+                                AttentionSchedule.apply(context)
+                            }) {
+                                Text(
+                                    text = "$minutes min",
+                                    color = if (minutes == interval) colors.accent else colors.textSecondary,
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = "Android ne descend pas sous 15 minutes, et peut décaler la passe pour économiser la batterie.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
                     )
                 }
             }

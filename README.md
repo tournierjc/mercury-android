@@ -41,6 +41,13 @@ no plugin, no patch, no fork of the agent.
 - **Watch the bill**: daily tokens, remaining budget and the per-channel breakdown.
 - **Read its memory**: search what it remembers, add a fact by hand, forget one, confirm or correct
   a belief, restore what the brain set aside — and see the identity/budget the runtime runs with.
+- **Hear about a bot that needs you while the app is closed.** Notifications used to stop with the
+  process: the roster SSE only lives while the app runs, so a question posed at 3 am waited for you
+  to open it. A `WorkManager` check (15/30/60 min, opt-in, offline-safe) reads `GET /api/bots` and
+  raises the same notification the live roster would, once per pending question — the alert keys
+  make sure a fifteen-minute cadence does not turn the shade into noise. It deliberately reports
+  only what is self-evident without a previous roster (`needsYou`); run outcomes still need the SSE
+  diff, so they stay with the live stream.
 - **Supervise the daemon** from the console tab: state, uptime, loop lag, providers, bots and
   their queue, background tasks, schedules, agents, skills on/off, plugins, workspace, restart.
 - **Send photos and PDFs** with a turn (up to 4, 8 MB per image, 15 MB per PDF): the picker

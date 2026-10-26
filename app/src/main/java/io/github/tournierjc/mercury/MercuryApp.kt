@@ -98,5 +98,7 @@ class MercuryApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.botWatcher.start()
+        // La vérification de fond survit au process : WorkManager la reprend au boot.
+        io.github.tournierjc.mercury.bots.AttentionSchedule.apply(this)
     }
 }
