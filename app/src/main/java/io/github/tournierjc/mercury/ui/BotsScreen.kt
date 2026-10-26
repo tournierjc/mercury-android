@@ -1,5 +1,10 @@
 package io.github.tournierjc.mercury.ui
 
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +50,7 @@ import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.BotWatchState
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.vm.BotsUiState
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import kotlinx.serialization.json.JsonObject
@@ -52,8 +61,8 @@ import kotlinx.serialization.json.contentOrNull
  * Teammates: the roster with live activity and passive state, plus a detail view for
  * customization (persona, tier, model, budget), fleet control and background dispatch.
  *
- * Avatars are monograms: Mercury 1.4.2 has no avatar field, so nothing is invented —
- * the colour is derived from the bot id and stays stable.
+ * A bot with a custom avatar shows it; the monogram (colour derived from the id) is the
+ * fallback, not the default. `hasAvatar` on the roster tells us whether to fetch at all.
  */
 @Composable
 fun BotsScreen(onBack: () -> Unit) {
@@ -62,6 +71,9 @@ fun BotsScreen(onBack: () -> Unit) {
     val viewModel: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
     val watch by viewModel.watcher.state.collectAsState()
     val state by viewModel.state.collectAsState()
+    val avatars by viewModel.avatars.collectAsState()
+    // Faces are fetched only for bots whose roster entry says they have one.
+    LaunchedEffect(watch.bots) { viewModel.loadAvatars(watch.bots) }
     val colors = LocalMercuryColors.current
 
     Column(
@@ -92,7 +104,7 @@ fun BotsScreen(onBack: () -> Unit) {
                 .padding(horizontal = 14.dp),
         ) {
             if (state.selectedId == null) {
-                RosterList(watch, onSelect = viewModel::select)
+                RosterList(watch, onSelect = viewModel::select, avatars = avatars)
                 if (watch.recent.isNotEmpty()) {
                     SectionTitle("Activité récente")
                     CardBlock {
@@ -106,7 +118,7 @@ fun BotsScreen(onBack: () -> Unit) {
                     }
                 }
             } else {
-                BotDetail(state, watch, viewModel)
+                BotDetail(state, watch, viewModel, avatars)
             }
             Text(" ", modifier = Modifier.padding(bottom = 28.dp))
         }
@@ -114,7 +126,11 @@ fun BotsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun RosterList(watch: BotWatchState, onSelect: (String) -> Unit) {
+private fun RosterList(
+    watch: BotWatchState,
+    onSelect: (String) -> Unit,
+    avatars: Map<String, ByteArray>,
+) {
     val colors = LocalMercuryColors.current
     val needsYou = watch.needsYou()
     if (needsYou.isNotEmpty()) {
@@ -151,7 +167,7 @@ private fun RosterList(watch: BotWatchState, onSelect: (String) -> Unit) {
                     .clickable { onSelect(id) }
                     .padding(vertical = 6.dp),
             ) {
-                Monogram(bot)
+                BotFace(bot, avatars[BotJson.id(bot)])
                 Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -187,8 +203,16 @@ private fun RosterList(watch: BotWatchState, onSelect: (String) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BotDetail(state: BotsUiState, watch: BotWatchState, viewModel: BotsViewModel) {
+private fun BotDetail(
+    state: BotsUiState,
+    watch: BotWatchState,
+    viewModel: BotsViewModel,
+    avatars: Map<String, ByteArray>,
+) {
     val colors = LocalMercuryColors.current
+    // Captured at composition: `LocalContext.current` is a composable getter and the
+    // picker callback below is not one.
+    val context = LocalContext.current
     val id = state.selectedId.orEmpty()
     val bot = (state.manifest ?: watch.bots.firstOrNull { BotJson.id(it) == id }) ?: return
     val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
@@ -198,11 +222,20 @@ private fun BotDetail(state: BotsUiState, watch: BotWatchState, viewModel: BotsV
     var showAddCrew by remember { mutableStateOf(false) }
     var modelText by remember(id) { mutableStateOf("") }
     var budgetText by remember(id) { mutableStateOf("") }
+    var avatarError by remember(id) { mutableStateOf<String?>(null) }
+
+    // 512 px is plenty for a face in a roster, and the bytes leave the phone encoded.
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        MediaPicker.read(context, uri, maxDimension = 512)
+            .onSuccess { file -> avatarError = null; viewModel.uploadAvatar(id, file.bytes) }
+            .onFailure { error -> avatarError = error.message ?: "Photo illisible" }
+    }
 
     SectionTitle("Aperçu")
     CardBlock {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Monogram(bot)
+            BotFace(bot, avatars[BotJson.id(bot)])
             Column(modifier = Modifier.padding(start = 10.dp)) {
                 Text(BotJson.name(bot), color = colors.textPrimary, style = MaterialTheme.typography.bodyLarge)
                 Text(
@@ -220,6 +253,19 @@ private fun BotDetail(state: BotsUiState, watch: BotWatchState, viewModel: BotsV
         KeyValueRow("Dernier passage", BotJson.lastRunState(bot).ifBlank { "—" })
         BotJson.description(bot).takeIf { it.isNotBlank() }?.let { KeyValueRow("Rôle", it) }
         KeyValueRow("Modèle", BotJson.model(bot).ifBlank { "défaut" })
+        ButtonRow {
+            TextButton(
+                onClick = {
+                    avatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+            ) { Text(if (avatars[id] != null) "Changer la photo" else "Photo") }
+            if (avatars[id] != null) {
+                TextButton(onClick = { viewModel.removeAvatar(id) }) { Text("Retirer la photo") }
+            }
+        }
+        avatarError?.let { message ->
+            Text(message, color = colors.danger, style = MaterialTheme.typography.labelSmall)
+        }
         ButtonRow {
             TextButton(onClick = { viewModel.start(id) }) { Text("Démarrer") }
             TextButton(onClick = { viewModel.stop(id) }) { Text("Arrêter") }
@@ -328,7 +374,7 @@ private fun BotDetail(state: BotsUiState, watch: BotWatchState, viewModel: BotsV
             KeyValueRow("Membres", "${members.size} / ${crew.maxCrew}")
             members.forEach { member ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Monogram(member, small = true)
+                    BotFace(member, avatars[BotJson.id(member)], small = true)
                     Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
                         Text(BotJson.name(member), color = colors.textPrimary, style = MaterialTheme.typography.bodyMedium)
                         val memberLive = watch.activity[BotJson.id(member)].orEmpty().ifBlank { BotJson.activity(member) }
@@ -416,6 +462,33 @@ private fun BotDetail(state: BotsUiState, watch: BotWatchState, viewModel: BotsV
             },
         )
     }
+}
+
+/**
+ * The bot's face: its uploaded photo when there is one, the monogram otherwise.
+ * `remember(avatar)` decodes once per byte array — the roster recomposes on every
+ * activity line, and re-decoding a bitmap there would be wasteful.
+ */
+@Composable
+private fun BotFace(bot: JsonObject, avatar: ByteArray?, small: Boolean = false) {
+    val size = if (small) 26.dp else 38.dp
+    if (avatar != null) {
+        val bitmap = remember(avatar) {
+            BitmapFactory.decodeByteArray(avatar, 0, avatar.size)?.asImageBitmap()
+        }
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Photo de ${BotJson.name(bot)}",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape),
+            )
+            return
+        }
+    }
+    Monogram(bot, small)
 }
 
 @Composable

@@ -164,7 +164,7 @@ that are not documented (`bots`, `bg`, `schedules`, `agents`, memories, tree ent
 | Capabilities | `GET /api/permissions`, `/providers`, `/skills`, `POST /api/skills/{name}/activate|deactivate`, `GET /api/plugins`, `/plugins/health`, `GET /api/code/status`, `POST /api/code/set` |
 | Work | `GET /api/bots`, `GET|PATCH|DELETE /api/bots/{id}`, `POST /api/bots`, `/bots/{id}/enable|disable`, `/bots/{id}/start|stop|message|run`, `GET /bots/{id}/journal|runs|outputs`, `GET /bots/tiers`, `POST /bots-start-all|stop-all`, `GET /api/bg`, `POST /api/bg/{id}/cancel`, `/bg/clear`, `GET /api/agents`, `POST /api/agents/halt|stop`, `GET /api/schedules`, `DELETE /api/schedules/{id}` |
 | Terminal | `POST /api/terminal/exec` — one shell command in the workspace (30 s, 2 MB), with a second confirmation on destructive patterns |
-| Teammates | roster, detail, start/stop/run/enable/disable, create, delete, persona (read/write), permissions (read + tier), model, daily budget, journal, runs, outputs, inbox, delegated tasks, `PATCH /api/bots/:id` |
+| Teammates | roster, detail, start/stop/run/enable/disable, create, delete, persona (read/write), permissions (read + tier), model, daily budget, journal, runs, outputs, inbox, delegated tasks, `PATCH /api/bots/:id`, `GET/PUT/DELETE /api/bots/:id/avatar` |
 | Fleets | `GET/POST /api/bots/:id/crew`, promote, autocrew, tier changes |
 | Boards | all 43 `/api/boards` routes: list/create/patch/delete, activate/deactivate, generate, cards (add/bulk/patch/delete/reorder/clear-done), run/halt/cascade per card, run-all/halt-all, execution-plan, smart-execute, comments, attachments, labels, parent, dependencies, context (directory/instructions/variables/knowledge/structure), feedback + respond |
 | Second brain | `GET /api/brain/status`, `/brain/memory` (+ `q`, `type`, `scope`), `GET|PUT|DELETE /brain/memory/{id}`, `POST /api/brain/memory`, `GET /brain/beliefs`, `POST /brain/beliefs/{id}/confirm|correct|forget`, `GET /brain/persons`, `/brain/graph`, `/brain/quarantine`, `POST /brain/quarantine/{id}/restore` |
@@ -207,6 +207,12 @@ third-party SDKs, and the session cookie is stored with `EncryptedSharedPreferen
 MIT — see [LICENSE](LICENSE). "Mercury" here refers to the agent; the Grok app is only a visual reference.
 
 ## Teammates, live
+
+Every bot can carry a face: a photo sent from the phone with `PUT /api/bots/:id/avatar` (512 px,
+re-encoded before it leaves the device, ≤ 2 MB), rendered in the roster and the fleet list. The
+monogram is the fallback, and `hasAvatar` means the app never probes an endpoint that has nothing
+to return. Against a Mercury that predates the avatar route the fetch answers 404 and nothing
+changes — which is why the plate above still shows monograms: none of those bots has a photo set.
 
 The bots are the part of Mercury that keeps working when nothing is typed. The app gives them
 a real screen:

@@ -963,6 +963,47 @@ class MercuryApi(
             json.decodeFromString(deserializer, execute(request))
         }
 
+    /**
+     * The bot's face, or null when it has none — a 404 here is an answer, not a failure.
+     * Callers draw a monogram instead, which is why this never throws for "no avatar".
+     */
+    suspend fun botAvatar(botId: String): ByteArray? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url("/api/bots/${encode(botId)}/avatar")).get().build()
+        client.newCall(request).execute().use { response ->
+            when {
+                response.code == 404 -> null
+                response.code == 401 || response.code == 403 -> throw AuthException("Session expirée")
+                !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
+                else -> response.body?.bytes()
+            }
+        }
+    }
+
+    /**
+     * Replaces the bot's face. `data` is base64: bytes on the wire, never a path, and the
+     * server picks the format from the signature — an image it cannot read is refused, not
+     * stored under a lying name.
+     */
+    suspend fun uploadBotAvatar(botId: String, data: String) {
+        val payload = json.encodeToString(AvatarRequest.serializer(), AvatarRequest(data))
+        execute(
+            Request.Builder()
+                .url(url("/api/bots/${encode(botId)}/avatar"))
+                .put(payload.toRequestBody(jsonMedia))
+                .build(),
+        )
+    }
+
+    /** Removes the face; the monogram comes back on the next roster frame. */
+    suspend fun deleteBotAvatar(botId: String) {
+        execute(
+            Request.Builder()
+                .url(url("/api/bots/${encode(botId)}/avatar"))
+                .delete()
+                .build(),
+        )
+    }
+
     private suspend fun executeRaw(method: String, path: String): String = withContext(Dispatchers.IO) {
         val builder = Request.Builder().url(url(path))
         val request = if (method == "DELETE") builder.delete().build() else builder.get().build()
