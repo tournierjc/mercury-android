@@ -102,4 +102,35 @@ class BotJsonTest {
 
         assertEquals(1, BotJson.attention(emptyList(), listOf(noisy, quiet)).size)
     }
+
+    // ─── attention sans historique (tour de fond) ───
+
+    @Test
+    fun `currentAttention only reports a bot waiting on the owner`() {
+        val roster = rosterOf(
+            """{"id":"ceo","name":"CEO","needsYou":true,"activity":"Choisir le plan A ou B"}""",
+            """{"id":"dev","name":"Dev","needsYou":false,"lastRunState":"done"}""",
+            """{"id":"ops","name":"Ops","needsYou":false,"lastRunState":"failed"}""",
+        )
+
+        val alerts = BotJson.currentAttention(roster)
+
+        // Un run terminé la veille ne doit pas être ré-annoncé à chaque vérification.
+        assertEquals(1, alerts.size)
+        assertEquals("ceo", alerts[0].botId)
+        assertEquals(BotAttention.Kind.NeedsYou, alerts[0].kind)
+        assertEquals("Choisir le plan A ou B", alerts[0].detail)
+    }
+
+    @Test
+    fun `attentionKey is stable for a pending question and changes with a new one`() {
+        val first = BotAttention("ceo", "CEO", BotAttention.Kind.NeedsYou, "Plan A ou B ?")
+        val sameAgain = BotAttention("ceo", "CEO", BotAttention.Kind.NeedsYou, "Plan A ou B ?")
+        val newQuestion = BotAttention("ceo", "CEO", BotAttention.Kind.NeedsYou, "Quel budget ?")
+
+        assertEquals(BotJson.attentionKey(first), BotJson.attentionKey(sameAgain))
+        assertNotEquals(BotJson.attentionKey(first), BotJson.attentionKey(newQuestion))
+    }
+
+    private fun rosterOf(vararg bots: String) = bots.map { Json.parseToJsonElement(it).jsonObject }
 }

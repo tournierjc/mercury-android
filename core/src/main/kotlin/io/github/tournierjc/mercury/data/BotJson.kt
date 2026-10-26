@@ -136,6 +136,24 @@ object BotJson {
         return result
     }
 
+    /**
+     * What the roster says needs the owner, read without any history. Unlike
+     * [attention] this cannot see a transition, so it only reports states that are
+     * meaningful on their own: a bot waiting on an answer. Run outcomes need the diff
+     * and stay out — otherwise every poll would re-announce yesterday's finished run.
+     */
+    fun currentAttention(bots: List<JsonObject>): List<BotAttention> =
+        bots.filter { needsYou(it) }
+            .map { BotAttention(id(it), name(it), BotAttention.Kind.NeedsYou, activity(it)) }
+
+    /**
+     * A stable identity for "this alert has been raised". A background check that runs
+     * every fifteen minutes must not re-announce the same pending question, while a new
+     * question from the same bot must get through: hence the detail in the key.
+     */
+    fun attentionKey(attention: BotAttention): String =
+        "${attention.botId}|${attention.kind}|${attention.detail}"
+
     private fun string(node: JsonObject?, key: String): String =
         (node?.get(key) as? JsonPrimitive)?.contentOrNull.orEmpty()
 
