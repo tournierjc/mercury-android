@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.tournierjc.mercury.markdown.MdBlock
+import io.github.tournierjc.mercury.openui.OpenUi
 import io.github.tournierjc.mercury.markdown.MdSpan
 import io.github.tournierjc.mercury.markdown.MiniMarkdown
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -72,7 +73,12 @@ fun MarkdownText(
                     }
                 }
 
-                is MdBlock.Code -> Column(
+                is MdBlock.Code -> if (block.language.trim().lowercase() == OpenUi.FENCE) {
+                    // A rendered answer from the openui contract: components instead of source.
+                    Column(modifier = Modifier.padding(top = spacing)) {
+                        OpenUiBlock(spec = block.content)
+                    }
+                } else Column(
                     modifier = Modifier
                         .padding(top = spacing)
                         .fillMaxWidth()
