@@ -73,6 +73,13 @@ object BotJson {
      * Two letters for the avatar. Mercury has no avatar field at all, so the app draws a
      * deterministic monogram rather than pretending to show a picture.
      */
+    /**
+     * The roster says whether a custom face exists, so a client does not probe one URL
+     * per bot. Absent means false: an older Mercury without the field has no avatars.
+     */
+    fun hasAvatar(node: JsonObject?): Boolean =
+        (node?.get("hasAvatar") as? JsonPrimitive)?.booleanOrNull == true
+
     fun monogram(bot: JsonObject?): String {
         val source = name(bot).ifBlank { id(bot) }
         val words = source.split(' ', '-', '_').filter { it.isNotBlank() }

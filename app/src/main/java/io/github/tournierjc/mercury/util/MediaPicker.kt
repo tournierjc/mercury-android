@@ -21,8 +21,12 @@ object MediaPicker {
     private const val JPEG_QUALITY = 80
     private const val PDF_LIMIT = 15 * 1024 * 1024
 
-    /** Reads one picked URI. The failure carries a French message ready for the UI. */
-    fun read(context: Context, uri: Uri): Result<PendingFile> = runCatching {
+    /**
+     * Reads one picked URI. The failure carries a French message ready for the UI.
+     * `maxDimension` is 1600 for a chat photo and 512 for an avatar: a face in a roster
+     * does not need more, and the server caps avatars at 2 MB anyway.
+     */
+    fun read(context: Context, uri: Uri, maxDimension: Int = MAX_DIMENSION): Result<PendingFile> = runCatching {
         val name = displayName(context, uri)
         val raw = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: error("Fichier illisible")
@@ -32,7 +36,7 @@ object MediaPicker {
             return@runCatching PendingFile(name, raw)
         }
 
-        val bitmap = decodeScaled(raw) ?: error("$name n'est pas une image lisible")
+        val bitmap = decodeScaled(raw, maxDimension) ?: error("$name n'est pas une image lisible")
         try {
             val out = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
@@ -68,22 +72,22 @@ object MediaPicker {
      * Decodes with `inSampleSize` first: a full-size 50 MP bitmap would blow the
      * heap before any downscale could happen.
      */
-    private fun decodeScaled(bytes: ByteArray): Bitmap? {
+    private fun decodeScaled(bytes: ByteArray, maxDimension: Int = MAX_DIMENSION): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         var sample = 1
-        while (bounds.outWidth / sample > MAX_DIMENSION * 2 || bounds.outHeight / sample > MAX_DIMENSION * 2) {
+        while (bounds.outWidth / sample > maxDimension * 2 || bounds.outHeight / sample > maxDimension * 2) {
             sample *= 2
         }
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
         val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
 
         val longest = maxOf(decoded.width, decoded.height)
-        if (longest <= MAX_DIMENSION) return decoded
+        if (longest <= maxDimension) return decoded
 
-        val ratio = MAX_DIMENSION.toFloat() / longest
+        val ratio = maxDimension.toFloat() / longest
         val scaled = Bitmap.createScaledBitmap(
             decoded,
             (decoded.width * ratio).toInt().coerceAtLeast(1),

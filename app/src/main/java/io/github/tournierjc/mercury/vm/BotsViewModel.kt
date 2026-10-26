@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
+import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.MercuryApi
@@ -51,8 +52,57 @@ class BotsViewModel(
     private val _state = MutableStateFlow(BotsUiState())
     val state: StateFlow<BotsUiState> = _state.asStateFlow()
 
+    /** Faces by bot id. A bot without one keeps its monogram — nothing is invented. */
+    private val _avatars = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
+    val avatars: StateFlow<Map<String, ByteArray>> = _avatars.asStateFlow()
+    private val avatarInFlight = mutableSetOf<String>()
+
     init {
         watcher.start()
+    }
+
+    /**
+     * Fetches the faces the roster says exist and we do not hold yet. Driven by
+     * `hasAvatar`, so a Mercury without avatars costs zero requests.
+     */
+    fun loadAvatars(bots: List<JsonObject>) {
+        bots.filter { BotJson.hasAvatar(it) }
+            .map { BotJson.id(it) }
+            .filter { id -> id.isNotBlank() && _avatars.value[id] == null && avatarInFlight.add(id) }
+            .forEach { id ->
+                viewModelScope.launch {
+                    runCatching { api.botAvatar(id) }
+                        .onSuccess { bytes -> if (bytes != null) _avatars.update { it + (id to bytes) } }
+                        .onFailure { /* a missing face is not an error: the monogram stays */ }
+                    avatarInFlight.remove(id)
+                }
+            }
+    }
+
+    /** Puts a picked photo on a bot. The bytes leave the phone already downscaled. */
+    fun uploadAvatar(id: String, bytes: ByteArray) {
+        viewModelScope.launch {
+            runCatching { api.uploadBotAvatar(id, Attachments.encode(bytes)) }
+                .onSuccess {
+                    _avatars.update { it + (id to bytes) }
+                    _state.update { s -> s.copy(message = "Photo enregistrée") }
+                }
+                .onFailure { e ->
+                    // A 4xx here is the server refusing the bytes: say why, do not retry.
+                    _state.update { s -> s.copy(error = e.readable()) }
+                }
+        }
+    }
+
+    fun removeAvatar(id: String) {
+        viewModelScope.launch {
+            runCatching { api.deleteBotAvatar(id) }
+                .onSuccess {
+                    _avatars.update { it - id }
+                    _state.update { s -> s.copy(message = "Photo retirée") }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
+        }
     }
 
     fun refreshRoster() {

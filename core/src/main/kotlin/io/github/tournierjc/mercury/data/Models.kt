@@ -58,5 +58,9 @@ data class HealthResponse(val pid: Int? = null, val version: String = "", val bo
 @Serializable
 data class PermissionActionRequest(val action: String)
 
+/** Avatar bytes on the wire: base64 in `data`, format decided by the server from the signature. */
+@Serializable
+data class AvatarRequest(val data: String)
+
 @Serializable
 data class ApiError(@SerialName("error") val message: String = "")
