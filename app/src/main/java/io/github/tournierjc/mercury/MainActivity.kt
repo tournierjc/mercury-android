@@ -16,6 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.tournierjc.mercury.bots.AttentionPrefs
+import io.github.tournierjc.mercury.bots.WatchService
 import io.github.tournierjc.mercury.ui.ChatScreen
 import io.github.tournierjc.mercury.ui.ConnectScreen
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -32,6 +34,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as MercuryApp).container
         askForNotifications()
+        // The watch service survives the activity, but a reboot (or a system kill) does not
+        // restart it for us on Android 14+: re-arm it every time the owner opens the app,
+        // which is a foreground start and therefore always allowed.
+        if (AttentionPrefs(this).persistent) WatchService.start(this)
         setContent {
             MercuryTheme {
                 Box(
