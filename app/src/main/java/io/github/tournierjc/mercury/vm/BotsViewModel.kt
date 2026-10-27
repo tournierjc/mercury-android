@@ -383,6 +383,10 @@ class BotsViewModel(
     fun adoptCrew(leadId: String, memberId: String) =
         act("Équipier rattaché à la flotte") { api.adoptBotCrew(leadId, memberId) }
 
+    /** A member leaves the fleet and becomes solo again — reversible, so no confirmation. */
+    fun detachCrew(leadId: String, memberId: String) =
+        act("Équipier retiré de la flotte") { api.detachBotCrew(leadId, memberId) }
+
     fun start(id: String) = act("Équipier démarré") { api.startBot(id) }
 
     fun stop(id: String) = act("Équipier arrêté") { api.stopBot(id) }

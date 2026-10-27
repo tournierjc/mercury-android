@@ -661,11 +661,13 @@ private fun Welcome(onPick: (String) -> Unit) {
             modifier = Modifier.padding(top = 8.dp, bottom = 28.dp),
         )
         suggestions.forEach { suggestion ->
+            // The hint says "appuie sur une suggestion" — it has to be clickable to be true.
             Row(
                 modifier = Modifier
                     .padding(bottom = 8.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(colors.surface)
+                    .clickable { onPick(suggestion) }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 Text(

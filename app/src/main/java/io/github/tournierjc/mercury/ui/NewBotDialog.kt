@@ -2,6 +2,8 @@ package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,11 +36,15 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
  * The id is a proposal derived from the name ([BotSlug]) and stays editable: the daemon refuses
  * duplicates and malformed ids, and its message is what the owner sees.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NewBotDialog(
     busy: Boolean,
     onDismiss: () -> Unit,
     onCreate: (name: String, id: String, tier: String, persona: String) -> Unit,
+    /** "Nouvel équipier" from the roster, "Nouveau membre" from a fleet. */
+    title: String = "Nouvel équipier",
+    submitLabel: String = "Créer",
 ) {
     var name by remember { mutableStateOf("") }
     var id by remember { mutableStateOf("") }
@@ -48,12 +54,14 @@ fun NewBotDialog(
     var tier by remember { mutableStateOf("readonly") }
     var persona by remember { mutableStateOf("") }
 
-    val proposedId = remember(name) { BotSlug.from(name) }
+    // An empty name proposes nothing: the field shows its placeholder, not the fallback "bot"
+    // the slug uses when there is nothing to derive from.
+    val proposedId = remember(name) { if (name.isBlank()) "" else BotSlug.from(name) }
     val shownId = if (idEdited) id else proposedId
 
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("Nouvel équipier") },
+        title = { Text(title) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -82,7 +90,9 @@ fun NewBotDialog(
                     text = "Ce qu'il a le droit de faire",
                     style = MaterialTheme.typography.labelLarge,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // FlowRow, not Row: four chips do not fit on a narrow phone, and a chip cut
+                // off at the edge is a choice the owner cannot make.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(
                         "readonly" to "Lecture",
                         "builder" to "Écriture",
@@ -111,7 +121,7 @@ fun NewBotDialog(
                 enabled = !busy && name.isNotBlank(),
                 onClick = { onCreate(name, shownId, tier, persona) },
             ) {
-                Text("Créer")
+                Text(submitLabel)
             }
         },
         dismissButton = {
