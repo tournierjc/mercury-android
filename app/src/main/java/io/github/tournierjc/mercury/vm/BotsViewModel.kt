@@ -14,6 +14,9 @@ import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.RunRow
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
+import io.github.tournierjc.mercury.bots.BotMessage
+import io.github.tournierjc.mercury.bots.BotThread
+import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.DlqJobDto
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
@@ -46,11 +49,14 @@ data class BotsUiState(
     val outputs: List<DeliverableDto> = emptyList(),
     /** Runs, journal lines joined with the transcripts the daemon still keeps. */
     val runs: List<RunRow> = emptyList(),
-    /**
-     * The bot's work read as a conversation — what the owner asked, what the bot answered.
-     * Built from the journal (the answer) and the run transcript (the question), oldest first.
-     */
-    val discussion: List<Exchange> = emptyList(),
+    /** Journal lines of the selected bot, kept to rebuild the conversation while it streams. */
+    val records: List<BotRunDto> = emptyList(),
+    /** `runId` → the task the owner dispatched, from the run transcripts. */
+    val prompts: Map<String, String> = emptyMap(),
+    /** The conversation as the chat screen draws it, oldest first. */
+    val messages: List<BotMessage> = emptyList(),
+    /** Turns sent from this screen that the journal does not know about yet. */
+    val pending: List<BotMessage> = emptyList(),
     val dlq: List<DlqJobDto> = emptyList(),
     val runDetail: RunTranscriptDto? = null,
     val runDetailLoading: Boolean = false,
@@ -66,19 +72,6 @@ data class BotsUiState(
     /** Filled by the bundle download, consumed by the share sheet, then cleared. */
     val bundle: String? = null,
     val bundleFor: String = "",
-)
-
-/**
- * One turn of a bot's conversation: the task the owner dispatched and the answer the run
- * left in the journal. Jobs, not a chat stream — the bot works in the background, so the
- * reply appears when the run ends.
- */
-data class Exchange(
-    val prompt: String,
-    val reply: String,
-    val state: String,
-    val at: Long,
-    val runId: String = "",
 )
 
 /**
@@ -180,6 +173,10 @@ class BotsViewModel(
                 dlq = emptyList(),
                 runDetail = null,
                 outputPreview = null,
+                records = emptyList(),
+                prompts = emptyMap(),
+                messages = emptyList(),
+                pending = emptyList(),
                 detailLoading = true,
                 dispatchFeedback = null,
             )
@@ -198,18 +195,10 @@ class BotsViewModel(
             // The journal carries the answer, not the question: the prompt lives in the run
             // transcript. Twelve of them, fetched side by side, are enough to read a
             // conversation and cheap enough to load with the sheet.
-            val discussion = records.orEmpty().takeLast(12).map { record ->
-                async {
-                    val prompt = runCatching { api.botRun(id, record.runId) }.getOrNull()?.prompt.orEmpty()
-                    Exchange(
-                        prompt = prompt,
-                        reply = record.summary.ifBlank { record.error },
-                        state = record.state,
-                        at = record.startedAt,
-                        runId = record.runId,
-                    )
-                }
-            }.awaitAll().sortedBy { it.at }
+            val last = records.orEmpty().takeLast(12)
+            val prompts = last.map { record ->
+                async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull()?.prompt.orEmpty() }
+            }.awaitAll().toMap()
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -223,7 +212,10 @@ class BotsViewModel(
                     journal = detail?.journal ?: emptyList(),
                     outputs = outputs?.outputs.orEmpty(),
                     runs = BotOps.mergeRuns(transcripts?.runs.orEmpty(), records.orEmpty()),
-                    discussion = discussion,
+                    records = last,
+                    prompts = prompts,
+                    messages = BotThread.build(last, prompts),
+                    pending = emptyList(),
                     dlq = dlq?.dlq.orEmpty(),
                     detailLoading = false,
                 )
@@ -235,6 +227,45 @@ class BotsViewModel(
         (node?.get(key) as? kotlinx.serialization.json.JsonArray)
             ?.mapNotNull { entry -> runCatching { entry as JsonObject }.getOrNull() }
             ?: emptyList()
+
+    /**
+     * Re-reads the journal and the last prompts of one bot.
+     *
+     * Called when a turn stops streaming: the live tail is a 600-character window, so the
+     * final answer has to come back from the journal once the run is over.
+     */
+    fun reloadConversation(id: String) {
+        if (id.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                val records = api.botRunJournal(id).takeLast(12)
+                val prompts = records.map { record ->
+                    async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull()?.prompt.orEmpty() }
+                }.awaitAll().toMap()
+                records to prompts
+            }.onSuccess { (records, prompts) ->
+                if (_state.value.selectedId != id) return@onSuccess
+                _state.update {
+                    it.copy(
+                        records = records,
+                        prompts = prompts,
+                        messages = BotThread.build(records, prompts),
+                        pending = emptyList(),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Re-reads one bot's deliverable folder — what the conversation's sheet shows. */
+    fun reloadOutputs(id: String) {
+        if (id.isBlank()) return
+        viewModelScope.launch {
+            runCatching { api.botOutputs(id) }
+                .onSuccess { page -> if (_state.value.selectedId == id) _state.update { it.copy(outputs = page.outputs) } }
+                .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
+        }
+    }
 
     /**
      * Queues a message for the bot: the call returns in milliseconds, the work runs after.
@@ -259,16 +290,16 @@ class BotsViewModel(
                             busy = false,
                             // The turn appears at once, as the owner wrote it; the answer
                             // replaces the empty bubble when the run lands in the journal.
-                            discussion = if (result.accepted) {
-                                it.discussion + Exchange(
-                                    prompt = message.trim(),
-                                    reply = "",
-                                    state = "queued",
+                            pending = if (result.accepted) {
+                                it.pending + BotMessage(
+                                    key = "${result.jobId}-me",
+                                    fromBot = false,
+                                    text = message.trim().ifBlank { "(pièce jointe)" },
                                     at = System.currentTimeMillis(),
-                                    runId = result.jobId,
+                                    state = "queued",
                                 )
                             } else {
-                                it.discussion
+                                it.pending
                             },
                             dispatchFeedback = if (result.accepted) {
                                 "Mis en file (job ${result.jobId.take(12)}) — le fil principal continue."

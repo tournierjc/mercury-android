@@ -15,11 +15,28 @@ import kotlinx.serialization.json.JsonObject
 
 data class ActivityLine(val botId: String, val label: String, val kind: String, val status: String)
 
+/**
+ * The turn a bot is writing right now.
+ *
+ * `text` is the **tail** of the answer — the daemon sends the last 600 characters of the
+ * visible text every few hundred milliseconds, not the whole message — so a long answer
+ * scrolls in its bubble instead of growing forever. Good enough to read a bot think;
+ * deliberately not a claim to be a full transcript.
+ */
+data class LiveTurn(
+    val jobId: String,
+    val text: String,
+    val reasoning: String = "",
+    val running: Boolean = true,
+)
+
 data class BotWatchState(
     val bots: List<JsonObject> = emptyList(),
     val queue: BotEvent.QueueSnapshot = BotEvent.QueueSnapshot(),
     val connected: Boolean = false,
     val activity: Map<String, String> = emptyMap(),
+    /** Per-bot, the turn being written — what the conversation screen streams. */
+    val live: Map<String, LiveTurn> = emptyMap(),
     val recent: List<ActivityLine> = emptyList(),
     val error: String? = null,
 ) {
@@ -64,9 +81,24 @@ class BotWatcher(
                                 BotJson.attention(previous, event.bots).forEach(notifier::notify)
                             }
                             is BotEvent.Activity -> _state.update { current ->
+                                val writing = event.textTail.isNotBlank() || event.reasoningTail.isNotBlank()
+                                val finished = event.kind == "turn-end" || event.kind == "turn-end-error"
                                 current.copy(
                                     activity = if (event.label.isBlank()) current.activity else current.activity + (event.botId to event.label),
                                     recent = (listOf(ActivityLine(event.botId, event.label, event.kind, event.status)) + current.recent).take(40),
+                                    live = when {
+                                        writing -> current.live + (event.botId to LiveTurn(
+                                            jobId = event.jobId,
+                                            text = event.textTail,
+                                            reasoning = event.reasoningTail,
+                                            running = !finished,
+                                        ))
+                                        // The turn ended without a text tail (a tool-only turn):
+                                        // keep nothing to stream, but do not leave a bubble
+                                        // pretending to still be writing.
+                                        finished -> current.live - event.botId
+                                        else -> current.live
+                                    },
                                 )
                             }
                             is BotEvent.Notice -> if (event.message.isNotBlank()) notifier.notice(event.message)

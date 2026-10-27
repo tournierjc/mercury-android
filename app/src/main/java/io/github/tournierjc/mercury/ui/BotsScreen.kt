@@ -23,7 +23,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -57,7 +61,6 @@ import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.util.ShareText
 import io.github.tournierjc.mercury.vm.BotsUiState
-import io.github.tournierjc.mercury.vm.Exchange
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -73,6 +76,8 @@ import kotlinx.serialization.json.contentOrNull
 @Composable
 fun BotsScreen(
     onBack: () -> Unit,
+    /** Open the conversation screen for a bot. */
+    onOpenChat: (String) -> Unit = {},
     /** Opened straight onto this bot — used when the notification names one. */
     initialBotId: String? = null,
     onOpened: () -> Unit = {},
@@ -132,7 +137,7 @@ fun BotsScreen(
                 .padding(horizontal = 14.dp),
         ) {
             if (state.selectedId == null) {
-                RosterList(watch, onSelect = viewModel::select, avatars = avatars)
+                RosterList(watch, onSelect = viewModel::select, onOpenChat = onOpenChat, avatars = avatars)
                 if (watch.recent.isNotEmpty()) {
                     SectionTitle("Activité récente")
                     CardBlock {
@@ -146,7 +151,7 @@ fun BotsScreen(
                     }
                 }
             } else {
-                BotDetail(state, watch, viewModel, avatars)
+                BotDetail(state, watch, viewModel, avatars, onOpenChat = onOpenChat)
             }
             Text(" ", modifier = Modifier.padding(bottom = 28.dp))
         }
@@ -178,6 +183,7 @@ fun BotsScreen(
 private fun RosterList(
     watch: BotWatchState,
     onSelect: (String) -> Unit,
+    onOpenChat: (String) -> Unit,
     avatars: Map<String, ByteArray>,
 ) {
     val colors = LocalMercuryColors.current
@@ -213,7 +219,7 @@ private fun RosterList(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onSelect(id) }
+                    .clickable { onOpenChat(id) }
                     .padding(vertical = 6.dp),
             ) {
                 BotFace(bot, avatars[BotJson.id(bot)])
@@ -245,6 +251,14 @@ private fun RosterList(
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
+                // The row opens the conversation; settings are one tap away, not the default.
+                IconButton(onClick = { onSelect(id) }) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreHoriz,
+                        contentDescription = "Réglages de ${BotJson.name(bot)}",
+                        tint = colors.textSecondary,
+                    )
+                }
             }
         }
     }
@@ -257,6 +271,7 @@ private fun BotDetail(
     watch: BotWatchState,
     viewModel: BotsViewModel,
     avatars: Map<String, ByteArray>,
+    onOpenChat: (String) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
     // Captured at composition: `LocalContext.current` is a composable getter and the
@@ -366,28 +381,21 @@ private fun BotDetail(
         )
     }
 
-    SectionTitle("Discussion")
+    SectionTitle("Lui écrire")
     CardBlock {
         Text(
-            text = "Vous écrivez, il travaille. Chaque message part en tâche de fond et sa réponse " +
-                "arrive à la fin du run — pas en streaming comme dans la conversation principale.",
+            text = "La conversation est un écran à part : ce panneau ne sert qu'à le régler. " +
+                "Un message part en tâche de fond, la réponse s'écrit dans la conversation.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
-        val exchanges = state.discussion.takeLast(8)
-        if (exchanges.isEmpty()) {
-            Text(
-                text = "Aucun échange pour l'instant.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(top = 6.dp),
-            )
+        ButtonRow {
+            TextButton(onClick = { onOpenChat(id) }) { Text("Ouvrir la conversation") }
         }
-        exchanges.forEach { exchange -> ExchangeRow(exchange) }
         OutlinedTextField(
             value = dispatchText,
             onValueChange = { dispatchText = it },
-            label = { Text("Écrire à cet équipier") },
+            label = { Text("Tâche rapide à confier") },
             minLines = 2,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
@@ -624,7 +632,7 @@ private fun BotDetail(
  * activity line, and re-decoding a bitmap there would be wasteful.
  */
 @Composable
-private fun BotFace(bot: JsonObject, avatar: ByteArray?, small: Boolean = false) {
+internal fun BotFace(bot: JsonObject, avatar: ByteArray?, small: Boolean = false) {
     val size = if (small) 26.dp else 38.dp
     if (avatar != null) {
         val bitmap = remember(avatar) {
@@ -726,54 +734,4 @@ private fun AddCrewSheet(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
     )
-}
-
-
-/**
- * One turn of the discussion: the owner's message on the right, the bot's answer on the left.
- * No streaming — a bot's answer lands when its run ends, and saying so in the empty state is
- * better than a spinner that pretends otherwise.
- */
-@Composable
-private fun ExchangeRow(exchange: Exchange) {
-    val colors = LocalMercuryColors.current
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-        if (exchange.prompt.isNotBlank()) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Text(
-                    text = exchange.prompt,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.canvas,
-                    modifier = Modifier
-                        .widthIn(max = 260.dp)
-                        .background(colors.accent, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                )
-            }
-        }
-        if (exchange.reply.isNotBlank()) {
-            Text(
-                text = exchange.reply,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textPrimary,
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .widthIn(max = 300.dp)
-                    .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-        } else {
-            val label = when (exchange.state) {
-                "failed", "error" -> "échec"
-                "completed" -> "sans réponse"
-                else -> "en cours…"
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (exchange.state == "failed" || exchange.state == "error") colors.danger else colors.textSecondary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
 }

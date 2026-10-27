@@ -1466,13 +1466,26 @@ class MercuryApi(
     private fun encode(segment: String): String =
         java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
 
-    private fun execute(request: Request): String = client.newCall(request).execute().use { response ->
-        val body = response.body?.string().orEmpty()
-        if (!response.isSuccessful) {
-            if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
-            throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
+    /**
+     * Any blocking call goes here first.
+     *
+     * `NetworkOnMainThreadException` is what a phone throws when a socket call runs on the UI
+     * thread: `viewModelScope` launches on `Dispatchers.Main.immediate`, and a `suspend fun`
+     * that never switches dispatcher runs right there. That is exactly how `send` failed —
+     * "Envoi impossible — NetworkOnMainThreadException" — while the reads, already wrapped,
+     * were fine. One helper, used by every request, makes the mistake unrepresentable.
+     */
+    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+
+    private suspend fun execute(request: Request): String = io {
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+                throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
+            }
+            body
         }
-        body
     }
 
     /** Mercury answers `{error:"…"}`; anything else keeps the status code as the message. */
