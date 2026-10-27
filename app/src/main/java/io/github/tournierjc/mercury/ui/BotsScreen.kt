@@ -51,6 +51,7 @@ import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -93,6 +94,7 @@ import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.util.ShareText
 import io.github.tournierjc.mercury.vm.BotsUiState
 import io.github.tournierjc.mercury.vm.BotsViewModel
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -592,8 +594,11 @@ private fun BotDetail(
             textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             modifier = Modifier.fillMaxWidth(),
         )
+        // Two controls, centred: save what was typed, or drop the edit and go back to what the
+        // daemon holds. Without « Rétablir » the only way out of a bad edit was to retype it.
         IconActionBar(
-            listOf(
+            centered = true,
+            actions = listOf(
                 QuickAction(
                     icon = Icons.Rounded.Check,
                     label = "Enregistrer",
@@ -601,14 +606,33 @@ private fun BotDetail(
                     enabled = !state.busy && personaText.isNotBlank() && personaText != state.persona,
                     onClick = { viewModel.savePersona(personaText) },
                 ),
+                QuickAction(
+                    icon = Icons.Rounded.Undo,
+                    label = "Rétablir",
+                    enabled = personaText != state.persona,
+                    onClick = { personaText = state.persona },
+                ),
             ),
         )
     }
 
     CollapsibleSection("Permissions") {
-        val tier = state.permissions?.let { permissions ->
+        LaunchedEffect(state.selectedId) { viewModel.loadTiers() }
+        // The file names its tier since 1.5.0-local.9. A file written before that carries only
+        // the grants, so the tier is deduced by matching its deny list against the catalogue —
+        // and when nothing matches, no cell is selected rather than the wrong one.
+        val storedTier = state.permissions?.let { permissions ->
             (permissions["tier"] as? JsonPrimitive)?.contentOrNull.orEmpty()
         }.orEmpty().ifBlank { BotJson.tier(bot) }
+        val grantedDeny = ((state.permissions?.get("tools") as? JsonObject)?.get("deny") as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            ?.toSet()
+        val inferredTier = if (storedTier.isNotBlank() || grantedDeny == null) {
+            storedTier
+        } else {
+            state.tiers.firstOrNull { it.deny.toSet() == grantedDeny }?.id.orEmpty()
+        }
+        val tier = inferredTier
         val tiers = listOf(
             "readonly" to ("Lecture" to "lire"),
             "builder" to ("Écriture" to "écrire"),
@@ -696,17 +720,6 @@ private fun BotDetail(
                 modifier = Modifier.weight(1.2f),
             )
             Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
-        }
-        if (pickedProvider.isNotBlank()) {
-            IconActionBar(
-                listOf(
-                    QuickAction(
-                        icon = Icons.Rounded.RestartAlt,
-                        label = "Défaut",
-                        onClick = { viewModel.clearModel(id) },
-                    ),
-                ),
-            )
         }
         // One line, digits only, the check inside the field: a budget is a number, not prose.
         Row(
@@ -822,30 +835,11 @@ private fun BotDetail(
         }
     }
 
-    if (state.journal.isNotEmpty()) {
-        CollapsibleSection("Journal") {
-            // The journal line is { runId, startedAt, state, outcome, durationMs, summary } — not
-            // { at, message }. Reading the wrong keys is why the section showed a column of "—".
-            state.journal.takeLast(10).reversed().forEach { entry ->
-                val started = (entry["startedAt"] as? JsonPrimitive)?.longOrNull
-                val duration = (entry["durationMs"] as? JsonPrimitive)?.longOrNull
-                val stateLabel = (entry["state"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-                    .ifBlank { (entry["outcome"] as? JsonPrimitive)?.contentOrNull.orEmpty() }
-                val summary = (entry["summary"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-                    .lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
-                val trigger = (entry["trigger"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-                KeyValueRow(
-                    label = listOf(
-                        started?.let { BotOps.dateLabel(it) }.orEmpty(),
-                        stateLabel,
-                        duration?.let { "${it / 1000}.${(it % 1000) / 100} s" }.orEmpty(),
-                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { trigger.ifBlank { "—" } },
-                    value = summary.take(140).ifBlank { "—" },
-                )
-            }
-        }
-    }
 
+    // The journal used to be a section here; it is the conversation, and the conversation screen
+    // draws it from the same lines (`state.records`). A second, worse copy on the sheet was one
+    // more wall of text — the sheet keeps only what the chat cannot show: files, runs, incidents.
+    //
     // What the bot produced, what it did, and what the queue gave up on. The three
     // sections read the deliverables, runs and DLQ routes of this bot.
     DeliverablesSection(
