@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,12 +26,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -288,6 +292,8 @@ private fun NodeView(node: OpenUiNode, spacing: Int = 10) {
         }
 
         is OpenUiNode.Chart -> ChartView(node)
+        is OpenUiNode.Pie -> PieView(node)
+        is OpenUiNode.Gauge -> GaugeView(node)
     }
 }
 
@@ -401,6 +407,162 @@ private fun ChartView(node: OpenUiNode.Chart) {
                     modifier = Modifier.weight(1f),
                 )
             }
+        }
+    }
+}
+
+/** One colour per slice, in the order the model listed them. */
+private val PieColors = listOf(
+    Color(0xFF00D4FF), Color(0xFF7BD88F), Color(0xFFFFB454), Color(0xFFFF6B6B),
+    Color(0xFFB48CFF), Color(0xFF4DD0E1), Color(0xFFF78FB3), Color(0xFF9CCC65),
+    Color(0xFFFFD54F), Color(0xFF90A4AE), Color(0xFF7986CB), Color(0xFF4DB6AC),
+)
+
+/**
+ * Part-to-whole, drawn with arcs: a `donut` (the default) leaves the middle empty, a `pie`
+ * fills it. Slices come from values the parser has already checked — same label count, no
+ * negative, a total above zero — so there is always something to divide.
+ */
+@Composable
+private fun PieView(node: OpenUiNode.Pie) {
+    val colors = LocalMercuryColors.current
+    val total = node.values.filter { it.isFinite() && it > 0 }.sum().takeIf { it > 0 } ?: 1.0
+    val slices = node.values.mapIndexed { index, value ->
+        val share = if (value.isFinite() && value > 0) value / total else 0.0
+        Triple(index, share, node.labels.getOrNull(index).orEmpty())
+    }.filter { it.second > 0 }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.surface, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+    ) {
+        node.title?.let {
+            Text(it, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Canvas(modifier = Modifier.size(150.dp)) {
+                val outer = size.minDimension / 2f - 2f
+                val inner = if (node.kind == "pie") 0f else outer * 0.58f
+                val box = Rect(center - Offset(outer, outer), Size(outer * 2f, outer * 2f))
+                if (slices.size == 1) {
+                    // One slice covering the circle: a 360° arc is degenerate, so draw the ring.
+                    drawCircle(
+                        color = PieColors[0],
+                        radius = (outer + inner) / 2f,
+                        style = if (inner > 0f) Stroke(width = outer - inner) else Fill,
+                    )
+                } else {
+                    var start = -90f
+                    slices.forEach { (index, share, _) ->
+                        val sweep = (share * 360.0).toFloat()
+                        val path = Path()
+                        if (inner <= 0f) {
+                            path.moveTo(center.x, center.y)
+                            path.arcTo(box, start, sweep, forceMoveTo = false)
+                        } else {
+                            path.arcTo(box, start, sweep, forceMoveTo = true)
+                            val holeBottomRight = Offset(center.x + inner, center.y + inner)
+                            val hole = Rect(holeBottomRight - Offset(inner * 2f, inner * 2f), Size(inner * 2f, inner * 2f))
+                            path.arcTo(hole, start + sweep, -sweep, forceMoveTo = false)
+                        }
+                        path.close()
+                        drawPath(path, PieColors[index % PieColors.size])
+                        start += sweep
+                    }
+                }
+            }
+            if (node.legend) {
+                Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+                    slices.forEach { (index, share, label) ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .background(PieColors[index % PieColors.size], RoundedCornerShape(3.dp)),
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                            )
+                            Text(
+                                text = "${Math.round(share * 100)}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One value against its maximum, as a half ring with the percentage in the middle. */
+@Composable
+private fun GaugeView(node: OpenUiNode.Gauge) {
+    val colors = LocalMercuryColors.current
+    val ratio = (node.value / node.max).coerceIn(0.0, 1.0)
+    val tint = toneColor(node.tone) ?: colors.accent
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.surface, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        node.title?.let {
+            Text(it, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+        }
+        Box(contentAlignment = Alignment.BottomCenter) {
+            Canvas(modifier = Modifier.fillMaxWidth().height(96.dp)) {
+                val stroke = 16.dp.toPx()
+                val radius = minOf(size.width / 2f, size.height) - stroke / 2f - 1f
+                val topLeft = Offset(center.x - radius, size.height - radius)
+                val arcSize = Size(radius * 2f, radius * 2f)
+                drawArc(
+                    color = colors.hairline,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+                if (ratio > 0.0) {
+                    drawArc(
+                        color = tint,
+                        startAngle = 180f,
+                        sweepAngle = (180.0 * ratio).toFloat(),
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    )
+                }
+            }
+            Text(
+                text = "${Math.round(ratio * 100)}%",
+                style = MaterialTheme.typography.headlineSmall,
+                fontFamily = FontFamily.Monospace,
+                color = colors.textPrimary,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
+        node.label?.let {
+            Text(
+                text = listOfNotNull(it, node.unit?.let { unit -> "${node.value.toInt()} $unit" }).joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
         }
     }
 }

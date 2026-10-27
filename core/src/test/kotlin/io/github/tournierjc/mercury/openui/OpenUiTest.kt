@@ -226,4 +226,91 @@ class OpenUiTest {
         assertTrue(refused(spec, partial = true).isNotEmpty())
         assertTrue(refused(spec).isNotEmpty())
     }
+
+    @Test
+    fun `a donut and a gauge build the nodes the renderer draws`() {
+        val root = render(
+            """
+            root = Stack([shares, load])
+            shares = Pie({"kind": "donut", "labels": ["ok", "échec"], "values": [12, 1], "title": "Runs"})
+            load = Gauge({"value": 42, "label": "Budget"})
+            """.trimIndent(),
+        )
+
+        val stack = root as OpenUiNode.Stack
+        val pie = stack.children[0] as OpenUiNode.Pie
+        assertEquals("donut", pie.kind)
+        assertEquals(listOf("ok", "échec"), pie.labels)
+        assertEquals(listOf(12.0, 1.0), pie.values)
+        assertTrue(pie.legend)
+
+        val gauge = stack.children[1] as OpenUiNode.Gauge
+        assertEquals(42.0, gauge.value, 0.0)
+        assertEquals(100.0, gauge.max, 0.0)
+        assertEquals("Budget", gauge.label)
+    }
+
+    @Test
+    fun `a pie defaults to a donut and keeps an explicit legend flag`() {
+        val root = render(
+            """
+            root = Pie({"labels": ["a"], "values": [1], "legend": false})
+            """.trimIndent(),
+        )
+        val pie = root as OpenUiNode.Pie
+        assertEquals("donut", pie.kind)
+        assertFalse(pie.legend)
+    }
+
+    @Test
+    fun `a pie whose labels and values disagree is refused`() {
+        val errors = refused("""root = Pie({"labels": ["a", "b"], "values": [1]})""")
+        assertTrue(errors.any { it.contains("libellés") })
+    }
+
+    @Test
+    fun `a pie with a negative slice or a zero total is refused`() {
+        assertTrue(refused("""root = Pie({"labels": ["a", "b"], "values": [5, -1]})""").any { it.contains("négative") })
+        assertTrue(refused("""root = Pie({"labels": ["a"], "values": [0]})""").any { it.contains("zéro") })
+    }
+
+    @Test
+    fun `a pie is capped at twelve slices`() {
+        val labels = (0 until 13).joinToString(", ") { "\"l$it\"" }
+        val values = (0 until 13).joinToString(", ") { "1" }
+        assertTrue(refused("""root = Pie({"labels": [$labels], "values": [$values]})""").any { it.contains("12") })
+    }
+
+    @Test
+    fun `kind is checked against the component that carries it`() {
+        assertTrue(refused("""root = Pie({"kind": "bar", "labels": ["a"], "values": [1]})""").any { it.contains("pie") })
+        assertTrue(refused("""root = Stack([c])
+c = Chart({"kind": "donut", "labels": ["a"], "values": [1]})""").any { it.contains("bar") })
+    }
+
+    @Test
+    fun `a gauge value must be a number and its max positive`() {
+        assertTrue(refused("""root = Gauge({"value": "42"})""").any { it.contains("nombre") })
+        assertTrue(refused("""root = Gauge({"value": 1, "max": 0})""").any { it.contains("max") })
+    }
+
+    @Test
+    fun `a bare fence holding a spec is recognised as one`() {
+        assertTrue(
+            OpenUi.looksLikeSpec(
+                """
+                root = Stack([t])
+                t = Pie({"labels": ["a", "b"], "values": [2, 1]})
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test
+    fun `a code snippet that mentions a component stays code`() {
+        // No `root`, no valid tree: the client must not steal a fragment.
+        assertFalse(OpenUi.looksLikeSpec("""t = Pie({"labels": ["a"], "values": [1]})"""))
+        assertFalse(OpenUi.looksLikeSpec("""puts "Table(1)" """))
+        assertFalse(OpenUi.looksLikeSpec(""))
+    }
 }

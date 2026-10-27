@@ -8,7 +8,9 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,10 +19,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,7 +37,11 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +61,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +76,7 @@ import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.PendingFile
+import io.github.tournierjc.mercury.data.QuoteReply
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -187,6 +198,10 @@ fun ChatScreen(
     BackHandler(enabled = botChat != null) { botChat = null }
 
     var composerText by rememberSaveable { mutableStateOf("") }
+    // The message being answered, if any: the composer shows it as a chip and the send prepends
+    // it as a blockquote, which is how the quote reaches the daemon and survives a reload.
+    var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
+    LaunchedEffect(botChat) { replyTo = null }
     var voiceError by remember { mutableStateOf<String?>(null) }
     var attachmentError by remember { mutableStateOf<String?>(null) }
 
@@ -377,7 +392,7 @@ fun ChatScreen(
                     if (botMessages.isEmpty()) {
                         BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt, chat = true) }
                     } else {
-                        MessageList(botMessages)
+                        MessageList(botMessages, onReply = { replyTo = it })
                     }
                 }
                 botsState.error?.let { message -> ErrorBar(message = message, onDismiss = { botsVm.clearBanner() }) }
@@ -389,6 +404,7 @@ fun ChatScreen(
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                     )
                 }
+                replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
                 Composer(
                     value = composerText,
                     onValueChange = { composerText = it },
@@ -396,8 +412,10 @@ fun ChatScreen(
                         val text = composerText.trim()
                         if (text.isNotEmpty()) {
                             composerText = ""
+                            val payload = replyTo?.let { QuoteReply.compose(it.text, text) } ?: text
+                            replyTo = null
                             // Chat mode: the bot answers, it does not file a work report.
-                            botsVm.dispatch(text, chat = true)
+                            botsVm.dispatch(payload, chat = true)
                         }
                     },
                     onVoice = { startVoice() },
@@ -439,7 +457,7 @@ fun ChatScreen(
                         },
                     )
                 } else {
-                    MessageList(state.messages)
+                    MessageList(state.messages, onReply = { replyTo = it })
                 }
             }
 
@@ -483,6 +501,7 @@ fun ChatScreen(
 
             AttachmentStrip(attachments = attachments, onRemove = onRemoveAttachment)
 
+            replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
             Composer(
                 value = composerText,
                 onValueChange = { composerText = it },
@@ -490,7 +509,13 @@ fun ChatScreen(
                     val text = composerText
                     if (text.isNotBlank() || attachments.isNotEmpty()) {
                         composerText = ""
-                        onSend(text)
+                        val payload = if (replyTo != null) {
+                            QuoteReply.compose(replyTo!!.text, text)
+                        } else {
+                            text
+                        }
+                        replyTo = null
+                        onSend(payload)
                     }
                 },
                 onVoice = { startVoice() },
@@ -659,52 +684,152 @@ private fun Welcome(onPick: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun MessageList(messages: List<ChatMessage>) {
+internal fun MessageList(
+    messages: List<ChatMessage>,
+    onReply: (ChatMessage) -> Unit = {},
+) {
     val listState = rememberLazyListState()
     val lastLength = messages.lastOrNull()?.text?.length ?: 0
+    val clipboard = LocalClipboardManager.current
+    // One menu at a time, one message in selection mode at a time: both are modal gestures on
+    // the same press, so they cannot be independent pieces of state.
+    var menuFor by remember { mutableStateOf<String?>(null) }
+    var selecting by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(messages.size, lastLength) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.lastIndex)
         }
     }
-    LazyColumn(
-        state = listState,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
-        contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
-    ) {
-        items(messages, key = { it.id }) { message ->
-            MessageItem(message)
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (selecting != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(LocalMercuryColors.current.surface)
+                    .padding(horizontal = 18.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Sélection du texte — appui long sur un mot pour étendre",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = LocalMercuryColors.current.textSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { selecting = null }) { Text("Terminé") }
+            }
+        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
+            contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
+        ) {
+            items(messages, key = { it.id }) { message ->
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    MessageItem(
+                        message = message,
+                        selecting = selecting == message.id,
+                        onLongPress = {
+                            if (selecting == null) menuFor = message.id
+                        },
+                    )
+                    DropdownMenu(
+                        expanded = menuFor == message.id,
+                        onDismissRequest = { menuFor = null },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Répondre") },
+                            onClick = {
+                                menuFor = null
+                                onReply(message)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Copier") },
+                            onClick = {
+                                menuFor = null
+                                clipboard.setText(AnnotatedString(message.text))
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Sélectionner du texte") },
+                            onClick = {
+                                menuFor = null
+                                selecting = message.id
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
+/**
+ * A message, with the gestures the owner expects on a chat bubble: long press for the menu,
+ * and — once chosen there — native text selection, which is why [selecting] swaps the bubble
+ * content for a [SelectionContainer] instead of fighting it for the long press.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun MessageItem(message: ChatMessage) {
+internal fun MessageItem(
+    message: ChatMessage,
+    selecting: Boolean = false,
+    onLongPress: (() -> Unit)? = null,
+) {
     val colors = LocalMercuryColors.current
+    val parsed = remember(message.text) { QuoteReply.parse(message.text) }
+    val press = if (onLongPress == null) {
+        Modifier
+    } else {
+        Modifier.combinedClickable(onClick = {}, onLongClick = onLongPress)
+    }
+
     if (message.role == ChatMessage.Role.User) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
         ) {
-            Text(
-                text = message.text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.textPrimary,
-                textAlign = TextAlign.End,
+            Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(22.dp))
                     .background(colors.userBubble)
+                    .then(press)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-            )
+            ) {
+                if (parsed.isQuote) QuoteBlock(parsed.quote)
+                if (parsed.body.isNotEmpty()) {
+                    if (selecting) {
+                        SelectionContainer {
+                            Text(
+                                text = parsed.body,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textPrimary,
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = parsed.body,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                            textAlign = TextAlign.End,
+                        )
+                    }
+                }
+            }
         }
         return
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().then(press)) {
         if (message.steps.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -726,7 +851,16 @@ internal fun MessageItem(message: ChatMessage) {
                 }
             }
         }
-        MarkdownText(text = message.text, streaming = message.streaming)
+        if (parsed.isQuote) {
+            QuoteBlock(parsed.quote)
+        }
+        if (selecting) {
+            SelectionContainer {
+                MarkdownText(text = parsed.body, streaming = message.streaming)
+            }
+        } else {
+            MarkdownText(text = parsed.body, streaming = message.streaming)
+        }
         if (message.streaming) {
             Text(
                 text = "▍",
@@ -734,6 +868,73 @@ internal fun MessageItem(message: ChatMessage) {
                 color = colors.accent,
             )
         }
+    }
+}
+
+/** The quote the next message will answer, above the composer, dismissible. */
+@Composable
+private fun ReplyChip(message: ChatMessage, onClear: () -> Unit) {
+    val colors = LocalMercuryColors.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
+            .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .heightIn(min = 26.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(colors.accent),
+        )
+        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+            Text(
+                text = if (message.role == ChatMessage.Role.User) "Vous répondez à votre message" else "Vous répondez à Mercury",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.accent,
+            )
+            Text(
+                text = QuoteReply.parse(message.text).body.ifBlank { message.text },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(onClick = onClear) {
+            Icon(Icons.Rounded.Close, contentDescription = "Annuler la réponse", tint = colors.textSecondary)
+        }
+    }
+}
+
+/** The quoted turn, drawn as a quote rather than as literal `>` characters. */
+@Composable
+private fun QuoteBlock(quote: String) {
+    val colors = LocalMercuryColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .heightIn(min = 28.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(colors.accent),
+        )
+        Text(
+            text = quote,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 10.dp),
+        )
     }
 }
 
