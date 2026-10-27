@@ -73,6 +73,8 @@ data class BotsUiState(
     val error: String? = null,
     val dispatchFeedback: String? = null,
     val detailLoading: Boolean = false,
+    /** Models the daemon offers: the provider dropdown of the bot's model section. */
+    val models: List<io.github.tournierjc.mercury.data.dto.ModelRef> = emptyList(),
     /** Filled by the bundle download, consumed by the share sheet, then cleared. */
     val bundle: String? = null,
     val bundleFor: String = "",
@@ -351,7 +353,27 @@ class BotsViewModel(
 
     fun setEnabled(id: String, enabled: Boolean) = patch(id, """{"enabled":$enabled}""")
 
-    fun setModel(id: String, model: String) = patch(id, """{"model":"${escape(model)}"}""")
+    /**
+     * `model` is an object in the manifest — `{ provider, model }` — so a bot inherits the main
+     * default only when the key is absent. Sending a bare string wrote the wrong shape.
+     */
+    fun setModel(id: String, provider: String, model: String) = patch(
+        id,
+        """{"model":{"provider":"${escape(provider)}","model":"${escape(model)}"}}""",
+    )
+
+    /** Back to the main default: the key is removed rather than emptied. */
+    fun clearModel(id: String) = patch(id, """{"model":null}""")
+
+    /** The provider/model list, once per screen: it changes when a key is added, not per bot. */
+    fun loadModels() {
+        if (_state.value.models.isNotEmpty()) return
+        viewModelScope.launch {
+            runCatching { api.models().providers }
+                .onSuccess { list -> _state.update { it.copy(models = list) } }
+                .onFailure { /* the dropdown stays empty; the free-text path is gone, no fake list */ }
+        }
+    }
 
     fun setDescription(id: String, description: String) = patch(id, """{"description":"${escape(description)}"}""")
 

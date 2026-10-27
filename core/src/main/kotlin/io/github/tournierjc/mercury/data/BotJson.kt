@@ -43,7 +43,21 @@ object BotJson {
 
     fun description(bot: JsonObject?): String = string(bot, "description")
 
-    fun model(bot: JsonObject?): String = string(bot, "model")
+    /**
+     * The model a bot pins, as the daemon stores it: `{ provider, model }`, not a string.
+     *
+     * `string(bot, "model")` returned "" on that object, so every bot read as « défaut » and the
+     * sheet's text field wrote a string where the manifest keeps an object.
+     */
+    fun modelProvider(bot: JsonObject?): String =
+        ((bot?.get("model") as? JsonObject)?.get("provider") as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+    fun modelName(bot: JsonObject?): String =
+        ((bot?.get("model") as? JsonObject)?.get("model") as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+    /** Display form: the provider, then the model slug when one is pinned. */
+    fun model(bot: JsonObject?): String =
+        listOf(modelProvider(bot), modelName(bot)).filter { it.isNotBlank() }.joinToString(" · ")
 
     fun tier(bot: JsonObject?): String = string(bot, "tier")
 

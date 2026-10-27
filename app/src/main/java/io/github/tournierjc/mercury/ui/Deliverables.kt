@@ -3,15 +3,27 @@ package io.github.tournierjc.mercury.ui
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.InsertDriveFile
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -23,7 +35,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import io.github.tournierjc.mercury.data.BotJson
@@ -50,6 +64,9 @@ fun DeliverablesSection(
     title: String,
     outputs: List<DeliverableDto>,
     botNames: Map<String, String> = emptyMap(),
+    /** The bots themselves, for the face and the monogram of each group. */
+    bots: Map<String, kotlinx.serialization.json.JsonObject> = emptyMap(),
+    avatars: Map<String, ByteArray> = emptyMap(),
     showOrigin: Boolean = false,
     busy: Boolean = false,
     emptyText: String,
@@ -61,32 +78,103 @@ fun DeliverablesSection(
     val now = remember(outputs) { System.currentTimeMillis() }
     var pendingDelete by remember { mutableStateOf<DeliverableDto?>(null) }
 
-    SectionTitle(title)
-    CardBlock {
+    CollapsibleSection(title) {
         if (outputs.isEmpty()) {
             Text(
                 text = emptyText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
-        outputs.forEach { output ->
-            ActionRow(
-                title = output.name,
-                subtitle = if (showOrigin) {
-                    BotOps.outputOrigin(output, botNames[output.botId].orEmpty(), now)
-                } else {
-                    BotOps.outputSubtitle(output, now)
-                },
-                trailing = "aperçu",
-                onClick = { onPreview(output) },
-            )
-            ButtonRow {
-                TextButton(onClick = { onPreview(output) }) { Text("Aperçu") }
-                TextButton(onClick = { onShare(output) }, enabled = !busy) { Text("Partager") }
-                TextButton(onClick = { pendingDelete = output }, enabled = !busy) {
-                    Text("Supprimer", color = colors.danger)
+        // Grouped by bot when the list is the fleet's: two files from Bricoleur and one from
+        // Atelier are three names that look alike, and "who made this" is the first question.
+        val groups = if (!showOrigin) {
+            listOf("" to outputs)
+        } else {
+            outputs.groupBy { it.botId }.map { (botId, files) -> botId to files }
+        }
+        groups.forEach { (botId, files) ->
+            if (showOrigin && botId.isNotBlank()) {
+                val bot = bots[botId]
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                ) {
+                    if (bot != null) {
+                        BotFace(bot, avatars[botId], small = true)
+                    }
+                    Text(
+                        text = botNames[botId].orEmpty().ifBlank { botId },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textPrimary,
+                        modifier = Modifier.padding(start = if (bot != null) 8.dp else 0.dp),
+                    )
+                    Text(
+                        text = "${files.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+            }
+            files.forEach { output ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onPreview(output) }
+                        .padding(vertical = 6.dp),
+                ) {
+                    Icon(
+                        // The glyph says what the file is: a picture, a document, anything else.
+                        imageVector = when (BotOps.kind(output.name)) {
+                            io.github.tournierjc.mercury.data.OutputKind.Image -> Icons.Rounded.Image
+                            io.github.tournierjc.mercury.data.OutputKind.Text -> Icons.Rounded.Description
+                            else -> Icons.Rounded.InsertDriveFile
+                        },
+                        contentDescription = null,
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(
+                            text = output.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                            maxLines = 2,
+                        )
+                        Text(
+                            text = BotOps.outputSubtitle(output, now),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    IconButton(onClick = { onPreview(output) }, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Rounded.Visibility,
+                            contentDescription = "Aperçu de ${output.name}",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                    IconButton(onClick = { onShare(output) }, enabled = !busy, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Rounded.Share,
+                            contentDescription = "Partager ${output.name}",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                    IconButton(onClick = { pendingDelete = output }, enabled = !busy, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Rounded.DeleteOutline,
+                            contentDescription = "Supprimer ${output.name}",
+                            tint = colors.danger,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
                 }
             }
         }
@@ -211,12 +299,19 @@ fun OutputPreviewDialog(
  * the two never drift apart.
  */
 @Composable
-fun FleetDeliverablesSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+fun FleetDeliverablesSection(
+    state: ConsoleUiState,
+    viewModel: ConsoleViewModel,
+    avatars: Map<String, ByteArray> = emptyMap(),
+) {
     val names = state.bots.associate { BotJson.id(it) to BotJson.name(it) }
+    val byId = state.bots.associateBy { BotJson.id(it) }
     DeliverablesSection(
         title = "Livrables",
         outputs = state.outputs,
         botNames = names,
+        bots = byId,
+        avatars = avatars,
         showOrigin = true,
         busy = state.busy,
         emptyText = "Aucun livrable dans la flotte pour l'instant.",

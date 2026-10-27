@@ -41,11 +41,11 @@ fun RunsSection(
     onOpen: (RunRow) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Runs")
-    CardBlock {
+    // Collapsible like every other block of the sheet: a run list is a log, not the headline.
+    CollapsibleSection("Runs") {
         if (runs.isEmpty()) {
             Text(text = emptyText, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            return@CardBlock
+            return@CollapsibleSection
         }
         runs.take(12).forEach { run ->
             ActionRow(
@@ -169,15 +169,14 @@ fun DlqSection(
     val colors = LocalMercuryColors.current
     var confirmClear by remember { mutableStateOf(false) }
 
-    SectionTitle("Incidents (DLQ)")
-    CardBlock {
+    CollapsibleSection("Incidents") {
         if (incidents.isEmpty()) {
             Text(
                 text = "Aucun incident : la file n'a abandonné aucun job.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         incidents.forEach { job ->
             ActionRow(

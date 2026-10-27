@@ -140,7 +140,7 @@ fun CollapsibleSection(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 14.dp)
+            .padding(top = 18.dp)
             .clip(RoundedCornerShape(10.dp))
             .clickable { open = !open }
             .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
@@ -161,7 +161,10 @@ fun CollapsibleSection(
     // Flat, like the conversation: a label and hairline-separated rows, no card around every
     // block. Twelve rounded panels stacked on a phone read as a settings dump.
     if (open) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), content = content)
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 14.dp),
+            content = content,
+        )
         HorizontalDivider(color = colors.hairline)
     }
 }

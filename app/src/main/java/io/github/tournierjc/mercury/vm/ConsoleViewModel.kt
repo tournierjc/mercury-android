@@ -38,6 +38,7 @@ import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
 import io.github.tournierjc.mercury.util.OutputActions
 import io.github.tournierjc.mercury.util.OutputPreviewState
 import io.github.tournierjc.mercury.util.SharedFile
+import io.github.tournierjc.mercury.data.BotJson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -100,6 +101,7 @@ data class ConsoleUiState(
  * background tasks, schedules, skills and plugins — all read from the daemon so
  * the phone shows the same truth as the dashboard.
  */
+/** Faces by bot id, loaded once per id: the fleet's deliverables group by bot. */
 class ConsoleViewModel(
     private val api: MercuryApi,
     private val container: AppContainer,
@@ -113,6 +115,24 @@ class ConsoleViewModel(
 
     init {
         refresh()
+    }
+
+    private val _avatars = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
+    val avatars: StateFlow<Map<String, ByteArray>> = _avatars.asStateFlow()
+    private val avatarInFlight = mutableSetOf<String>()
+
+    /** Fetches only the faces the roster says exist, once per bot. */
+    fun loadAvatars(bots: List<kotlinx.serialization.json.JsonObject>) {
+        bots.filter { BotJson.hasAvatar(it) }
+            .map { BotJson.id(it) }
+            .filter { id -> id.isNotBlank() && _avatars.value[id] == null && avatarInFlight.add(id) }
+            .forEach { id ->
+                viewModelScope.launch {
+                    runCatching { api.botAvatar(id) }
+                        .onSuccess { bytes -> if (bytes != null) _avatars.update { it + (id to bytes) } }
+                    avatarInFlight.remove(id)
+                }
+            }
     }
 
     fun refresh() {
@@ -161,6 +181,7 @@ class ConsoleViewModel(
                 }
                 loadGit()
                 loadMusic()
+                loadAvatars(bots?.bots.orEmpty())
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.readable()) }
             }

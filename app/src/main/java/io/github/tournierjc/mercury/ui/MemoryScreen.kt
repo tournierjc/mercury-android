@@ -1,8 +1,13 @@
 package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -13,8 +18,16 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -25,12 +38,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.data.dto.MEMORY_TYPES
+import io.github.tournierjc.mercury.data.dto.BeliefDto
 import io.github.tournierjc.mercury.data.dto.MemoryDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatTokens
@@ -70,16 +87,39 @@ fun MemoryScreen(onBack: () -> Unit) {
         state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
         state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+        // One segmented row: four tabs on a phone, the active one underlined in the accent.
+        // Chips wrapped onto a second line and read as filters, not as sections.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             MemoryTab.entries.forEach { tab ->
-                FilterChip(
-                    selected = state.tab == tab,
-                    onClick = { viewModel.selectTab(tab) },
-                    label = { Text(tab.label()) },
-                )
+                val selected = state.tab == tab
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { viewModel.selectTab(tab) }
+                        .padding(vertical = 8.dp),
+                ) {
+                    Text(
+                        text = tab.label(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) colors.accent else colors.textSecondary,
+                        maxLines = 1,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .width(18.dp)
+                            .height(2.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(if (selected) colors.accent else Color.Transparent),
+                    )
+                }
             }
         }
 
@@ -148,7 +188,16 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
         state.memories.forEach { memory ->
             MemoryRow(memory = memory, onForget = { viewModel.forgetMemory(memory.id) })
         }
-        TextButton(onClick = onAdd) { Text("Ajouter un souvenir") }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Add,
+                    label = "Ajouter",
+                    tint = colors.accent,
+                    onClick = onAdd,
+                ),
+            ),
+        )
     }
 }
 
@@ -189,7 +238,14 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
             modifier = Modifier.padding(top = 4.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = onForget) { Text("Oublier", color = colors.danger) }
+            IconButton(onClick = onForget) {
+                Icon(
+                    Icons.Rounded.DeleteOutline,
+                    contentDescription = "Oublier ce souvenir",
+                    tint = colors.danger,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
         }
     }
 }
@@ -215,7 +271,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 Text(
-                    text = "${belief.kind.uppercase()} · ${belief.status}",
+                    text = "${belief.kind.uppercase()} · ${belief.statusLabel()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.accent,
                 )
@@ -231,13 +287,29 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                     color = colors.textSecondary,
                     modifier = Modifier.padding(top = 4.dp),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { viewModel.confirmBelief(belief.id) }) { Text("Confirmer") }
-                    TextButton(onClick = { onCorrect(belief.id) }) { Text("Corriger") }
-                    TextButton(onClick = { viewModel.forgetBelief(belief.id) }) {
-                        Text("Oublier", color = colors.danger)
-                    }
-                }
+                // Same glyph vocabulary as the bot sheet: tick to confirm, pencil to correct,
+                // bin to forget. A claim is confirmed or replaced, never edited in place.
+                IconActionBar(
+                    listOf(
+                        QuickAction(
+                            icon = Icons.Rounded.Check,
+                            label = "Confirmer",
+                            tint = colors.accent,
+                            onClick = { viewModel.confirmBelief(belief.id) },
+                        ),
+                        QuickAction(
+                            icon = Icons.Rounded.Edit,
+                            label = "Corriger",
+                            onClick = { onCorrect(belief.id) },
+                        ),
+                        QuickAction(
+                            icon = Icons.Rounded.DeleteOutline,
+                            label = "Oublier",
+                            tint = colors.danger,
+                            onClick = { viewModel.forgetBelief(belief.id) },
+                        ),
+                    ),
+                )
             }
         }
     }
@@ -268,7 +340,14 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
                     style = MaterialTheme.typography.bodyLarge,
                     color = colors.textPrimary,
                 )
-                TextButton(onClick = { viewModel.restoreQuarantined(memory.id) }) { Text("Réintégrer") }
+                IconButton(onClick = { viewModel.restoreQuarantined(memory.id) }) {
+                    Icon(
+                        Icons.Rounded.Restore,
+                        contentDescription = "Réintégrer",
+                        tint = colors.accent,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
     }
@@ -316,6 +395,23 @@ private fun AboutTab(state: MemoryUiState) {
         }
         state.persons.forEach { person -> ActionRow(title = person.titleHint(), subtitle = person.detailHint()) }
     }
+}
+
+/**
+ * The belief lifecycle, in the words the owner thinks in.
+ *
+ * `candidate` → `held` → `confirmed` / `contested` → `retired` / `forgotten` is the daemon's
+ * state machine (ADR-026). Shown in English it reads as jargon; the badge is the one place that
+ * says whether a claim is being acted on.
+ */
+private fun BeliefDto.statusLabel(): String = when (status.lowercase()) {
+    "candidate" -> "candidate"
+    "held" -> "tenue"
+    "confirmed" -> "confirmée"
+    "contested" -> "contestée"
+    "retired" -> "retirée"
+    "forgotten" -> "oubliée"
+    else -> status
 }
 
 private fun MemoryTab.label(): String = when (this) {
