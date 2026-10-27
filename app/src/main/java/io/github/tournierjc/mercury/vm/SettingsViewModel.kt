@@ -12,6 +12,8 @@ import io.github.tournierjc.mercury.data.dto.ChatSettings
 import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
 import io.github.tournierjc.mercury.data.dto.ModelsResponse
 import io.github.tournierjc.mercury.data.dto.ProviderDto
+import io.github.tournierjc.mercury.data.dto.ProviderTestResult
+import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,8 @@ data class SettingsUiState(
     val settings: ChatSettings? = null,
     val usage: UsageDto? = null,
     val providers: List<ProviderDto> = emptyList(),
+    val providerTest: ProviderTestResult? = null,
+    val providerTestFor: String = "",
     val busy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
@@ -80,6 +84,48 @@ class SettingsViewModel(
             } catch (e: Exception) {
                 _state.update { it.copy(busy = false, error = e.readable()) }
             }
+        }
+    }
+
+    /** A provider is a setting: its key, its base URL, its model, its on/off switch. */
+    fun saveProvider(
+        id: String,
+        apiKey: String? = null,
+        baseUrl: String? = null,
+        model: String? = null,
+        enabled: Boolean? = null,
+    ) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null, message = null) }
+            runCatching {
+                api.saveProvider(
+                    id,
+                    ProviderUpdateRequest(
+                        apiKey = apiKey?.trim()?.ifBlank { null },
+                        baseUrl = baseUrl?.trim()?.ifBlank { null },
+                        model = model?.trim()?.ifBlank { null },
+                        enabled = enabled,
+                    ),
+                )
+            }
+                .onSuccess {
+                    _state.update { s -> s.copy(busy = false, message = "Fournisseur $id enregistré — redémarrage requis") }
+                    refresh()
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    fun testProvider(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(providerTest = null, providerTestFor = id, error = null) }
+            runCatching { api.testProvider(id) }
+                .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(providerTest = ProviderTestResult(success = false, error = e.readable()), providerTestFor = id)
+                    }
+                }
         }
     }
 

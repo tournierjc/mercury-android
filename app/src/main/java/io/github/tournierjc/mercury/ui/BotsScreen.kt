@@ -95,6 +95,7 @@ import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.PendingFile
+import io.github.tournierjc.mercury.util.ModelRefs
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.util.ShareText
@@ -820,9 +821,12 @@ private fun BotDetail(
         // { provider, model } and a typo used to fall back to the default in silence.
         val pickedProvider = BotJson.modelProvider(bot)
         val pickedModel = BotJson.modelName(bot)
-        val currentLabel = state.models.firstOrNull { it.name == pickedProvider }
-            ?.let { ref -> listOf(ref.displayLabel, pickedModel).filter { it.isNotBlank() }.joinToString(" · ") }
-            .orEmpty()
+        // Exact match first: several models can share a provider, and the first one listed was
+        // not necessarily the one in use.
+        val currentLabel = state.models
+            .firstOrNull { ModelRefs.same(pickedProvider, pickedModel, it.name, it.model) }
+            ?.displayLabel
+            ?: pickedModel
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -1016,7 +1020,10 @@ private fun BotDetail(
         )
     }
     if (showModelPicker) {
+        // The provider alone is not a key: two Qwen models share `openaiCompat`, and matching on
+        // the provider ticked both of them at once.
         val picked = BotJson.modelProvider(bot)
+        val pickedM = BotJson.modelName(bot)
         AlertDialog(
             onDismissRequest = { showModelPicker = false },
             containerColor = colors.surface,
@@ -1039,7 +1046,7 @@ private fun BotDetail(
                             color = colors.textPrimary,
                             modifier = Modifier.weight(1f),
                         )
-                        if (picked.isBlank()) {
+                        if (picked.isBlank() && pickedM.isBlank()) {
                             Icon(Icons.Rounded.Check, contentDescription = "Sélectionné", tint = colors.accent, modifier = Modifier.size(18.dp))
                         }
                     }
@@ -1053,7 +1060,7 @@ private fun BotDetail(
                         )
                     }
                     state.models.forEach { ref ->
-                        val selected = picked == ref.name
+                        val selected = ModelRefs.same(picked, pickedM, ref.name, ref.model)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier

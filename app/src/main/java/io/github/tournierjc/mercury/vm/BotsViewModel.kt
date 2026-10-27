@@ -686,8 +686,21 @@ class BotsViewModel(
             runCatching {
                 api.patchBot(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject)
             }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = "Enregistré") } }
+                .onSuccess {
+                    _state.update { s -> s.copy(busy = false, message = "Enregistré") }
+                    // The sheet's rows read the model from the manifest: without this the row
+                    // kept the old label until the bot was reopened, which looked like the
+                    // change had not been applied.
+                    refreshManifest(id)
+                }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    /** The manifest alone, after a write. Deliberately not `select()`: no transcripts, no crew. */
+    private suspend fun refreshManifest(id: String) {
+        runCatching { api.botDetail(id) }.getOrNull()?.let { detail ->
+            _state.update { it.copy(manifest = detail.bot, liveState = detail.state) }
         }
     }
 
