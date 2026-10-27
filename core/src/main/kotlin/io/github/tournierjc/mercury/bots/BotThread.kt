@@ -34,8 +34,10 @@ object BotThread {
      * @param records journal lines for one bot, any order.
      * @param prompts `runId` → the task the owner dispatched for that run.
      * @param outputs `runId` → the full answer, when the transcript is at hand.
-     * @param liveJobId the run currently streaming, if any.
-     * @param liveTail the tail of the text the bot is writing, if any.
+     * @param liveJobId the last turn the daemon reported, if any.
+     * @param liveTail the tail of the text the bot wrote, if any.
+     * @param liveRunning false once that turn has ended: the tail is then a memory of the
+     *   answer to show until the journal catches up, not something still being written.
      */
     fun build(
         records: List<BotRunDto>,
@@ -44,6 +46,7 @@ object BotThread {
         outputs: Map<String, String> = emptyMap(),
         liveJobId: String? = null,
         liveTail: String = "",
+        liveRunning: Boolean = true,
     ): List<BotMessage> {
         val messages = mutableListOf<BotMessage>()
         records
@@ -61,7 +64,7 @@ object BotThread {
                 }
                 // A streaming turn has an answer in progress: the journal summary is either
                 // absent or stale, so the live tail is what the owner should be reading.
-                val streaming = liveJobId != null && record.runId == liveJobId && liveTail.isNotBlank()
+                val streaming = liveRunning && liveJobId != null && record.runId == liveJobId && liveTail.isNotBlank()
                 val reply = when {
                     streaming -> liveTail
                     // The journal truncates `summary` to 300 characters; the transcript keeps
@@ -89,7 +92,7 @@ object BotThread {
                 fromBot = true,
                 text = liveTail,
                 at = System.currentTimeMillis(),
-                streaming = true,
+                streaming = liveRunning,
             )
         }
         return messages

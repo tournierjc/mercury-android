@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -97,6 +98,7 @@ fun BotsScreen(
         }
     }
     val colors = LocalMercuryColors.current
+    var showNewBot by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -115,7 +117,25 @@ fun BotsScreen(
             },
             onBack = { if (state.selectedId == null) onBack() else viewModel.select(null) },
             onRefresh = viewModel::refreshRoster,
-        )
+        ) {
+            // A teammate can be made from the app: until now the roster was read-only and a
+            // bot had to be created with a POST or by hand.
+            if (state.selectedId == null) {
+                IconButton(onClick = { showNewBot = true }) {
+                    Icon(Icons.Rounded.Add, contentDescription = "Nouvel équipier", tint = colors.accent)
+                }
+            }
+        }
+        if (showNewBot) {
+            NewBotDialog(
+                busy = state.busy,
+                onDismiss = { showNewBot = false },
+                onCreate = { name, newId, tier, persona ->
+                    showNewBot = false
+                    viewModel.createBot(name, newId, tier, persona)
+                },
+            )
+        }
         state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
         state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
 
@@ -278,6 +298,8 @@ private fun BotDetail(
     // picker callback below is not one.
     val context = LocalContext.current
     val id = state.selectedId.orEmpty()
+    // Deleting is irreversible: the button asks, this remembers the question.
+    var confirmDelete by remember { mutableStateOf(false) }
     val bot = (state.manifest ?: watch.bots.firstOrNull { BotJson.id(it) == id }) ?: return
     val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
 
@@ -365,6 +387,11 @@ private fun BotDetail(
             TextButton(onClick = { viewModel.run(id) }) { Text("Exécuter") }
             TextButton(onClick = { viewModel.setEnabled(id, !BotJson.enabled(bot)) }) {
                 Text(if (BotJson.enabled(bot)) "Désactiver" else "Activer")
+            }
+            // Next to the other actions, because a destructive action buried at the bottom of
+            // the sheet is a destructive action nobody finds.
+            TextButton(onClick = { confirmDelete = true }) {
+                Text("Supprimer", color = colors.danger)
             }
         }
         ButtonRow {
@@ -611,16 +638,38 @@ private fun BotDetail(
             color = colors.textSecondary,
         )
         ButtonRow {
-            TextButton(onClick = { viewModel.delete(id) }) { Text("Supprimer", color = colors.danger) }
+            TextButton(onClick = { confirmDelete = true }) { Text("Supprimer", color = colors.danger) }
         }
     }
 
     if (showAddCrew) {
+        // Existing bots this lead can take: a solo bot has no parent and leads nothing. The
+        // daemon refuses the rest, but a list of refusals is not a picker.
+        // A bot promoted to lead but leading nobody is still adoptable (the daemon demotes
+        // it); one with a crew is not, and the daemon says so if it is offered anyway.
+        val adoptable = watch.bots.filter { candidate ->
+            BotJson.id(candidate) != id && BotJson.parent(candidate).isBlank()
+        }
         AddCrewSheet(
+            adoptable = adoptable,
+            onAdopt = { memberId ->
+                showAddCrew = false
+                viewModel.adoptCrew(id, memberId)
+            },
             onDismiss = { showAddCrew = false },
             onConfirm = { crewId, name, description, persona, tier ->
                 showAddCrew = false
                 viewModel.addCrew(id, crewId, name, description, persona, tier)
+            },
+        )
+    }
+    if (confirmDelete) {
+        ConfirmDeleteBotDialog(
+            botName = BotJson.name(bot),
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete(id)
             },
         )
     }
@@ -695,6 +744,8 @@ private fun PromptField(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddCrewSheet(
+    adoptable: List<JsonObject> = emptyList(),
+    onAdopt: (String) -> Unit = {},
     onDismiss: () -> Unit,
     onConfirm: (id: String, name: String, description: String?, persona: String?, tier: String?) -> Unit,
 ) {
@@ -711,6 +762,33 @@ private fun AddCrewSheet(
         title = { Text("Nouveau membre", color = colors.textPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // An existing solo bot can simply join: creating a second one with the same
+                // job was the only offer, and it is not what "add a member" means.
+                if (adoptable.isNotEmpty()) {
+                    Text(
+                        text = "Prendre un équipier existant",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.textPrimary,
+                    )
+                    adoptable.forEach { candidate ->
+                        val candidateName = BotJson.name(candidate)
+                        TextButton(
+                            onClick = { onAdopt(BotJson.id(candidate)) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = "$candidateName · ${BotJson.id(candidate)}",
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text("Ajouter", color = colors.accent)
+                        }
+                    }
+                    Text(
+                        text = "Ou en créer un nouveau :",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                }
                 OutlinedTextField(value = id, onValueChange = { id = it }, label = { Text("Identifiant") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nom") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Spécialité") }, modifier = Modifier.fillMaxWidth())
