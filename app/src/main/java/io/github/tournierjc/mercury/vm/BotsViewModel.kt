@@ -75,6 +75,8 @@ data class BotsUiState(
     val detailLoading: Boolean = false,
     /** Models the daemon offers: the provider dropdown of the bot's model section. */
     val models: List<io.github.tournierjc.mercury.data.dto.ModelRef> = emptyList(),
+    /** Tier catalogue — `readonly`, `builder`, `operator`, `full` with their deny lists. */
+    val tiers: List<io.github.tournierjc.mercury.data.dto.BotTierDto> = emptyList(),
     /** Filled by the bundle download, consumed by the share sheet, then cleared. */
     val bundle: String? = null,
     val bundleFor: String = "",
@@ -392,7 +394,40 @@ class BotsViewModel(
         }
     }
 
-    fun setTier(id: String, tier: String) = act("Palier appliqué") { api.setBotPermissions(id, tier) }
+    /**
+     * Applies a tier and keeps the answer.
+     *
+     * The route returns the document it just wrote, so the cells can light up from that instead
+     * of a second round trip — and a failure used to leave the sheet looking untouched, which
+     * read as "the buttons do nothing".
+     */
+    fun setTier(id: String, tier: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching { api.setBotPermissions(id, tier) }
+                .onSuccess { result ->
+                    val stored = result["permissions"] as? JsonObject
+                    _state.update { s ->
+                        s.copy(
+                            busy = false,
+                            message = "Palier appliqué",
+                            permissions = stored ?: s.permissions,
+                        )
+                    }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    /** The tier catalogue, for the sheets whose permissions file predates the `tier` field. */
+    fun loadTiers() {
+        if (_state.value.tiers.isNotEmpty()) return
+        viewModelScope.launch {
+            runCatching { api.botTiers() }
+                .onSuccess { list -> _state.update { it.copy(tiers = list) } }
+                .onFailure { /* no catalogue: the cells simply show no selection */ }
+        }
+    }
 
     fun promote(id: String) = act("Promu chef de flotte") { api.promoteBot(id) }
 
@@ -402,6 +437,16 @@ class BotsViewModel(
         act("Membre ajouté") { api.addBotCrew(leadId, id, name, description, persona, tier) }
 
     /** An existing solo bot joins the fleet instead of a new one being created. */
+    /**
+     * `POST /api/bots/import` — a shared bundle, verbatim, as the body.
+     *
+     * It lives here rather than in the Console: the fleet is the Équipiers screen, and importing
+     * one is the first thing that screen offers to an instance with no bots.
+     */
+    fun importBundle(bundleJson: String, overwrite: Boolean) = act("Bundle importé · il arrive désactivé") {
+        api.importBotBundle(bundleJson, overwrite)
+    }
+
     fun adoptCrew(leadId: String, memberId: String) =
         act("Équipier rattaché à la flotte") { api.adoptBotCrew(leadId, memberId) }
 

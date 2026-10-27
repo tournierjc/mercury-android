@@ -2,7 +2,10 @@ package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -11,9 +14,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -30,9 +46,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -53,6 +73,8 @@ import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.util.formatUptime
 import io.github.tournierjc.mercury.vm.ConsoleUiState
 import io.github.tournierjc.mercury.vm.ConsoleViewModel
+import io.github.tournierjc.mercury.util.TerminalPaths
+import io.github.tournierjc.mercury.vm.TerminalEntry
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -69,8 +91,6 @@ fun ConsoleScreen(onBack: () -> Unit) {
     val colors = LocalMercuryColors.current
     var confirmRestart by remember { mutableStateOf(false) }
     var confirmShutdown by remember { mutableStateOf(false) }
-    var showCreateBot by remember { mutableStateOf(false) }
-    var showAddCrew by remember { mutableStateOf(false) }
     val botDetail = state.botDetail
 
     // The bundle is a document, not a screen: hand it to the share sheet as soon as it lands.
@@ -114,10 +134,13 @@ fun ConsoleScreen(onBack: () -> Unit) {
         ) {
             RuntimeSection(state)
             ProvidersSection(state, viewModel)
-            BrainSection(state)
+            // No Mémoire block: the memory screen owns it (souvenirs, croyances, quarantaine,
+            // runtime), and this summary contradicted it on the pause state.
             CodeSection(state, viewModel)
-            BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
-            FleetSection(state, viewModel, onAddCrew = { showAddCrew = true })
+            // No Équipiers block here: the fleet has its own screen (roster, sheets, dispatch),
+            // and a second, read-only copy in the Console only ever disagreed with it.
+            // La flotte vit dans l'écran Équipiers : l'import de bundle et les chefs y sont,
+            // avec les visages et les fiches, au lieu d'une rangée de puces ici.
             FleetDeliverablesSection(state, viewModel)
             CostSection(state)
             StorageSection(state)
@@ -165,78 +188,6 @@ fun ConsoleScreen(onBack: () -> Unit) {
         }
     }
 
-    if (showCreateBot) {
-        CreateBotDialog(
-            tiers = state.tiers,
-            onDismiss = { showCreateBot = false },
-            onConfirm = { id, name, description, tier ->
-                showCreateBot = false
-                viewModel.createBot(id, name, description, tier)
-            },
-        )
-    }
-
-    if (showAddCrew) {
-        AddCrewDialog(
-            leads = state.bots,
-            tiers = state.tiers,
-            onDismiss = { showAddCrew = false },
-            onConfirm = { leadId, id, name, description, persona, tier ->
-                showAddCrew = false
-                viewModel.addCrew(leadId, id, name, description, persona, tier)
-            },
-        )
-    }
-
-    if (botDetail != null) {
-        AlertDialog(
-            onDismissRequest = viewModel::closeBot,
-            containerColor = colors.surface,
-            title = {
-                Text(
-                    botDetail.bot?.titleHint()?.ifBlank { "Équipier" } ?: "Équipier",
-                    color = colors.textPrimary,
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val manifest = botDetail.bot
-                    if (manifest != null) {
-                        KeyValueRow("Modèle", (manifest["model"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { "défaut" })
-                        KeyValueRow("Palier", (manifest["tier"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { "—" })
-                        KeyValueRow("Activé", (manifest["enabled"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: "—")
-                    }
-                    KeyValueRow("Journal", "${botDetail.journal.size} dernières entrées")
-                    botDetail.journal.take(4).forEach { entry ->
-                        Text(
-                            text = "· " + entry.titleHint(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                            maxLines = 2,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                val id = botDetail.bot?.get("id")?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }.orEmpty()
-                TextButton(onClick = {
-                    viewModel.closeBot()
-                    if (id.isNotBlank()) viewModel.runBot(id)
-                }) { Text("Exécuter") }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        val id = botDetail.bot?.get("id")
-                            ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
-                            .orEmpty()
-                        if (id.isNotBlank()) viewModel.exportBundle(id)
-                    }) { Text("Exporter") }
-                    TextButton(onClick = viewModel::closeBot) { Text("Fermer") }
-                }
-            },
-        )
-    }
 
     if (confirmShutdown) {
         AlertDialog(
@@ -332,29 +283,63 @@ private fun ProvidersSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
             )
             return@CardBlock
         }
+        // One row per provider: name and model on the left, its two actions on the right. Two
+        // text buttons under a two-line block made six providers fill the screen.
         state.providers.forEach { provider ->
             val name = provider.name.ifBlank { "—" }
-            KeyValueRow(
-                label = if (provider.recommended) "$name ★" else name,
-                value = when {
-                    !provider.enabled -> "désactivé"
-                    !provider.hasKey -> "sans clé"
-                    provider.model.isNotBlank() -> provider.model
-                    else -> "prêt"
-                },
-                highlight = provider.enabled && provider.hasKey,
-            )
-            if (provider.baseUrl.isNotBlank()) {
-                Text(
-                    text = provider.baseUrl,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
-                    maxLines = 1,
+            val ready = provider.enabled && provider.hasKey
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            when {
+                                !provider.enabled -> colors.textSecondary.copy(alpha = 0.35f)
+                                provider.hasKey -> colors.accent
+                                else -> colors.danger.copy(alpha = 0.7f)
+                            },
+                            CircleShape,
+                        ),
                 )
-            }
-            ButtonRow {
-                TextButton(onClick = { editing = name }, enabled = !state.busy) { Text("Modifier") }
-                TextButton(onClick = { viewModel.testProvider(name) }, enabled = !state.busy) { Text("Tester") }
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                    Text(
+                        text = if (provider.recommended) "$name ★" else name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (ready) colors.textPrimary else colors.textSecondary,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = when {
+                            !provider.enabled -> "désactivé"
+                            !provider.hasKey -> "sans clé"
+                            provider.model.isNotBlank() -> provider.model
+                            else -> "prêt"
+                        } + provider.baseUrl.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(onClick = { editing = name }, enabled = !state.busy) {
+                    Icon(
+                        Icons.Rounded.Edit,
+                        contentDescription = "Modifier $name",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+                IconButton(onClick = { viewModel.testProvider(name) }, enabled = !state.busy) {
+                    Icon(
+                        Icons.Rounded.Bolt,
+                        contentDescription = "Tester $name",
+                        tint = colors.accent,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
             }
             if (state.providerTestFor == name) {
                 state.providerTest?.let { result -> ProviderTestLine(result) }
@@ -489,33 +474,6 @@ private fun ProviderEditDialog(
     )
 }
 
-@Composable
-private fun BrainSection(state: ConsoleUiState) {
-    val brain = state.brain ?: return
-    SectionTitle("Mémoire")
-    CardBlock {
-        KeyValueRow("Souvenirs", brain.total.toString())
-        KeyValueRow("Apprentissage", if (brain.learningPaused) "en pause" else "actif")
-        if (brain.byType.isNotEmpty()) {
-            Text(
-                text = brain.byType.entries.joinToString(" · ") { "${it.key} ${it.value}" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textSecondary,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-        if (brain.activeSummary.isNotBlank()) {
-            Text(
-                text = brain.activeSummary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textPrimary,
-                modifier = Modifier.padding(top = 10.dp),
-                maxLines = 6,
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
@@ -551,56 +509,6 @@ private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun BotsSection(
-    state: ConsoleUiState,
-    viewModel: ConsoleViewModel,
-    onCreate: () -> Unit,
-    onOpen: (String) -> Unit,
-) {
-    val colors = LocalMercuryColors.current
-    SectionTitle("Équipiers")
-    CardBlock {
-        KeyValueRow("File d'attente", "${state.queue.pending} en attente · ${state.queue.claimed} en cours")
-        if (state.queue.dlq > 0) KeyValueRow("Échecs", state.queue.dlq.toString(), highlight = true)
-        if (state.bots.isEmpty()) {
-            Text(
-                text = "Aucun bot configuré. Un équipier tourne en boucle : il réveille l'agent selon son planning, avec ses propres permissions.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-        state.bots.forEach { bot ->
-            val id = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
-            val enabled = (bot["enabled"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
-            ActionRow(
-                title = bot.titleHint(),
-                subtitle = listOf(bot.detailHint(), if (enabled == "false") "désactivé" else null)
-                    .filterNotNull().joinToString(" · "),
-                trailing = "détails",
-                onClick = { if (id.isNotBlank()) onOpen(id) },
-            )
-            if (id.isNotBlank()) {
-                ButtonRow {
-                    TextButton(onClick = { viewModel.startBot(id) }) { Text("Démarrer") }
-                    TextButton(onClick = { viewModel.stopBot(id) }) { Text("Arrêter") }
-                    TextButton(onClick = { viewModel.runBot(id) }) { Text("Exécuter") }
-                    TextButton(onClick = { viewModel.setBotEnabled(id, enabled != "true") }) {
-                        Text(if (enabled == "true") "Désactiver" else "Activer")
-                    }
-                }
-            }
-        }
-        ButtonRow {
-            TextButton(onClick = onCreate) { Text("Nouvel équipier") }
-            if (state.bots.isNotEmpty()) {
-                TextButton(onClick = viewModel::startAllBots) { Text("Tout démarrer") }
-                TextButton(onClick = viewModel::stopAllBots) { Text("Tout arrêter") }
-            }
-        }
-    }
-}
-
 @Composable
 private fun TasksSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     SectionTitle("Tâches de fond")
@@ -1120,189 +1028,175 @@ private fun CreateBotDialog(
  * permission tier. A lead can also build its own crew (autocrew, 202 + background).
  */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun FleetSection(state: ConsoleUiState, viewModel: ConsoleViewModel, onAddCrew: () -> Unit) {
-    val colors = LocalMercuryColors.current
-    val context = LocalContext.current
-    var selectedId by remember { mutableStateOf("") }
-    var overwrite by remember { mutableStateOf(false) }
-    var importError by remember { mutableStateOf<String?>(null) }
-    val crew = state.crew
-
-    // A bundle is a .json file; the picker reports some of them as plain text or octet-stream.
-    val bundlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val text = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
-        }.getOrNull()
-        if (text.isNullOrBlank()) {
-            importError = "Fichier illisible"
-        } else {
-            importError = null
-            viewModel.importBundle(text, overwrite)
-        }
-    }
-
-    SectionTitle("Flotte")
-    CardBlock {
-        if (state.bots.isEmpty()) {
-            Text(
-                text = "Aucun équipier : créez-en un, ou importez un bundle partagé pour repartir d'une flotte entière.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-        ButtonRow {
-            TextButton(
-                onClick = {
-                    bundlePicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
-                },
-                enabled = !state.busy,
-            ) { Text("Importer un bundle") }
-            FilterChip(
-                selected = overwrite,
-                onClick = { overwrite = !overwrite },
-                label = { Text("Écraser") },
-            )
-        }
-        importError?.let { message ->
-            Text(message, style = MaterialTheme.typography.labelSmall, color = colors.danger)
-        }
-        Text(
-            text = "Un bundle importé arrive désactivé : la flotte ne dépense rien avant que vous l'activiez.",
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.textSecondary,
-        )
-
-        if (state.bots.isEmpty()) return@CardBlock
-        Text(
-            text = "Un chef de flotte peut engendrer ses propres spécialistes. Sélectionnez un équipier :",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            state.bots.forEach { bot ->
-                val id = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
-                if (id.isNotBlank()) {
-                    FilterChip(
-                        selected = selectedId == id,
-                        onClick = {
-                            selectedId = id
-                            viewModel.loadCrew(id)
-                            viewModel.loadPermissions(id)
-                        },
-                        label = { Text(bot.titleHint()) },
-                    )
-                }
-            }
-        }
-        if (selectedId.isNotBlank()) {
-            ButtonRow {
-                TextButton(onClick = { viewModel.promoteBot(selectedId) }) { Text("Promouvoir") }
-                TextButton(onClick = { viewModel.autoCrew(selectedId) }) { Text("Flotte auto") }
-                TextButton(onClick = onAddCrew) { Text("Ajouter un membre") }
-            }
-        }
-
-        if (crew != null) {
-            if (crew.error.isNotBlank()) {
-                Text(crew.error, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            } else {
-                KeyValueRow("Chef", crew.lead?.titleHint()?.ifBlank { "—" } ?: "—")
-                KeyValueRow("Membres", "${crew.crew.size} / ${crew.maxCrew}")
-                crew.crew.forEach { member ->
-                    ActionRow(
-                        title = member.titleHint(),
-                        subtitle = member.detailHint(),
-                        trailing = "",
-                        onClick = {},
-                    )
-                }
-            }
-        }
-
-        state.permissions?.let { permissions ->
-            val tier = (permissions["tier"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
-            if (tier.isNotBlank()) KeyValueRow("Palier", tier)
-        }
-        if (state.tiers.isNotEmpty() && selectedId.isNotBlank()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                state.tiers.forEach { tier ->
-                    FilterChip(
-                        selected = false,
-                        onClick = { viewModel.setTier(selectedId, tier.id) },
-                        label = { Text(tier.label) },
-                    )
-                }
-            }
-        }
-    }
-}
-
 /**
- * Terminal: one command at a time, in the workspace, 30 s timeout.
- * Destructive patterns ask for a second confirmation — this executes on the host.
+ * A terminal, not a form.
+ *
+ * The block used to be two text fields and two buttons that showed one command's answer and
+ * replaced it on the next run: nothing to scroll back to, nothing that echoed what you typed, no
+ * prompt. This is the shape a shell has — a prompt that says where you are, the command echoed as
+ * you enter it, the output under it, and a session you can read from the top.
+ *
+ * `cd` is handled locally: it moves the prompt, it does not spend a request on the daemon. Every
+ * other line goes to `POST /api/terminal/exec` (30 s ceiling, on the host — not on the phone).
  */
 @Composable
 private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     val colors = LocalMercuryColors.current
-    var command by remember { mutableStateOf("") }
-    var cwd by remember { mutableStateOf("") }
+    var line by remember { mutableStateOf("") }
     var pending by remember { mutableStateOf<String?>(null) }
+    var historyIndex by remember { mutableStateOf(-1) }
+    val scroll = rememberScrollState()
+    val log = state.terminalLog
 
-    SectionTitle("Terminal")
-    CardBlock {
-        Text(
-            text = "Exécute une commande shell dans l'espace de travail de Mercury (30 s max). " +
-                "Elle tourne sur l'hôte, pas sur le téléphone.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-        OutlinedTextField(
-            value = command,
-            onValueChange = { command = it },
-            label = { Text("Commande") },
-            singleLine = false,
-            minLines = 1,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = cwd,
-            onValueChange = { cwd = it },
-            label = { Text("Dossier (optionnel, relatif au workspace)") },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        ButtonRow {
-            TextButton(
-                onClick = {
-                    val trimmed = command.trim()
-                    if (trimmed.isNotEmpty()) {
-                        if (isDestructiveCommand(trimmed)) pending = trimmed else viewModel.runCommand(trimmed, cwd)
-                    }
-                },
-                enabled = !state.terminalBusy && command.isNotBlank(),
-            ) { Text(if (state.terminalBusy) "Exécution…" else "Exécuter") }
-            TextButton(onClick = { viewModel.clearTerminal() }, enabled = state.terminal != null) { Text("Effacer") }
-        }
-        state.terminal?.let { result ->
-            KeyValueRow(
-                "Sortie",
-                "code ${result.exitCode}" + if (result.cwd.isNotBlank()) " · ${result.cwd}" else "",
-                highlight = result.success,
+    // New output: keep the prompt in view, the way a terminal does.
+    LaunchedEffect(log.size, state.terminalBusy) {
+        scroll.animateScrollTo(scroll.maxValue)
+    }
+
+    fun submit() {
+        val trimmed = line.trim()
+        if (trimmed.isEmpty()) return
+        // `cd` is the prompt's business, not the daemon's.
+        if (trimmed == "cd" || trimmed.startsWith("cd ")) {
+            viewModel.setTerminalCwd(
+                TerminalPaths.resolve(state.terminalCwd, trimmed.removePrefix("cd").trim()),
             )
+            line = ""
+            historyIndex = -1
+            return
+        }
+        if (isDestructiveCommand(trimmed)) {
+            pending = trimmed
+            return
+        }
+        viewModel.runCommand(trimmed, state.terminalCwd)
+        line = ""
+        historyIndex = -1
+    }
+
+    CollapsibleSection("Terminal") {
+        // The screen itself: monospace on a sunken panel, prompt and transcript together.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
             Text(
-                text = result.display,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                color = if (result.success) colors.textPrimary else colors.danger,
+                text = "hôte · espace de travail Mercury · 30 s max",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
-                    .padding(10.dp),
-            )
+                    .heightIn(min = 90.dp, max = 320.dp)
+                    .verticalScroll(scroll)
+                    .padding(top = 8.dp),
+            ) {
+                if (log.isEmpty() && !state.terminalBusy) {
+                    Text(
+                        text = "Session vide. Une commande tourne sur l'hôte, pas sur le téléphone.",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = colors.textSecondary,
+                    )
+                }
+                log.forEach { entry ->
+                    Text(
+                        text = "${entry.cwdPrompt(state.terminalCwd)} ${entry.command}",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = colors.accent,
+                    )
+                    Text(
+                        text = entry.body,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = if (entry.failure != null || !entry.ok) colors.danger else colors.textPrimary,
+                    )
+                    if (entry.status.isNotBlank()) {
+                        Text(
+                            text = "— ${entry.status}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                }
+                if (state.terminalBusy) {
+                    Text(
+                        text = "…",
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+            // The prompt line: `mount~ $` then the field. Send on the keyboard's action, and the
+            // glyph does the same for a thumb.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${TerminalPaths.prompt(state.terminalCwd)} $",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                )
+                BasicTextField(
+                    value = line,
+                    onValueChange = { line = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        color = colors.textPrimary,
+                    ),
+                    cursorBrush = SolidColor(colors.accent),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { submit() }),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp),
+                )
+                IconButton(
+                    onClick = { submit() },
+                    enabled = line.isNotBlank() && !state.terminalBusy,
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Icon(
+                        Icons.Rounded.PlayArrow,
+                        contentDescription = "Exécuter",
+                        tint = if (line.isNotBlank() && !state.terminalBusy) colors.accent else colors.textSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.History,
+                    label = "Précédente",
+                    enabled = log.isNotEmpty(),
+                    onClick = {
+                        // Walk back through the session, newest first, without leaving the field.
+                        val next = (historyIndex + 1).coerceAtMost(log.size - 1)
+                        historyIndex = next
+                        line = log[log.size - 1 - next].command
+                    },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.DeleteSweep,
+                    label = "Effacer",
+                    tint = colors.danger,
+                    enabled = log.isNotEmpty(),
+                    onClick = viewModel::clearTerminal,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.FolderOpen,
+                    label = "Dossier",
+                    onClick = { viewModel.setTerminalCwd("") },
+                    enabled = state.terminalCwd.isNotBlank(),
+                ),
+            ),
+        )
     }
 
     if (pending != null) {
@@ -1328,13 +1222,17 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
                 TextButton(onClick = {
                     val cmd = pending
                     pending = null
-                    if (cmd != null) viewModel.runCommand(cmd, cwd)
+                    if (cmd != null) viewModel.runCommand(cmd, state.terminalCwd)
                 }) { Text("Exécuter quand même", color = colors.danger) }
             },
             dismissButton = { TextButton(onClick = { pending = null }) { Text("Annuler") } },
         )
     }
 }
+
+/** The prompt a command was typed at, kept for the transcript. */
+private fun TerminalEntry.cwdPrompt(current: String): String = TerminalPaths.prompt(current)
+
 
 /**
  * What the Git card is about to do, once the owner confirms it. Kept local to the screen:

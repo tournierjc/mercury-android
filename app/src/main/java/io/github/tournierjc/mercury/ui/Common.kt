@@ -3,6 +3,7 @@ package io.github.tournierjc.mercury.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -161,8 +162,9 @@ fun CollapsibleSection(
     // Flat, like the conversation: a label and hairline-separated rows, no card around every
     // block. Twelve rounded panels stacked on a phone read as a settings dump.
     if (open) {
+        // 10 dp of air under the header: the title is a label, not a lead-in glued to the text.
         Column(
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 14.dp),
             content = content,
         )
         HorizontalDivider(color = colors.hairline)
@@ -184,19 +186,35 @@ data class QuickAction(
     val enabled: Boolean = true,
 )
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun IconActionBar(
     actions: List<QuickAction>,
     modifier: Modifier = Modifier,
+    /** Centred when the bar is the section's only control: a lone button hugs the left edge. */
+    centered: Boolean = false,
 ) {
     val colors = LocalMercuryColors.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(androidx.compose.foundation.rememberScrollState())
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+    // Wrapping, not scrolling: seven actions on a phone were cut mid-label at the screen edge
+    // ("Désact…"), which reads as a rendering bug rather than as a list that continues.
+    val container = @Composable { content: @Composable () -> Unit ->
+        if (centered) {
+            Row(
+                modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) { content() }
+        } else {
+            FlowRow(
+                modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                // Four per line, always: a row of seven either overflows or crowds, and the
+                // break lands in the same place on every phone width.
+                maxItemsInEachRow = 4,
+            ) { content() }
+        }
+    }
+    container {
         actions.forEach { action ->
             val tint = action.tint ?: colors.textPrimary
             Column(
