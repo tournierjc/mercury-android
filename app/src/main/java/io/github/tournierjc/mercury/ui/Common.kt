@@ -2,6 +2,8 @@ package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +22,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +50,8 @@ fun ScreenHeader(
     subtitle: String? = null,
     onBack: () -> Unit,
     onRefresh: (() -> Unit)? = null,
+    /** Before the title — a bot's face, when the screen is about someone. */
+    leading: (@Composable () -> Unit)? = null,
     /** Extra trailing actions — a "+", a menu — drawn after the refresh button. */
     actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
@@ -58,6 +64,9 @@ fun ScreenHeader(
     ) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Retour", tint = colors.textPrimary)
+        }
+        if (leading != null) {
+            Box(modifier = Modifier.padding(start = 2.dp, end = 8.dp)) { leading() }
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -149,8 +158,81 @@ fun CollapsibleSection(
             modifier = Modifier.size(18.dp),
         )
     }
-    if (open) CardBlock(content = content)
+    // Flat, like the conversation: a label and hairline-separated rows, no card around every
+    // block. Twelve rounded panels stacked on a phone read as a settings dump.
+    if (open) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), content = content)
+        HorizontalDivider(color = colors.hairline)
+    }
 }
+
+/**
+ * One round icon button with a one-word label — the vocabulary the conversation screens use.
+ *
+ * Text buttons in a row ("Démarrer · Arrêter · Exécuter · Désactiver · Supprimer") are five
+ * identical grey words; a glyph with a label underneath is read at a glance, and the label is
+ * still there for anyone who does not know the icon.
+ */
+data class QuickAction(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val onClick: () -> Unit,
+    val tint: androidx.compose.ui.graphics.Color? = null,
+    val enabled: Boolean = true,
+)
+
+@Composable
+fun IconActionBar(
+    actions: List<QuickAction>,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalMercuryColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        actions.forEach { action ->
+            val tint = action.tint ?: colors.textPrimary
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .width(72.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(enabled = action.enabled) { action.onClick() }
+                    .padding(vertical = 6.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(
+                            colors.surface,
+                            RoundedCornerShape(14.dp),
+                        ),
+                ) {
+                    Icon(
+                        imageVector = action.icon,
+                        contentDescription = action.label,
+                        tint = if (action.enabled) tint else colors.textSecondary.copy(alpha = 0.4f),
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+                Text(
+                    text = action.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (action.enabled) colors.textSecondary else colors.textSecondary.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 5.dp),
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 fun KeyValueRow(label: String, value: String, highlight: Boolean = false) {

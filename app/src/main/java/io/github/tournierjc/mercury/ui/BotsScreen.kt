@@ -29,8 +29,24 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.automirrored.rounded.Chat
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AddAPhoto
+import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.HideImage
+import androidx.compose.material.icons.rounded.IosShare
+import androidx.compose.material.icons.rounded.PersonAddAlt
+import androidx.compose.material.icons.rounded.PersonRemove
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -122,12 +138,22 @@ fun BotsScreen(
             },
             onBack = { if (state.selectedId == null) onBack() else viewModel.select(null) },
             onRefresh = viewModel::refreshRoster,
+            leading = selected?.let { bot -> { BotFace(bot, state.selectedId?.let { avatars[it] }, small = true) } },
         ) {
             // A teammate can be made from the app: until now the roster was read-only and a
             // bot had to be created with a POST or by hand.
             if (state.selectedId == null) {
                 IconButton(onClick = { showNewBot = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = "Nouvel équipier", tint = colors.accent)
+                }
+            } else {
+                // The conversation is one tap away from the sheet, like in the chat's top bar.
+                IconButton(onClick = { onOpenChat(state.selectedId!!) }) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.Chat,
+                        contentDescription = "Conversation",
+                        tint = colors.textSecondary,
+                    )
                 }
             }
         }
@@ -376,36 +402,69 @@ private fun BotDetail(
         KeyValueRow("Dernier passage", BotJson.lastRunState(bot).ifBlank { "—" })
         BotJson.description(bot).takeIf { it.isNotBlank() }?.let { KeyValueRow("Rôle", it) }
         KeyValueRow("Modèle", BotJson.model(bot).ifBlank { "défaut" })
-        ButtonRow {
-            TextButton(
-                onClick = {
-                    avatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                },
-            ) { Text(if (avatars[id] != null) "Changer la photo" else "Photo") }
-            if (avatars[id] != null) {
-                TextButton(onClick = { viewModel.removeAvatar(id) }) { Text("Retirer la photo") }
-            }
+        // Glyphs, not five identical grey words: the same vocabulary as the conversation
+        // screen's top bar. Every label is also the icon's content description.
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = if (avatars[id] != null) Icons.Rounded.PhotoCamera else Icons.Rounded.AddAPhoto,
+                    label = if (avatars[id] != null) "Photo" else "Photo",
+                    onClick = {
+                        avatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.PlayArrow,
+                    label = "Démarrer",
+                    enabled = !state.busy,
+                    onClick = { viewModel.start(id) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Stop,
+                    label = "Arrêter",
+                    enabled = !state.busy,
+                    onClick = { viewModel.stop(id) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Bolt,
+                    label = "Exécuter",
+                    enabled = !state.busy,
+                    onClick = { viewModel.run(id) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.PowerSettingsNew,
+                    label = if (BotJson.enabled(bot)) "Désactiver" else "Activer",
+                    tint = if (BotJson.enabled(bot)) colors.textPrimary else colors.accent,
+                    enabled = !state.busy,
+                    onClick = { viewModel.setEnabled(id, !BotJson.enabled(bot)) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.IosShare,
+                    label = "Partager",
+                    enabled = !state.busy,
+                    onClick = { viewModel.exportBundle(id) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.DeleteOutline,
+                    label = "Supprimer",
+                    tint = colors.danger,
+                    onClick = { confirmDelete = true },
+                ),
+            ),
+        )
+        if (avatars[id] != null) {
+            IconActionBar(
+                listOf(
+                    QuickAction(
+                        icon = Icons.Rounded.HideImage,
+                        label = "Sans photo",
+                        onClick = { viewModel.removeAvatar(id) },
+                    ),
+                ),
+            )
         }
         avatarError?.let { message ->
             Text(message, color = colors.danger, style = MaterialTheme.typography.labelSmall)
-        }
-        ButtonRow {
-            TextButton(onClick = { viewModel.start(id) }) { Text("Démarrer") }
-            TextButton(onClick = { viewModel.stop(id) }) { Text("Arrêter") }
-            TextButton(onClick = { viewModel.run(id) }) { Text("Exécuter") }
-            TextButton(onClick = { viewModel.setEnabled(id, !BotJson.enabled(bot)) }) {
-                Text(if (BotJson.enabled(bot)) "Désactiver" else "Activer")
-            }
-            // Next to the other actions, because a destructive action buried at the bottom of
-            // the sheet is a destructive action nobody finds.
-            TextButton(onClick = { confirmDelete = true }) {
-                Text("Supprimer", color = colors.danger)
-            }
-        }
-        ButtonRow {
-            TextButton(onClick = { viewModel.exportBundle(id) }, enabled = !state.busy) {
-                Text("Exporter le bundle")
-            }
         }
         Text(
             text = "Le bundle contient l'identité, le persona, les permissions et les skills — jamais les secrets " +
@@ -423,9 +482,11 @@ private fun BotDetail(
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
-        ButtonRow {
-            TextButton(onClick = { onOpenChat(id) }) { Text("Ouvrir la conversation") }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(icon = Icons.AutoMirrored.Rounded.Chat, label = "Conversation", onClick = { onOpenChat(id) }),
+            ),
+        )
         OutlinedTextField(
             value = dispatchText,
             onValueChange = { dispatchText = it },
@@ -442,8 +503,8 @@ private fun BotDetail(
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.textSecondary,
                         )
-                        TextButton(onClick = { dispatchFiles = dispatchFiles - file }) {
-                            Text("✕", color = colors.danger)
+                        IconButton(onClick = { dispatchFiles = dispatchFiles - file }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Retirer ${file.name}", tint = colors.danger)
                         }
                     }
                 }
@@ -460,22 +521,29 @@ private fun BotDetail(
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
-        ButtonRow {
-            TextButton(onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) }) {
-                Text("Joindre")
-            }
-            TextButton(
-                onClick = {
-                    viewModel.dispatch(dispatchText, dispatchFiles)
-                    // Cleared at once: a refusal comes back in the feedback line with its
-                    // reason, and re-picking a file is cheaper than a stale batch.
-                    dispatchText = ""
-                    dispatchFiles = emptyList()
-                    dispatchFileError = null
-                },
-                enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty()),
-            ) { Text("Envoyer") }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.AttachFile,
+                    label = "Joindre",
+                    onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
+                ),
+                QuickAction(
+                    icon = Icons.AutoMirrored.Rounded.Send,
+                    label = "Envoyer",
+                    tint = colors.accent,
+                    enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty()),
+                    onClick = {
+                        viewModel.dispatch(dispatchText, dispatchFiles)
+                        // Cleared at once: a refusal comes back in the feedback line with its
+                        // reason, and re-picking a file is cheaper than a stale batch.
+                        dispatchText = ""
+                        dispatchFiles = emptyList()
+                        dispatchFileError = null
+                    },
+                ),
+            ),
+        )
     }
 
     CollapsibleSection("Persona") {
@@ -492,12 +560,17 @@ private fun BotDetail(
             textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             modifier = Modifier.fillMaxWidth(),
         )
-        ButtonRow {
-            TextButton(
-                onClick = { viewModel.savePersona(personaText) },
-                enabled = !state.busy && personaText.isNotBlank() && personaText != state.persona,
-            ) { Text("Enregistrer le persona") }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Check,
+                    label = "Enregistrer",
+                    tint = colors.accent,
+                    enabled = !state.busy && personaText.isNotBlank() && personaText != state.persona,
+                    onClick = { viewModel.savePersona(personaText) },
+                ),
+            ),
+        )
     }
 
     CollapsibleSection("Permissions") {
@@ -573,17 +646,24 @@ private fun BotDetail(
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            ButtonRow {
-                TextButton(onClick = { viewModel.detachCrew(BotJson.parent(bot), id) }) {
-                    Text("Quitter la flotte")
-                }
-            }
+            IconActionBar(
+                listOf(
+                    QuickAction(
+                        icon = Icons.Rounded.PersonRemove,
+                        label = "Quitter",
+                        tint = colors.danger,
+                        onClick = { viewModel.detachCrew(BotJson.parent(bot), id) },
+                    ),
+                ),
+            )
         }
-        ButtonRow {
-            TextButton(onClick = { viewModel.promote(id) }) { Text("Promouvoir") }
-            TextButton(onClick = { viewModel.autoCrew(id) }) { Text("Flotte auto") }
-            TextButton(onClick = { showAddCrew = true }) { Text("Ajouter un membre") }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(icon = Icons.Rounded.Star, label = "Promouvoir", onClick = { viewModel.promote(id) }),
+                QuickAction(icon = Icons.Rounded.AutoAwesome, label = "Auto", onClick = { viewModel.autoCrew(id) }),
+                QuickAction(icon = Icons.Rounded.PersonAddAlt, label = "Membre", onClick = { showAddCrew = true }),
+            ),
+        )
     }
 
     if (state.tasks.isNotEmpty()) {
@@ -657,9 +737,16 @@ private fun BotDetail(
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
-        ButtonRow {
-            TextButton(onClick = { confirmDelete = true }) { Text("Supprimer", color = colors.danger) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.DeleteOutline,
+                    label = "Supprimer",
+                    tint = colors.danger,
+                    onClick = { confirmDelete = true },
+                ),
+            ),
+        )
     }
 
     if (showAddCrew) {
