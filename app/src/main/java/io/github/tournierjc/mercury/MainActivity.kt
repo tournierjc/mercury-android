@@ -3,6 +3,7 @@ package io.github.tournierjc.mercury
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -13,10 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.bots.AttentionPrefs
+import io.github.tournierjc.mercury.bots.BotNotifier
 import io.github.tournierjc.mercury.bots.WatchService
 import io.github.tournierjc.mercury.ui.ChatScreen
 import io.github.tournierjc.mercury.ui.ConnectScreen
@@ -26,12 +29,16 @@ import io.github.tournierjc.mercury.vm.ChatViewModel
 
 class MainActivity : ComponentActivity() {
 
+    /** Bot named by the notification being opened, if any — consumed by the UI once shown. */
+    private val pendingBotId = mutableStateOf<String?>(null)
+
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* refus = pas de notif, l'app continue */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        pendingBotId.value = intent?.getStringExtra(BotNotifier.EXTRA_BOT_ID)
         val container = (application as MercuryApp).container
         askForNotifications()
         // The watch service survives the activity, but a reboot (or a system kill) does not
@@ -45,10 +52,20 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(LocalMercuryColors.current.canvas),
                 ) {
-                    MercuryRoot(container)
+                    MercuryRoot(container, pendingBotId.value) { pendingBotId.value = null }
                 }
             }
         }
+    }
+
+    /**
+     * A second tap on a notification while the app is already open: same destination as the
+     * first one, instead of leaving the owner wherever they were.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra(BotNotifier.EXTRA_BOT_ID)?.let { pendingBotId.value = it }
     }
 
     /** Bot notifications need POST_NOTIFICATIONS on Android 13+; a refusal is harmless. */
@@ -60,7 +77,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MercuryRoot(container: AppContainer) {
+private fun MercuryRoot(container: AppContainer, openBotId: String?, onBotOpened: () -> Unit) {
     val viewModel: ChatViewModel = viewModel(factory = ChatViewModel.factory(container))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val threads by viewModel.threads.collectAsStateWithLifecycle()
@@ -94,6 +111,8 @@ private fun MercuryRoot(container: AppContainer) {
             onSignOut = viewModel::signOut,
             onDismissError = viewModel::dismissError,
             onDismissWarning = viewModel::dismissWarning,
+            openBotId = openBotId,
+            onOpenBotConsumed = onBotOpened,
         )
     }
 }

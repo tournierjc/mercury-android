@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -246,13 +248,17 @@ fun JsonObject.detailHint(): String {
 
 /** Row of compact text actions under a list entry (start/stop/delete…). */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun ButtonRow(content: @Composable () -> Unit) {
-    Row(
+    // FlowRow, not Row: four actions in a card overflowed on a phone and the last one
+    // ("Désactiver") was pushed off the screen edge instead of wrapping.
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 6.dp)
             .background(LocalMercuryColors.current.surfaceMuted, RoundedCornerShape(14.dp))
             .padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.Center,
     ) { content() }
 }

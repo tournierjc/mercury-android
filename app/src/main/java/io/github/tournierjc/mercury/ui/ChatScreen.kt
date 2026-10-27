@@ -37,9 +37,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,7 +64,7 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class Screen { Chat, Bridge, Settings, Console, Memory, Boards, Bots }
+private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots }
 
 private val suggestions = listOf(
     "Que sais-tu de ce Spark ?",
@@ -85,9 +87,31 @@ fun ChatScreen(
     onSignOut: () -> Unit,
     onDismissError: () -> Unit,
     onDismissWarning: () -> Unit,
+    /** Bot named by the notification the owner tapped, opened once the screen is up. */
+    openBotId: String? = null,
+    onOpenBotConsumed: () -> Unit = {},
 ) {
     val colors = LocalMercuryColors.current
     var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
+    var botToOpen by remember { mutableStateOf<String?>(null) }
+
+    // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
+    // bot id, and the app lands on that bot instead of the last conversation.
+    LaunchedEffect(openBotId) {
+        if (openBotId != null) {
+            botToOpen = openBotId
+            screen = Screen.Bots
+            onOpenBotConsumed()
+        }
+    }
+
+    // Back closes what is on top; it never leaves the app while something is open. The
+    // screens each drew their own back arrow, but the system button is the one a thumb finds.
+    BackHandler(enabled = screen != Screen.Chat) {
+        screen = Screen.Chat
+        botToOpen = null
+    }
+
     when (screen) {
         Screen.Bridge -> {
             BridgeScreen(onBack = { screen = Screen.Chat })
@@ -115,7 +139,19 @@ fun ChatScreen(
         }
 
         Screen.Bots -> {
-            BotsScreen(onBack = { screen = Screen.Chat })
+            BotsScreen(
+                onBack = {
+                    screen = Screen.Chat
+                    botToOpen = null
+                },
+                initialBotId = botToOpen,
+                onOpened = { botToOpen = null },
+            )
+            return
+        }
+
+        Screen.Deliverables -> {
+            DeliverablesScreen(onBack = { screen = Screen.Chat })
             return
         }
 
@@ -178,6 +214,9 @@ fun ChatScreen(
         }
     }
 
+    // Inside the chat itself, back closes the drawer before it closes the app.
+    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -214,6 +253,10 @@ fun ChatScreen(
                 },
                 onOpenBots = {
                     screen = Screen.Bots
+                    scope.launch { drawerState.close() }
+                },
+                onOpenDeliverables = {
+                    screen = Screen.Deliverables
                     scope.launch { drawerState.close() }
                 },
                 onDeleteThread = { thread ->

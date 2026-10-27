@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +57,7 @@ import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.util.ShareText
 import io.github.tournierjc.mercury.vm.BotsUiState
+import io.github.tournierjc.mercury.vm.Exchange
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -69,7 +71,12 @@ import kotlinx.serialization.json.contentOrNull
  * fallback, not the default. `hasAvatar` on the roster tells us whether to fetch at all.
  */
 @Composable
-fun BotsScreen(onBack: () -> Unit) {
+fun BotsScreen(
+    onBack: () -> Unit,
+    /** Opened straight onto this bot — used when the notification names one. */
+    initialBotId: String? = null,
+    onOpened: () -> Unit = {},
+) {
     val context = LocalContext.current
     val container = remember { (context.applicationContext as MercuryApp).container }
     val viewModel: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
@@ -78,6 +85,12 @@ fun BotsScreen(onBack: () -> Unit) {
     val avatars by viewModel.avatars.collectAsState()
     // Faces are fetched only for bots whose roster entry says they have one.
     LaunchedEffect(watch.bots) { viewModel.loadAvatars(watch.bots) }
+    LaunchedEffect(initialBotId) {
+        if (initialBotId != null) {
+            viewModel.select(initialBotId)
+            onOpened()
+        }
+    }
     val colors = LocalMercuryColors.current
 
     Column(
@@ -353,20 +366,30 @@ private fun BotDetail(
         )
     }
 
-    SectionTitle("Lancer en arrière-plan")
+    SectionTitle("Discussion")
     CardBlock {
         Text(
-            text = "La tâche est mise en file : la réponse revient immédiatement (202 + jobId) et " +
-                "l'équipier travaille sans bloquer son fil. La file s'affiche en haut de la liste.",
+            text = "Vous écrivez, il travaille. Chaque message part en tâche de fond et sa réponse " +
+                "arrive à la fin du run — pas en streaming comme dans la conversation principale.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
+        val exchanges = state.discussion.takeLast(8)
+        if (exchanges.isEmpty()) {
+            Text(
+                text = "Aucun échange pour l'instant.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        exchanges.forEach { exchange -> ExchangeRow(exchange) }
         OutlinedTextField(
             value = dispatchText,
             onValueChange = { dispatchText = it },
-            label = { Text("Tâche à confier") },
+            label = { Text("Écrire à cet équipier") },
             minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
         if (dispatchFiles.isNotEmpty()) {
             ButtonRow {
@@ -409,7 +432,7 @@ private fun BotDetail(
                     dispatchFileError = null
                 },
                 enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty()),
-            ) { Text("Mettre en file") }
+            ) { Text("Envoyer") }
         }
     }
 
@@ -703,4 +726,54 @@ private fun AddCrewSheet(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
     )
+}
+
+
+/**
+ * One turn of the discussion: the owner's message on the right, the bot's answer on the left.
+ * No streaming — a bot's answer lands when its run ends, and saying so in the empty state is
+ * better than a spinner that pretends otherwise.
+ */
+@Composable
+private fun ExchangeRow(exchange: Exchange) {
+    val colors = LocalMercuryColors.current
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        if (exchange.prompt.isNotBlank()) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Text(
+                    text = exchange.prompt,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.canvas,
+                    modifier = Modifier
+                        .widthIn(max = 260.dp)
+                        .background(colors.accent, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
+        }
+        if (exchange.reply.isNotBlank()) {
+            Text(
+                text = exchange.reply,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary,
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .widthIn(max = 300.dp)
+                    .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        } else {
+            val label = when (exchange.state) {
+                "failed", "error" -> "échec"
+                "completed" -> "sans réponse"
+                else -> "en cours…"
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (exchange.state == "failed" || exchange.state == "error") colors.danger else colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
 }

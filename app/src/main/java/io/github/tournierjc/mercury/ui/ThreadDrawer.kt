@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.ViewKanban
 import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Terminal
@@ -54,6 +55,7 @@ fun ThreadDrawer(
     onOpenMemory: () -> Unit,
     onOpenBoards: () -> Unit,
     onOpenBots: () -> Unit,
+    onOpenDeliverables: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
@@ -126,6 +128,7 @@ fun ThreadDrawer(
             Spacer(modifier = Modifier.padding(top = 8.dp))
             HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 10.dp))
             DrawerEntry(label = "Équipiers", icon = Icons.Rounded.SmartToy, onClick = onOpenBots)
+            DrawerEntry(label = "Livrables", icon = Icons.Rounded.FolderOpen, onClick = onOpenDeliverables)
             DrawerEntry(label = "Plateaux", icon = Icons.Rounded.ViewKanban, onClick = onOpenBoards)
             DrawerEntry(label = "Mémoire", icon = Icons.Rounded.Psychology, onClick = onOpenMemory)
             DrawerEntry(label = "Console", icon = Icons.Rounded.Terminal, onClick = onOpenConsole)
