@@ -76,15 +76,20 @@ fun MarkdownText(
                     }
                 }
 
-                is MdBlock.Code -> when (block.language.trim().lowercase()) {
+                is MdBlock.Code -> when {
                     // A rendered answer from the openui contract: components instead of source.
-                    OpenUi.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
+                    block.language.trim().lowercase() == OpenUi.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
                         OpenUiBlock(spec = block.content, streaming = streaming)
                     }
                     // A patch: the same fence the dashboard's diff-view plugin claims.
-                    Diff.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
+                    block.language.trim().lowercase() == Diff.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
                         DiffBlock(text = block.content)
                     }
+                    // A model that forgot the tag: claim the block only when it really is a spec.
+                    block.language.isBlank() && !streaming && OpenUi.looksLikeSpec(block.content) ->
+                        Column(modifier = Modifier.padding(top = spacing)) {
+                            OpenUiBlock(spec = block.content, streaming = false)
+                        }
                     else -> Column(
                         modifier = Modifier
                             .padding(top = spacing)

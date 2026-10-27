@@ -34,7 +34,9 @@ object OpenUi {
 
     private val LAYOUT = setOf("Stack")
 
-    private val COMPONENTS = setOf("Stack", "Text", "Card", "KeyValue", "Table", "List", "Stat", "Code", "Chart")
+    private val COMPONENTS = setOf(
+        "Stack", "Text", "Card", "KeyValue", "Table", "List", "Stat", "Code", "Chart", "Pie", "Gauge",
+    )
 
     /** Props that would make a client fetch, execute or embed something. Refused whole-spec. */
     private val FORBIDDEN = setOf(
@@ -52,6 +54,8 @@ object OpenUi {
         "Stat" to setOf("label", "value", "delta", "tone"),
         "Code" to setOf("code", "language", "title"),
         "Chart" to setOf("kind", "labels", "values", "title", "unit"),
+        "Pie" to setOf("kind", "labels", "values", "title", "unit", "legend"),
+        "Gauge" to setOf("value", "max", "label", "unit", "tone", "title"),
     )
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = false }
@@ -128,6 +132,7 @@ object OpenUi {
                 return@forEachIndexed
             }
             errors += checkProps(id, component, props, number)
+            errors += checkSemantics(id, component, props, number)
             nodes[id] = Node(id, component, props = props)
         }
 
@@ -173,14 +178,37 @@ object OpenUi {
                 key == "columns" || key == "labels" || key == "items" ->
                     if (!isStringList(value, MAX_STRING)) errors += "ligne $line : `$key` doit être une liste de chaînes"
                 key == "values" -> if (!isNumberList(value)) errors += "ligne $line : `values` doit être une liste de nombres"
+                // `isString` matters: JsonPrimitive.doubleOrNull happily parses "42", and a
+                // quoted number is exactly what the contract refuses — a renderer that has to
+                // parse a string is a renderer that guesses.
+                key == "value" && component == "Gauge" -> {
+                    val number = (value as? JsonPrimitive)
+                    if (number == null || number.isString || number.doubleOrNull == null) {
+                        errors += "ligne $line : `value` doit être un nombre"
+                    }
+                }
+                key == "max" -> {
+                    val number = value as? JsonPrimitive
+                    if (number == null || number.isString || number.doubleOrNull == null || number.doubleOrNull!! <= 0) {
+                        errors += "ligne $line : `max` doit être un nombre positif"
+                    }
+                }
+                key == "legend" -> if (value.jsonPrimitive.booleanOrNull == null) {
+                    errors += "ligne $line : `legend` doit être vrai ou faux"
+                }
                 key == "highlight" || key == "ordered" || key == "muted" ->
                     if (value.jsonPrimitive.booleanOrNull == null) errors += "ligne $line : `$key` doit être vrai ou faux"
                 key == "code" -> {
                     val text = (value as? JsonPrimitive)?.contentOrNullSafe()
                     if (text == null || text.length > MAX_CODE) errors += "ligne $line : `code` dépasse $MAX_CODE caractères"
                 }
-                key == "kind" -> if ((value as? JsonPrimitive)?.contentOrNullSafe() !in setOf("bar", "line")) {
-                    errors += "ligne $line : `kind` doit valoir bar ou line"
+                key == "kind" -> {
+                    // `kind` names a variant of the component, not a fixed vocabulary: a Chart
+                    // is bar or line, a Pie is pie or donut.
+                    val allowedKinds = if (component == "Pie") setOf("pie", "donut") else setOf("bar", "line")
+                    if ((value as? JsonPrimitive)?.contentOrNullSafe() !in allowedKinds) {
+                        errors += "ligne $line : `kind` doit valoir ${allowedKinds.joinToString(" ou ")}"
+                    }
                 }
                 key == "tone" -> if ((value as? JsonPrimitive)?.contentOrNullSafe() !in setOf("neutral", "ok", "warn", "danger")) {
                     errors += "ligne $line : `tone` inconnu"
@@ -196,6 +224,40 @@ object OpenUi {
             }
         }
         return errors
+    }
+
+    /**
+     * Rules a per-prop type cannot express, mirrored from the daemon's parser: a pie needs as
+     * many labels as values, no negative slice and something to divide.
+     */
+    private fun checkSemantics(id: String, component: String, props: JsonObject, line: Int): List<String> {
+        if (component != "Pie") return emptyList()
+        val errors = mutableListOf<String>()
+        val labels = (props["labels"] as? JsonArray).orEmpty()
+        val values = (props["values"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull }.orEmpty()
+        if (labels.size != values.size) {
+            errors += "ligne $line : `$id` a ${labels.size} libellés et ${values.size} valeurs"
+        }
+        if (labels.size > 12) errors += "ligne $line : `$id` a ${labels.size} parts, la limite est 12"
+        if (values.any { it < 0 }) errors += "ligne $line : `$id` a une part négative"
+        if (values.isNotEmpty() && values.sum() <= 0) errors += "ligne $line : les parts de `$id` font zéro"
+        return errors
+    }
+
+    /**
+     * A bare fence whose body is a complete spec.
+     *
+     * Models forget the language tag — ` ``` ` instead of ` ```openui ` — and the answer then
+     * arrived as source code the owner had to read. The tag is claimed back only when the
+     * whole body parses: a snippet that merely mentions a component stays a code block, which
+     * is the conservative half of a guess.
+     */
+    fun looksLikeSpec(text: String): Boolean {
+        val mentionsComponent = text.lineSequence().any { line ->
+            COMPONENTS.any { component -> line.contains("= $component(") }
+        }
+        if (!mentionsComponent) return false
+        return parse(text) is Result.Rendered
     }
 
     private fun parseIds(raw: String): List<String> {
@@ -249,6 +311,8 @@ object OpenUi {
         fun flag(key: String): Boolean = (props?.get(key) as? JsonPrimitive)?.booleanOrNull ?: false
         fun strings(key: String): List<String> =
             (props?.get(key) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNullSafe() }.orEmpty()
+        fun numbers(key: String): List<Double> =
+            (props?.get(key) as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull }.orEmpty()
         fun matrix(key: String): List<List<String>> =
             (props?.get(key) as? JsonArray)?.map { row ->
                 (row as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNullSafe() }.orEmpty()
@@ -266,9 +330,25 @@ object OpenUi {
             "Chart" -> OpenUiNode.Chart(
                 kind = text("kind") ?: "bar",
                 labels = strings("labels"),
-                values = (props?.get("values") as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull }.orEmpty(),
+                values = numbers("values"),
                 title = text("title"),
                 unit = text("unit"),
+            )
+            "Pie" -> OpenUiNode.Pie(
+                kind = text("kind") ?: "donut",
+                labels = strings("labels"),
+                values = numbers("values"),
+                title = text("title"),
+                unit = text("unit"),
+                legend = (props?.get("legend") as? JsonPrimitive)?.booleanOrNull ?: true,
+            )
+            "Gauge" -> OpenUiNode.Gauge(
+                value = (props?.get("value") as? JsonPrimitive)?.doubleOrNull ?: 0.0,
+                max = (props?.get("max") as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 } ?: 100.0,
+                label = text("label"),
+                unit = text("unit"),
+                tone = text("tone") ?: "neutral",
+                title = text("title"),
             )
             else -> null
         }
@@ -298,5 +378,25 @@ sealed interface OpenUiNode {
         val values: List<Double>,
         val title: String?,
         val unit: String?,
+    ) : OpenUiNode
+
+    /** A part-to-whole figure: `kind` is `pie` or `donut`, the default. */
+    data class Pie(
+        val kind: String,
+        val labels: List<String>,
+        val values: List<Double>,
+        val title: String?,
+        val unit: String?,
+        val legend: Boolean,
+    ) : OpenUiNode
+
+    /** One value against its maximum, drawn as a half ring. */
+    data class Gauge(
+        val value: Double,
+        val max: Double,
+        val label: String?,
+        val unit: String?,
+        val tone: String,
+        val title: String?,
     ) : OpenUiNode
 }
