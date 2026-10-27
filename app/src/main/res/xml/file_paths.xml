@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deliverables are written to the cache before they are shared: one directory, nothing
+  else of the app is exposed. The authority is ${applicationId}.fileprovider so the
+  debug build (io.github.tournierjc.mercury.debug) never collides with the release one.
+-->
+<paths>
+    <cache-path name="deliverables" path="deliverables/" />
+</paths>

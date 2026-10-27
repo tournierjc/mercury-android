@@ -22,6 +22,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +35,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.util.isDestructiveCommand
 import kotlinx.serialization.json.JsonObject
 import io.github.tournierjc.mercury.util.formatTokens
@@ -75,6 +78,15 @@ fun ConsoleScreen(onBack: () -> Unit) {
         state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
         state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
 
+        // Same handoff as the bot sheet: bytes downloaded, FileProvider URI, share sheet.
+        val pendingShare = state.pendingShare
+        LaunchedEffect(pendingShare) {
+            if (pendingShare != null) {
+                runCatching { OutputSharing.share(context, pendingShare) }
+                viewModel.consumeShare()
+            }
+        }
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -86,6 +98,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             CodeSection(state, viewModel)
             BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
             FleetSection(state, viewModel, onAddCrew = { showAddCrew = true })
+            FleetInboxSection(state, viewModel)
             TerminalSection(state, viewModel)
             TasksSection(state, viewModel)
             SchedulesSection(state, viewModel)
@@ -198,6 +211,37 @@ fun ConsoleScreen(onBack: () -> Unit) {
             dismissButton = { TextButton(onClick = { confirmRestart = false }) { Text("Annuler") } },
         )
     }
+
+    state.outputPreview?.let { preview ->
+        OutputPreviewDialog(
+            state = preview,
+            onDismiss = viewModel::dismissPreview,
+            onShare = {
+                viewModel.dismissPreview()
+                viewModel.shareOutput(preview.output)
+            },
+        )
+    }
+}
+
+/**
+ * Fleet inbox: everything the bots delivered, across the whole fleet — the same rows
+ * and the same three actions as the per-bot section, with the producing bot named.
+ */
+@Composable
+private fun FleetInboxSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val names = state.bots.associate { BotJson.id(it) to BotJson.name(it) }
+    DeliverablesSection(
+        title = "Livrables",
+        outputs = state.outputs,
+        botNames = names,
+        showOrigin = true,
+        busy = state.busy,
+        emptyText = "Aucun livrable dans la flotte pour l'instant.",
+        onPreview = viewModel::previewOutput,
+        onShare = viewModel::shareOutput,
+        onDelete = viewModel::deleteOutput,
+    )
 }
 
 @Composable
