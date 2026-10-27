@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Deliverables are written to the cache before they are shared: one directory, nothing
-  else of the app is exposed. The authority is ${applicationId}.fileprovider so the
-  debug build (io.github.tournierjc.mercury.debug) never collides with the release one.
+  The two places a file leaves this app: a deliverable on its way to the share sheet, and a
+  card attachment on its way to the system viewer or a save. Both are cache-only, so nothing
+  a bot wrote or a board handed us ends up in shared storage. The authority is
+  ${applicationId}.fileprovider so a debug build never collides with a release one.
 -->
 <paths>
     <cache-path name="deliverables" path="deliverables/" />
+    <cache-path name="board_attachments" path="boards/" />
 </paths>

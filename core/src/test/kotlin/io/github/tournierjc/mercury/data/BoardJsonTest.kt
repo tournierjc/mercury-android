@@ -88,4 +88,60 @@ class BoardJsonTest {
         assertTrue(BoardJson.boards(obj("""{"error":"Not available"}""")).isEmpty())
         assertNull(BoardJson.intField(null, "cardCount"))
     }
+
+    @Test
+    fun `an attachment reads its type, its size and whether it is an image`() {
+        val image = obj("""{"id":"att_1","name":"maquette.png","path":"/work/maquette.png","type":"image","size":20480,"addedBy":"agent"}""")
+        val text = obj("""{"id":"att_2","name":"rapport.md","path":"/work/rapport.md","type":"markdown","size":1312}""")
+        val unknown = obj("""{"id":"att_3"}""")
+
+        assertEquals("image", BoardJson.attachmentType(image))
+        assertEquals(20480L, BoardJson.attachmentSize(image))
+        assertTrue(BoardJson.attachmentIsImage(image))
+        assertEquals("image/png", BoardJson.attachmentMimeType(image))
+
+        assertEquals("markdown", BoardJson.attachmentType(text))
+        assertEquals(false, BoardJson.attachmentIsImage(text))
+        assertEquals("text/markdown", BoardJson.attachmentMimeType(text))
+
+        assertEquals("", BoardJson.attachmentType(unknown))
+        assertNull(BoardJson.attachmentSize(unknown))
+        assertEquals("application/octet-stream", BoardJson.attachmentMimeType(unknown))
+    }
+
+    @Test
+    fun `an image is recognised by its name even when the type is generic`() {
+        assertTrue(BoardJson.attachmentIsImage(obj("""{"id":"a","name":"photo.JPG","type":"other"}""")))
+        assertEquals("image/jpeg", BoardJson.attachmentMimeType(obj("""{"id":"a","name":"photo.JPG","type":"other"}""")))
+        assertEquals(
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            BoardJson.attachmentMimeType(obj("""{"id":"a","name":"points.pptx","type":"presentation"}""")),
+        )
+    }
+
+    @Test
+    fun `attachment content reads the payload of the content route`() {
+        val root = obj("""{"ok":true,"attachment":{"id":"att_1"},"content":"# Titre\ncorps","size":13}""")
+        assertEquals("# Titre\ncorps", BoardJson.attachmentContent(root))
+        assertEquals("", BoardJson.attachmentContent(obj("""{"ok":false,"error":"File not found on disk"}""")))
+    }
+
+    @Test
+    fun `only a text deliverable is read through the content route`() {
+        assertTrue(BoardJson.attachmentIsText(obj("""{"id":"a","name":"rapport.md","type":"markdown"}""")))
+        assertTrue(BoardJson.attachmentIsText(obj("""{"id":"a","name":"notes.txt"}""")))
+        assertEquals(false, BoardJson.attachmentIsText(obj("""{"id":"a","name":"deck.pptx","type":"presentation"}""")))
+        assertEquals(false, BoardJson.attachmentIsText(obj("""{"id":"a","name":"scan.pdf","type":"document"}""")))
+        // An image is bytes, never text — even when the name looks like one.
+        assertEquals(false, BoardJson.attachmentIsText(obj("""{"id":"a","name":"plan.png","type":"image"}""")))
+    }
+
+    @Test
+    fun `a feedback request hands its question over`() {
+        assertEquals(
+            "Quel format ?",
+            BoardJson.feedbackQuestion(obj("""{"id":"fb_1","cardId":"c1","question":"Quel format ?"}""")),
+        )
+        assertEquals("", BoardJson.feedbackQuestion(obj("""{"id":"fb_2"}""")))
+    }
 }
