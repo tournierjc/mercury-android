@@ -54,20 +54,16 @@ fun DeliverablesScreen(onBack: () -> Unit) {
             title = stringResource(R.string.out_title),
             subtitle = when (state.outputs.size) {
                 0 -> stringResource(R.string.out_subtitle)
-                1 -> "1 fichier"
+                1 -> stringResource(R.string.out_one_file)
                 else -> stringResource(R.string.out_n_files, state.outputs.size)
             },
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
         FleetDeliverablesSection(state, viewModel, avatars)
+        // Same banner as every other screen: the error is dismissable, not a permanent stray line.
         state.error?.let { message ->
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.danger,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            InlineBanner(message = message, isError = true, onDismiss = viewModel::clearBanner)
         }
     }
 

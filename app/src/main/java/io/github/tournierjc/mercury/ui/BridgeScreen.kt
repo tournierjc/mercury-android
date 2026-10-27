@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -47,7 +46,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -112,17 +110,13 @@ fun BridgeScreen(onBack: () -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.bridge_back), tint = colors.textPrimary)
-            }
-            Text(
-                text = stringResource(R.string.bridge_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.textPrimary,
-            )
-        }
-
+        ScreenHeader(
+            title = stringResource(R.string.bridge_title),
+            onBack = onBack,
+            // The permissions it shows change outside this screen (system dialogs, a revocation in
+            // Réglages), so the header carries the same refresh as every other screen.
+            onRefresh = { refresh() },
+        )
         Text(
             text = stringResource(R.string.bridge_intro),
             style = MaterialTheme.typography.bodyMedium,
