@@ -781,7 +781,12 @@ private fun BotDetail(
                             if (selected) Modifier
                             else Modifier.border(1.dp, colors.hairlineStrong, RoundedCornerShape(12.dp)),
                         )
-                        .clickable { viewModel.setTier(id, tierId) }
+                        // Tapping the active tier takes it back: a choice you cannot undo is not
+                        // a choice. It returns the bot to the daemon's default document, which
+                        // belongs to no tier — hence no cell lit, which is a real state.
+                        .clickable {
+                            if (tier == tierId) viewModel.clearTier(id) else viewModel.setTier(id, tierId)
+                        }
                         .padding(vertical = 9.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
