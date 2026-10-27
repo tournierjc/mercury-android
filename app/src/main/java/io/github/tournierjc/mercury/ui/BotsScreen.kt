@@ -190,9 +190,7 @@ fun BotsScreen(
             )
         }
         state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
-        state.error?.let { notice ->
-            InlineBanner(noticeText(notice), isError = notice.severity == NoticeSeverity.Error, onDismiss = viewModel::clearBanner)
-        }
+        state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
         // A downloaded deliverable is handed to the share sheet from the screen: the
         // view model has no Context, and the slot is cleared so it fires exactly once.
@@ -489,9 +487,9 @@ private fun BotDetail(
         MediaPicker.read(context, uri, maxDimension = 1600)
             .onSuccess { file ->
                 val batch = dispatchFiles + file
-                val problem = Attachments.problemWith(batch)
+                val problem = attachmentNotice(Attachments.problemWith(batch))
                 if (problem != null) {
-                    dispatchFileError = problem
+                    dispatchFileError = noticeText(context, problem)
                 } else {
                     dispatchFiles = batch
                     dispatchFileError = null

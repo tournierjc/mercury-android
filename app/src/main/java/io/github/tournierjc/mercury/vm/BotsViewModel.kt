@@ -14,6 +14,7 @@ import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.toNotice
+import io.github.tournierjc.mercury.ui.attachmentNotice
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.RunRow
 import io.github.tournierjc.mercury.data.BotSlug
@@ -316,9 +317,9 @@ class BotsViewModel(
     fun dispatch(message: String, files: List<PendingFile> = emptyList(), chat: Boolean = false) {
         val id = _state.value.selectedId ?: return
         if (message.isBlank() && files.isEmpty()) return
-        val problem = Attachments.problemWith(files)
-        if (problem != null) {
-            _state.update { it.copy(error = Notice(NoticeKey.REQUEST_REFUSED).withDetail(problem)) }
+        val notice = attachmentNotice(Attachments.problemWith(files))
+        if (notice != null) {
+            _state.update { it.copy(error = notice) }
             return
         }
         viewModelScope.launch {

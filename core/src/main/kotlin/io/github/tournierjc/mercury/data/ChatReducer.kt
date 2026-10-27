@@ -50,7 +50,8 @@ data class ChatState(
     val streaming: Boolean = false,
     val connected: Boolean = false,
     val interactions: List<Interaction> = emptyList(),
-    val warning: String? = null,
+    /** A warning from the daemon: shown, does not stop the turn. */
+    val warning: Notice? = null,
     /** A failure the screen shows as a banner; the words are resolved where it is drawn. */
     val error: Notice? = null,
 ) {
@@ -156,7 +157,10 @@ object ChatReducer {
             model = event.model.ifBlank { state.model },
         )
 
-        is ChatEvent.Warning -> state.copy(warning = event.message.ifBlank { null })
+        is ChatEvent.Warning -> state.copy(
+            warning = event.message.takeIf { it.isNotBlank() }
+                ?.let { Notice(NoticeKey.SERVER_WARNING).withDetail(it).asWarning() },
+        )
 
         is ChatEvent.Failure -> state.copy(
             streaming = false,

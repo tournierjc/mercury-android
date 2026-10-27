@@ -13,6 +13,8 @@
     <string name="notice_dispatch_refused">Refusé</string>
     <string name="notice_name_required">Un nom est nécessaire</string>
     <string name="notice_restart_refused">Relance refusée</string>
+    <string name="notice_attachment_too_large">%1$s dépasse %2$d Mo</string>
+    <string name="notice_server_warning">Avertissement du serveur</string>
     <string name="notice_session_expired">Session expirée — reconnecte-toi</string>
     <string name="notice_request_refused">Requête refusée</string>
 </resources>

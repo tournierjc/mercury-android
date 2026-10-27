@@ -99,7 +99,8 @@ class ChatReducerTest {
         state = ChatReducer.onEvent(state, ChatEvent.TextDelta("en cours"))
         state = ChatReducer.onEvent(state, ChatEvent.Warning("boucle détectée"))
 
-        assertEquals("boucle détectée", state.warning)
+        assertEquals(NoticeKey.SERVER_WARNING, state.warning?.key)
+        assertEquals("boucle détectée", state.warning?.detail)
         assertTrue(state.streaming)
         state = ChatReducer.dismissWarning(state)
         assertNull(state.warning)

@@ -22,6 +22,8 @@ data class Notice(
         copy(detail = text?.trim()?.takeIf { it.isNotEmpty() })
 
     fun asInfo(): Notice = copy(severity = NoticeSeverity.Info)
+
+    fun asWarning(): Notice = copy(severity = NoticeSeverity.Warning)
 }
 
 /**
@@ -49,6 +51,12 @@ enum class NoticeKey {
 
     /** More files were attached than the composer accepts. */
     ATTACHMENTS_LIMIT,
+
+    /** One attachment is over the cap of its kind: `%1$s` its name, `%2$d` the cap in megabytes. */
+    ATTACHMENT_TOO_LARGE,
+
+    /** The daemon warned about the turn (a loop, a truncated tool) without stopping it. */
+    SERVER_WARNING,
 
     /** A turn was accepted for a teammate and queued behind the current one. */
     DISPATCH_QUEUED,
