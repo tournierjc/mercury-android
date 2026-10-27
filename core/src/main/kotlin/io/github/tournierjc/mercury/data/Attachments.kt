@@ -23,20 +23,32 @@ object Attachments {
     fun encode(bytes: ByteArray): String = Base64.getEncoder().encodeToString(bytes)
 
     /**
-     * Null when the batch can be sent, otherwise the reason, in French, ready for the UI.
+     * Null when the batch can be sent, otherwise why not — as a fact, not a sentence.
+     *
+     * It used to return French prose "ready for the UI", which ended up verbatim inside an
+     * English notice (`Notice.detail`): the words belong to the screen, the reason to the data.
      * Documents are told apart by a PDF header rather than by name, like the server does.
      */
-    fun problemWith(files: List<PendingFile>): String? {
+    fun problemWith(files: List<PendingFile>): AttachmentProblem? {
         if (files.isEmpty()) return null
-        if (files.size > MAX_FILES) return "4 pièces jointes au maximum"
+        if (files.size > MAX_FILES) return AttachmentProblem.TooMany
         for (file in files) {
             val limit = if (file.isPdf()) MAX_DOCUMENT_BYTES else MAX_IMAGE_BYTES
             if (file.bytes.size > limit) {
-                return "${file.name} dépasse ${limit / (1024 * 1024)} Mo"
+                return AttachmentProblem.TooLarge(file.name, limit / (1024 * 1024))
             }
         }
         return null
     }
+}
+
+/** Why a batch of files cannot travel, named so the screen can say it in the owner's language. */
+sealed interface AttachmentProblem {
+    /** More files than a single turn accepts. */
+    data object TooMany : AttachmentProblem
+
+    /** One file is over the cap of its kind: its name and that cap, in megabytes. */
+    data class TooLarge(val name: String, val limitMb: Int) : AttachmentProblem
 }
 
 /** A file chosen on the device, before it becomes an [AttachmentUpload]. */

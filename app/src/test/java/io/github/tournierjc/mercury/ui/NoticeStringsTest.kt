@@ -50,8 +50,12 @@ class NoticeStringsTest {
     }
 
     @Test
-    fun `no string outlives its key`() {
+    fun `no string outlives its key, in either locale`() {
         val known = NoticeKey.entries.map { "notice_" + it.name.lowercase() }.toSet()
-        assertEquals("strings with no NoticeKey: ${known}", known, strings("values").keys)
+        // Checking `values` alone let an orphan that only existed in `values-en` through.
+        for (locale in listOf("values", "values-en")) {
+            val orphans = strings(locale).keys - known
+            assertEquals("strings in $locale with no NoticeKey: $orphans", emptySet<String>(), orphans)
+        }
     }
 }

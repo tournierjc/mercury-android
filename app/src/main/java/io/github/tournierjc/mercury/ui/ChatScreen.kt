@@ -531,13 +531,10 @@ fun ChatScreen(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                 )
             }
-            state.warning?.let { warning ->
+            state.warning?.let { notice ->
                 Box(modifier = Modifier.padding(horizontal = 14.dp)) {
-                    InlineBanner(
-                        message = warning,
-                        isError = false,
-                        onDismiss = onDismissWarning,
-                    )
+                    // A warning used to be painted as an info line (`isError = false`, always).
+                    NoticeBanner(notice, onDismiss = onDismissWarning)
                 }
             }
             state.interaction?.let { interaction ->

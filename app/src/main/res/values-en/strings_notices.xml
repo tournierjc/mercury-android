@@ -12,6 +12,8 @@
     <string name="notice_dispatch_refused">Refused</string>
     <string name="notice_name_required">A name is required</string>
     <string name="notice_restart_refused">Restart refused</string>
+    <string name="notice_attachment_too_large">%1$s is over %2$d MB</string>
+    <string name="notice_server_warning">Server warning</string>
     <string name="notice_session_expired">Session expired — sign in again</string>
     <string name="notice_request_refused">Request refused</string>
 </resources>

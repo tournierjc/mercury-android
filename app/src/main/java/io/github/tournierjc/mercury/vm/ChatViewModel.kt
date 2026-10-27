@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import io.github.tournierjc.mercury.ui.attachmentNotice
 
 class ChatViewModel(
     private val api: MercuryApi,
@@ -128,12 +129,7 @@ class ChatViewModel(
      */
     fun attach(files: List<PendingFile>) {
         val next = (_attachments.value + files).take(Attachments.MAX_FILES)
-        val problem = Attachments.problemWith(next)
-        val notice = when {
-            files.size + _attachments.value.size > Attachments.MAX_FILES -> Notice(NoticeKey.ATTACHMENTS_LIMIT)
-            problem != null -> Notice(NoticeKey.REQUEST_REFUSED).withDetail(problem)
-            else -> null
-        }
+        val notice = attachmentNotice(Attachments.problemWith(next))
         if (notice != null) {
             _state.update { ChatReducer.setError(it, notice) }
             return

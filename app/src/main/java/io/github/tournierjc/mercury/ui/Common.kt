@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -355,7 +356,13 @@ fun ProgressLine(ratio: Float) {
 }
 
 @Composable
-fun InlineBanner(message: String, isError: Boolean, onDismiss: () -> Unit) {
+fun InlineBanner(
+    message: String,
+    isError: Boolean,
+    onDismiss: () -> Unit,
+    /** Overrides the two-state colour when the caller knows a severity (see `NoticeBanner`). */
+    tint: Color? = null,
+) {
     val colors = LocalMercuryColors.current
     Row(
         modifier = Modifier
@@ -371,7 +378,7 @@ fun InlineBanner(message: String, isError: Boolean, onDismiss: () -> Unit) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isError) colors.danger else colors.textPrimary,
+            color = tint ?: if (isError) colors.danger else colors.textPrimary,
             modifier = Modifier.weight(1f),
         )
         Text(

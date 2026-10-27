@@ -48,18 +48,18 @@ class AttachmentsTest {
     }
 
     @Test
-    fun `a fifth file is refused with a countable message`() {
+    fun `a fifth file is refused as too many`() {
         val files = (1..5).map { PendingFile("p$it.jpg", png()) }
-        assertEquals("4 pièces jointes au maximum", Attachments.problemWith(files))
+        assertEquals(AttachmentProblem.TooMany, Attachments.problemWith(files))
     }
 
     @Test
     fun `an oversized image and an oversized PDF are refused separately`() {
         val heavyImage = PendingFile("gros.jpg", png(Attachments.MAX_IMAGE_BYTES + 1))
-        assertEquals("gros.jpg dépasse 8 Mo", Attachments.problemWith(listOf(heavyImage)))
+        assertEquals(AttachmentProblem.TooLarge("gros.jpg", 8), Attachments.problemWith(listOf(heavyImage)))
 
         val heavyPdf = PendingFile("gros.pdf", pdf(Attachments.MAX_DOCUMENT_BYTES + 1))
-        assertEquals("gros.pdf dépasse 15 Mo", Attachments.problemWith(listOf(heavyPdf)))
+        assertEquals(AttachmentProblem.TooLarge("gros.pdf", 15), Attachments.problemWith(listOf(heavyPdf)))
 
         // A PDF at 9 MB is fine — the image cap must not apply to it.
         assertNull(Attachments.problemWith(listOf(PendingFile("these.pdf", pdf(9 * 1024 * 1024)))))
