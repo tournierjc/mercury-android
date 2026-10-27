@@ -19,9 +19,15 @@ import io.github.tournierjc.mercury.data.dto.TerminalResult
 import io.github.tournierjc.mercury.data.dto.BotDetailDto
 import io.github.tournierjc.mercury.data.dto.BotJournalPage
 import io.github.tournierjc.mercury.data.dto.BotOutputsPage
+import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.BotRunsPage
 import io.github.tournierjc.mercury.data.dto.BotTiersPage
 import io.github.tournierjc.mercury.data.dto.BotsResponse
+import io.github.tournierjc.mercury.data.dto.DlqPage
+import io.github.tournierjc.mercury.data.dto.DlqReplay
+import io.github.tournierjc.mercury.data.dto.OutputPreviewDto
+import io.github.tournierjc.mercury.data.dto.RunRecordPage
+import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import io.github.tournierjc.mercury.data.dto.CreateBotRequest
 import io.github.tournierjc.mercury.data.dto.UpdateBotRequest
 import io.github.tournierjc.mercury.data.dto.ConfigDto
@@ -693,8 +699,87 @@ class MercuryApi(
     suspend fun botRuns(id: String): BotRunsPage =
         getDecoded("/api/bots/${encode(id)}/runs", BotRunsPage.serializer())
 
+    /**
+     * `GET /api/bots/:id/runs/:runId` — one run's transcript `{record, prompt, output,
+     * trace}`. `runId` may be `latest`, which the daemon resolves to the newest file.
+     */
+    suspend fun botRun(id: String, runId: String): RunTranscriptDto =
+        getDecoded("/api/bots/${encode(id)}/runs/${encode(runId)}", RunTranscriptDto.serializer())
+
+    /** `GET /api/bots/:id/journal` — the run records, newest last. */
+    suspend fun botRunJournal(id: String, limit: Int = 50): List<BotRunDto> = getDecoded(
+        "/api/bots/${encode(id)}/journal",
+        RunRecordPage.serializer(),
+        mapOf("limit" to limit.toString()),
+    ).journal
+
     suspend fun botOutputs(id: String): BotOutputsPage =
         getDecoded("/api/bots/${encode(id)}/outputs", BotOutputsPage.serializer())
+
+    /** `GET /api/bots/outputs` — the fleet inbox: every bot's deliverables, newest first. */
+    suspend fun fleetOutputs(): BotOutputsPage =
+        getDecoded("/api/bots/outputs", BotOutputsPage.serializer())
+
+    /**
+     * `GET /api/bots/:id/outputs/:name/preview` — the first 64 kB of a deliverable as
+     * text. Only meaningful for text files: the daemon decodes bytes as UTF-8.
+     */
+    suspend fun outputPreview(id: String, name: String): OutputPreviewDto = getDecoded(
+        "/api/bots/${encode(id)}/outputs/${encode(name)}/preview",
+        OutputPreviewDto.serializer(),
+    )
+
+    /**
+     * `GET /api/bots/:id/outputs/:name/download` — byte-exact file, content type guessed
+     * from the extension by the daemon. The phone saves or shares it.
+     */
+    suspend fun downloadOutput(id: String, name: String): ByteArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url("/api/bots/${encode(id)}/outputs/${encode(name)}/download"))
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            when {
+                response.code == 401 || response.code == 403 -> throw AuthException("Session expirée")
+                response.code == 404 -> throw MercuryException("Livrable introuvable")
+                !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
+                else -> response.body?.bytes() ?: ByteArray(0)
+            }
+        }
+    }
+
+    /** `DELETE /api/bots/:id/outputs/:name` — owner curation: the file leaves the disk. */
+    suspend fun deleteOutput(id: String, name: String): SimpleResponse =
+        deleteJson("/api/bots/${encode(id)}/outputs/${encode(name)}", SimpleResponse.serializer())
+
+    /** `GET /api/bots/:id/dlq` — dead-lettered jobs with their attempt count. */
+    suspend fun botDlq(id: String): DlqPage =
+        getDecoded("/api/bots/${encode(id)}/dlq", DlqPage.serializer())
+
+    /**
+     * `POST /api/bots/:id/replay/:jobId` — re-queues a dead-lettered job. A 404 body
+     * `{accepted:false,reasonCode}` is decoded rather than thrown: the refusal is the
+     * answer ("ce job n'existe plus"), and the UI says so.
+     */
+    suspend fun replayDlq(id: String, jobId: String): DlqReplay = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url("/api/bots/${encode(id)}/replay/${encode(jobId)}"))
+            .post("{}".toRequestBody(jsonMedia))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+            runCatching { json.decodeFromString(DlqReplay.serializer(), body) }.getOrNull()
+                ?: DlqReplay(accepted = false, reasonCode = "HTTP ${response.code}")
+        }
+    }
+
+    /** `DELETE /api/bots-dlq[?bot=id]` — drops dead letters; no `bot` clears the fleet. */
+    suspend fun clearDlq(botId: String? = null): SimpleResponse = deleteJson(
+        "/api/bots-dlq",
+        SimpleResponse.serializer(),
+        if (botId.isNullOrBlank()) emptyMap() else mapOf("bot" to botId),
+    )
 
     suspend fun botJournal(id: String, limit: Int = 20): BotJournalPage = getDecoded(
         "/api/bots/${encode(id)}/journal",
@@ -972,11 +1057,17 @@ class MercuryApi(
     }
 
     /** DELETE that decodes its answer (Mercury answers `{success:true}`). */
-    private suspend fun <T> deleteJson(path: String, deserializer: DeserializationStrategy<T>): T =
-        withContext(Dispatchers.IO) {
-            val request = Request.Builder().url(url(path)).delete().build()
-            json.decodeFromString(deserializer, execute(request))
-        }
+    private suspend fun <T> deleteJson(
+        path: String,
+        deserializer: DeserializationStrategy<T>,
+        query: Map<String, String> = emptyMap(),
+    ): T = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(urlWith(path) { query.forEach { (k, v) -> addQueryParameter(k, v) } })
+            .delete()
+            .build()
+        json.decodeFromString(deserializer, execute(request))
+    }
 
     /**
      * The bot's face, or null when it has none — a 404 here is an answer, not a failure.

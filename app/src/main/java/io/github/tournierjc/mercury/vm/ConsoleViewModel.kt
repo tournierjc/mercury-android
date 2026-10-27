@@ -13,6 +13,7 @@ import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.data.dto.BotTierDto
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
+import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.HealthDto
 import io.github.tournierjc.mercury.data.dto.PluginDto
 import io.github.tournierjc.mercury.data.dto.QueueCounts
@@ -20,6 +21,9 @@ import io.github.tournierjc.mercury.data.dto.SkillDto
 import io.github.tournierjc.mercury.data.dto.StatusDto
 import io.github.tournierjc.mercury.data.dto.TerminalResult
 import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
+import io.github.tournierjc.mercury.util.OutputActions
+import io.github.tournierjc.mercury.util.OutputPreviewState
+import io.github.tournierjc.mercury.util.SharedFile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +51,10 @@ data class ConsoleUiState(
     val terminal: TerminalResult? = null,
     val terminalBusy: Boolean = false,
     val queue: QueueCounts = QueueCounts(),
+    /** Fleet inbox: every bot's deliverables, newest first. */
+    val outputs: List<DeliverableDto> = emptyList(),
+    val outputPreview: OutputPreviewState? = null,
+    val pendingShare: SharedFile? = null,
     val busy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
@@ -64,6 +72,9 @@ class ConsoleViewModel(
 
     private val _state = MutableStateFlow(ConsoleUiState())
     val state: StateFlow<ConsoleUiState> = _state.asStateFlow()
+
+    /** Deliverable actions, shared with the bot sheet so a file behaves the same way. */
+    private val outputActions = OutputActions(api)
 
     init {
         refresh()
@@ -85,6 +96,7 @@ class ConsoleViewModel(
                 val schedules = runCatching { api.schedules() }.getOrDefault(emptyList())
                 val bots = runCatching { api.bots() }.getOrNull()
                 val tiers = runCatching { api.botTiers() }.getOrDefault(emptyList())
+                val outputs = runCatching { api.fleetOutputs() }.getOrNull()
                 _state.update {
                     it.copy(
                         loading = false,
@@ -101,6 +113,7 @@ class ConsoleViewModel(
                         bots = bots?.bots.orEmpty(),
                         tiers = tiers,
                         queue = bots?.queue ?: QueueCounts(),
+                        outputs = outputs?.outputs.orEmpty(),
                     )
                 }
             } catch (e: Exception) {
@@ -163,6 +176,47 @@ class ConsoleViewModel(
 
     fun clearBanner() {
         _state.update { it.copy(message = null, error = null) }
+    }
+
+    // -------------------------------------------------------------------
+    // Fleet inbox: every bot's deliverables, with the same three actions
+    // the bot sheet offers
+    // -------------------------------------------------------------------
+
+    fun previewOutput(output: DeliverableDto) {
+        if (output.botId.isBlank() || output.name.isBlank()) return
+        _state.update { it.copy(outputPreview = OutputPreviewState(output, loading = true)) }
+        viewModelScope.launch {
+            val preview = outputActions.preview(output)
+            _state.update { it.copy(outputPreview = preview) }
+        }
+    }
+
+    fun dismissPreview() = _state.update { it.copy(outputPreview = null) }
+
+    fun shareOutput(output: DeliverableDto) {
+        if (output.botId.isBlank() || output.name.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            runCatching { outputActions.download(output) }
+                .onSuccess { file -> _state.update { it.copy(busy = false, pendingShare = file) } }
+                .onFailure { e -> _state.update { it.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    fun consumeShare() = _state.update { it.copy(pendingShare = null) }
+
+    fun deleteOutput(output: DeliverableDto) {
+        if (output.botId.isBlank() || output.name.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            runCatching { api.deleteOutput(output.botId, output.name) }
+                .onSuccess {
+                    _state.update { s -> s.copy(busy = false, message = "Livrable supprimé") }
+                    refresh()
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
     }
 
     private fun action(successMessage: String, block: suspend () -> Any?) {

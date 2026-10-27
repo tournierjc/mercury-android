@@ -110,10 +110,10 @@ data class BotDetailDto(
 )
 
 @Serializable
-data class BotRunsPage(val runs: List<JsonObject> = emptyList(), val error: String = "")
+data class BotRunsPage(val runs: List<RunSummaryDto> = emptyList(), val error: String = "")
 
 @Serializable
-data class BotOutputsPage(val outputs: List<JsonObject> = emptyList(), val error: String = "")
+data class BotOutputsPage(val outputs: List<DeliverableDto> = emptyList(), val error: String = "")
 
 @Serializable
 data class BotJournalPage(val journal: List<JsonObject> = emptyList(), val error: String = "")

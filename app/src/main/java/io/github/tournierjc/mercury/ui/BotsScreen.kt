@@ -53,6 +53,7 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.util.MediaPicker
+import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.vm.BotsUiState
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import kotlinx.serialization.json.JsonObject
@@ -99,6 +100,17 @@ fun BotsScreen(onBack: () -> Unit) {
         state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
         state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
 
+        // A downloaded deliverable is handed to the share sheet from the screen: the
+        // view model has no Context, and the slot is cleared so it fires exactly once.
+        val pendingShare = state.pendingShare
+        LaunchedEffect(pendingShare) {
+            if (pendingShare != null) {
+                runCatching { OutputSharing.share(context, pendingShare) }
+                    .onFailure { viewModel.showError(it.message ?: "Partage impossible") }
+                viewModel.consumeShare()
+            }
+        }
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -124,6 +136,27 @@ fun BotsScreen(onBack: () -> Unit) {
             }
             Text(" ", modifier = Modifier.padding(bottom = 28.dp))
         }
+    }
+
+    // Preview and run detail are dialogs over the sheet: the sheet stays scrolled where
+    // the owner left it, and closing the dialog never reloads the bot.
+    state.outputPreview?.let { preview ->
+        OutputPreviewDialog(
+            state = preview,
+            onDismiss = viewModel::dismissPreview,
+            onShare = {
+                viewModel.dismissPreview()
+                viewModel.shareOutput(preview.output)
+            },
+        )
+    }
+
+    if (state.runDetail != null || state.runDetailLoading) {
+        RunDetailDialog(
+            transcript = state.runDetail,
+            loading = state.runDetailLoading,
+            onDismiss = viewModel::closeRun,
+        )
     }
 }
 
@@ -491,6 +524,31 @@ private fun BotDetail(
             }
         }
     }
+
+    // What the bot produced, what it did, and what the queue gave up on. The three
+    // sections read the deliverables, runs and DLQ routes of this bot.
+    DeliverablesSection(
+        title = "Livrables",
+        outputs = state.outputs,
+        busy = state.busy,
+        emptyText = "Aucun livrable : l'équipier n'a rien déposé dans son dossier.",
+        onPreview = viewModel::previewOutput,
+        onShare = viewModel::shareOutput,
+        onDelete = viewModel::deleteOutput,
+    )
+
+    RunsSection(
+        runs = state.runs,
+        emptyText = "Aucun run enregistré pour cet équipier.",
+        onOpen = viewModel::openRun,
+    )
+
+    DlqSection(
+        incidents = state.dlq,
+        busy = state.busy,
+        onReplay = viewModel::replayIncident,
+        onClear = viewModel::clearDlq,
+    )
 
     SectionTitle("Suppression")
     CardBlock {
