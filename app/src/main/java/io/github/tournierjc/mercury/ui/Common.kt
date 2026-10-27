@@ -36,8 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -64,7 +66,7 @@ fun ScreenHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Retour", tint = colors.textPrimary)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = colors.textPrimary)
         }
         if (leading != null) {
             Box(modifier = Modifier.padding(start = 2.dp, end = 8.dp)) { leading() }
@@ -89,7 +91,7 @@ fun ScreenHeader(
         }
         if (onRefresh != null) {
             IconButton(onClick = onRefresh) {
-                Icon(Icons.Rounded.Refresh, contentDescription = "Rafraîchir", tint = colors.textSecondary)
+                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.common_refresh), tint = colors.textSecondary)
             }
         }
         actions()
@@ -154,7 +156,7 @@ fun CollapsibleSection(
         )
         Icon(
             imageVector = if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-            contentDescription = if (open) "Réduire $title" else "Déplier $title",
+            contentDescription = if (open) stringResource(R.string.common_collapse_section, title) else stringResource(R.string.common_expand_section, title),
             tint = colors.textSecondary,
             modifier = Modifier.size(18.dp),
         )
@@ -373,7 +375,7 @@ fun InlineBanner(message: String, isError: Boolean, onDismiss: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = "OK",
+            text = stringResource(R.string.common_ok),
             style = MaterialTheme.typography.labelSmall,
             color = colors.textSecondary,
         )

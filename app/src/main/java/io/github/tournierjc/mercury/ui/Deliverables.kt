@@ -37,9 +37,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.vm.BotsUiState
 import io.github.tournierjc.mercury.vm.BotsViewModel
@@ -111,7 +113,7 @@ fun DeliverablesSection(
                         modifier = Modifier.padding(start = if (bot != null) 8.dp else 0.dp),
                     )
                     Text(
-                        text = "${files.size}",
+                        text = stringResource(R.string.out_n_files, files.size),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
                         modifier = Modifier.padding(start = 6.dp),
@@ -154,7 +156,7 @@ fun DeliverablesSection(
                     IconButton(onClick = { onPreview(output) }, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.Visibility,
-                            contentDescription = "Aperçu de ${output.name}",
+                            contentDescription = stringResource(R.string.out_preview_of, output.name),
                             tint = colors.textSecondary,
                             modifier = Modifier.size(19.dp),
                         )
@@ -162,7 +164,7 @@ fun DeliverablesSection(
                     IconButton(onClick = { onShare(output) }, enabled = !busy, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.Share,
-                            contentDescription = "Partager ${output.name}",
+                            contentDescription = stringResource(R.string.out_share_of, output.name),
                             tint = colors.textSecondary,
                             modifier = Modifier.size(19.dp),
                         )
@@ -170,7 +172,7 @@ fun DeliverablesSection(
                     IconButton(onClick = { pendingDelete = output }, enabled = !busy, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.DeleteOutline,
-                            contentDescription = "Supprimer ${output.name}",
+                            contentDescription = stringResource(R.string.out_delete_of, output.name),
                             tint = colors.danger,
                             modifier = Modifier.size(19.dp),
                         )
@@ -185,7 +187,7 @@ fun DeliverablesSection(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             containerColor = colors.surface,
-            title = { Text("Supprimer ce livrable ?", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.out_delete_title), color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
@@ -194,7 +196,7 @@ fun DeliverablesSection(
                         color = colors.textPrimary,
                     )
                     Text(
-                        text = "Le fichier est retiré du dossier de l'équipier. Cette action est définitive.",
+                        text = stringResource(R.string.out_delete_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
@@ -204,9 +206,9 @@ fun DeliverablesSection(
                 TextButton(onClick = {
                     pendingDelete = null
                     onDelete(target)
-                }) { Text("Supprimer", color = colors.danger) }
+                }) { Text(stringResource(R.string.out_delete_confirm), color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.out_cancel)) } },
         )
     }
 }
@@ -242,27 +244,27 @@ fun OutputPreviewDialog(
                 KeyValueRow(
                     "Fichier",
                     listOf(
-                        if (state.output.final) "final" else "travail",
+                        if (state.output.final) stringResource(R.string.out_kind_final) else stringResource(R.string.out_kind_work),
                         BotOps.sizeLabel(state.output.bytes),
                     ).joinToString(" · "),
                 )
                 when {
                     state.loading -> Text(
-                        text = "Chargement…",
+                        text = stringResource(R.string.out_loading),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
 
                     bitmap != null -> Image(
                         bitmap = bitmap,
-                        contentDescription = "Aperçu de ${state.output.name}",
+                        contentDescription = stringResource(R.string.out_preview_of, state.output.name),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
                     state.text != null -> {
                         Text(
-                            text = state.text.ifBlank { "(fichier vide)" },
+                            text = state.text.ifBlank { stringResource(R.string.out_empty_file) },
                             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                             color = colors.textPrimary,
                             modifier = Modifier
@@ -272,7 +274,7 @@ fun OutputPreviewDialog(
                         )
                         if (state.truncated) {
                             Text(
-                                text = "Aperçu tronqué aux 64 premiers ko — partagez le fichier pour le lire en entier.",
+                                text = stringResource(R.string.out_truncated),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.textSecondary,
                             )
@@ -280,15 +282,15 @@ fun OutputPreviewDialog(
                     }
 
                     else -> Text(
-                        text = state.note ?: "Aperçu indisponible.",
+                        text = state.note ?: stringResource(R.string.out_unavailable),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
-        dismissButton = { TextButton(onClick = onShare) { Text("Partager") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.out_close)) } },
+        dismissButton = { TextButton(onClick = onShare) { Text(stringResource(R.string.out_share)) } },
     )
 }
 
@@ -307,14 +309,14 @@ fun FleetDeliverablesSection(
     val names = state.bots.associate { BotJson.id(it) to BotJson.name(it) }
     val byId = state.bots.associateBy { BotJson.id(it) }
     DeliverablesSection(
-        title = "Livrables",
+        title = stringResource(R.string.out_title),
         outputs = state.outputs,
         botNames = names,
         bots = byId,
         avatars = avatars,
         showOrigin = true,
         busy = state.busy,
-        emptyText = "Aucun livrable dans la flotte pour l'instant.",
+        emptyText = stringResource(R.string.out_none_fleet),
         onPreview = viewModel::previewOutput,
         onShare = viewModel::shareOutput,
         onDelete = viewModel::deleteOutput,
@@ -385,32 +387,32 @@ fun BotDeliverablesSheet(
                 .padding(bottom = 28.dp),
         ) {
             Text(
-                text = "Livrables de $botName",
+                text = stringResource(R.string.out_of_bot, botName),
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
             )
             Text(
                 text = when (outputs.size) {
-                    0 -> "Rien encore : demandez-lui un fichier dans la conversation."
-                    1 -> "1 fichier · aperçu, partage, suppression."
-                    else -> "${outputs.size} fichiers · aperçu, partage, suppression."
+                    0 -> stringResource(R.string.out_none_bot)
+                    1 -> stringResource(R.string.out_count_one)
+                    else -> stringResource(R.string.out_count_many, outputs.size)
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
             )
             DeliverablesSection(
-                title = "Fichiers",
+                title = stringResource(R.string.out_files),
                 outputs = outputs,
                 botNames = mapOf(botId to botName),
                 showOrigin = false,
                 busy = busy,
-                emptyText = "Aucun livrable pour cet équipier.",
+                emptyText = stringResource(R.string.out_none_this),
                 onPreview = onPreview,
                 onShare = onShare,
                 onDelete = onDelete,
             )
             ButtonRow {
-                TextButton(onClick = onReload) { Text("Rafraîchir") }
+                TextButton(onClick = onReload) { Text(stringResource(R.string.out_refresh)) }
             }
         }
     }

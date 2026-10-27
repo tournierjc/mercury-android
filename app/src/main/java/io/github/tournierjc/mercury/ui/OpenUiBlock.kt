@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.openui.OpenUi
 import io.github.tournierjc.mercury.openui.OpenUiNode
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.R
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -92,7 +94,7 @@ private fun RefusedSpec(spec: String, errors: List<String>, modifier: Modifier) 
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("openui", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
-            Text("non rendu", style = MaterialTheme.typography.labelSmall, color = colors.danger)
+            Text(stringResource(R.string.openui_not_rendered), style = MaterialTheme.typography.labelSmall, color = colors.danger)
         }
         Spacer(Modifier.height(8.dp))
         SelectionContainer {
@@ -341,7 +343,7 @@ private fun ChartView(node: OpenUiNode.Chart) {
             Text(it, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
         }
         node.unit?.let {
-            Text("en $it", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+            Text(stringResource(R.string.openui_in, it), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
         }
         Spacer(Modifier.height(10.dp))
         Row {

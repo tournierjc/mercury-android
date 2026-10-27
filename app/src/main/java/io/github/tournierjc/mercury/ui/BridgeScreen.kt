@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.device.BridgeAddress
 import io.github.tournierjc.mercury.device.BridgePrefs
 import io.github.tournierjc.mercury.device.BridgeService
@@ -74,11 +76,18 @@ fun BridgeScreen(onBack: () -> Unit) {
     var showToken by remember { mutableStateOf(false) }
     var providers by remember { mutableStateOf(DeviceReaders(context).grantedProviders()) }
 
-    val rows = remember {
+    // Read here, in the composable: the rows used to be built inside remember { }, where a
+    // resource lookup is not allowed — and would not follow a language change anyway.
+    val calendarLabel = stringResource(R.string.bridge_calendar)
+    val calendarDetail = stringResource(R.string.bridge_read_events)
+    val contactsLabel = stringResource(R.string.bridge_contacts)
+    val contactsDetail = stringResource(R.string.bridge_contacts_detail)
+    val smsDetail = stringResource(R.string.bridge_read_received)
+    val rows = remember(calendarLabel, calendarDetail, contactsLabel, contactsDetail, smsDetail) {
         listOf(
-            PermissionRow(Manifest.permission.READ_CALENDAR, "Calendrier", "lire les événements"),
-            PermissionRow(Manifest.permission.READ_CONTACTS, "Contacts", "noms, numéros, e-mails"),
-            PermissionRow(Manifest.permission.READ_SMS, "SMS", "lire les messages reçus"),
+            PermissionRow(Manifest.permission.READ_CALENDAR, calendarLabel, calendarDetail),
+            PermissionRow(Manifest.permission.READ_CONTACTS, contactsLabel, contactsDetail),
+            PermissionRow(Manifest.permission.READ_SMS, "SMS", smsDetail),
         )
     }
 
@@ -105,21 +114,20 @@ fun BridgeScreen(onBack: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Retour", tint = colors.textPrimary)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.bridge_back), tint = colors.textPrimary)
             }
             Text(
-                text = "Pont appareil",
+                text = stringResource(R.string.bridge_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = colors.textPrimary,
             )
         }
 
         Text(
-            text = "Mercury lit ton téléphone en lecture seule, à la demande, via le tailnet. " +
-                "Rien n'est copié sur le Spark : chaque requête de l'agent relit la donnée locale.",
+            text = stringResource(R.string.bridge_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
-            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
+            modifier = Modifier.padding(top = 8.dp),
         )
 
         Row(
@@ -131,9 +139,13 @@ fun BridgeScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Pont actif", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text(stringResource(R.string.bridge_active), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                 Text(
-                    text = if (enabled) "Le serveur écoute sur le port ${prefs.port}" else "Serveur arrêté",
+                    text = if (enabled) {
+                        stringResource(R.string.bridge_listening, prefs.port)
+                    } else {
+                        stringResource(R.string.bridge_stopped)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
@@ -163,7 +175,7 @@ fun BridgeScreen(onBack: () -> Unit) {
             )
         }
 
-        SectionTitle("Accès aux données")
+        SectionTitle(stringResource(R.string.bridge_access_title))
         rows.forEach { row ->
             val granted = ContextCompat.checkSelfPermission(context, row.permission) ==
                 PackageManager.PERMISSION_GRANTED
@@ -179,7 +191,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(row.label, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                     Text(
-                        text = if (granted) "accordé · ${row.detail}" else row.detail,
+                        text = if (granted) stringResource(R.string.bridge_granted, row.detail) else row.detail,
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (granted) colors.accent else colors.textSecondary,
                     )
@@ -189,7 +201,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                         onClick = { permissionLauncher.launch(arrayOf(row.permission)) },
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
-                    ) { Text("Autoriser") }
+                    ) { Text(stringResource(R.string.bridge_allow)) }
                 }
             }
         }
@@ -205,12 +217,12 @@ fun BridgeScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Messages des apps", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text(stringResource(R.string.bridge_app_messages), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                 Text(
                     text = if (notificationsGranted) {
-                        "accès notifications accordé · WhatsApp, Signal, Messenger…"
+                        stringResource(R.string.bridge_notif_granted)
                     } else {
-                        "via l'accès notifications (WhatsApp, Signal…)"
+                        stringResource(R.string.bridge_notif_hint)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (notificationsGranted) colors.accent else colors.textSecondary,
@@ -224,10 +236,10 @@ fun BridgeScreen(onBack: () -> Unit) {
                 },
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
-            ) { Text(if (notificationsGranted) "Réglages" else "Activer") }
+            ) { Text(if (notificationsGranted) stringResource(R.string.drawer_settings) else stringResource(R.string.bridge_enable)) }
         }
 
-        SectionTitle("À donner à Mercury")
+        SectionTitle(stringResource(R.string.bridge_give_title))
         // The value is the button: tapping the field copies it (the three-button row it replaces
         // spent a third of the block on controls). The eye sits in the token's own field, where a
         // password field keeps it, instead of doubling the row with « Afficher » / « Masquer ».
@@ -236,7 +248,7 @@ fun BridgeScreen(onBack: () -> Unit) {
         val urlValue = BridgeAddress.url(prefs.port)
 
         CopyableField(
-            label = "URL",
+            label = stringResource(R.string.bridge_url_label),
             value = urlValue,
             copied = copiedUrl,
             onClick = {
@@ -246,7 +258,7 @@ fun BridgeScreen(onBack: () -> Unit) {
             onCopiedShown = { copiedUrl = false },
         )
         CopyableField(
-            label = "Token",
+            label = stringResource(R.string.bridge_token_label),
             value = if (showToken) token else "•".repeat(24),
             copied = copiedToken,
             onClick = {
@@ -258,7 +270,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                 IconButton(onClick = { showToken = !showToken }, modifier = Modifier.size(34.dp)) {
                     Icon(
                         if (showToken) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                        contentDescription = if (showToken) "Masquer le token" else "Afficher le token",
+                        contentDescription = if (showToken) stringResource(R.string.bridge_hide_token) else stringResource(R.string.bridge_show_token),
                         tint = colors.textSecondary,
                         modifier = Modifier.size(19.dp),
                     )
@@ -282,19 +294,11 @@ fun BridgeScreen(onBack: () -> Unit) {
                 .fillMaxWidth()
                 .padding(top = 8.dp)
                 .height(52.dp),
-        ) { Text("Révoquer le token") }
+        ) { Text(stringResource(R.string.bridge_revoke)) }
 
-        SectionTitle("Ce que l'agent peut lire")
+        SectionTitle(stringResource(R.string.bridge_readable_title))
         Text(
-            text = buildString {
-                appendLine("GET /health · version, appareil, providers actifs")
-                appendLine("GET /device/status · batterie, réseau, fuseau")
-                appendLine("GET /calendar?from=&to=&limit= · événements (ISO 8601)")
-                appendLine("GET /contacts?q=&limit= · noms, numéros, e-mails")
-                appendLine("GET /sms?limit=&address= · messages SMS reçus")
-                appendLine("GET /messages?limit= · SMS + notifications d'apps")
-                append("En-tête requis : Authorization: Bearer <token>")
-            },
+            text = stringResource(R.string.bridge_endpoints),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textSecondary,
             modifier = Modifier
@@ -305,8 +309,7 @@ fun BridgeScreen(onBack: () -> Unit) {
         )
 
         Text(
-            text = "Sans le pont, l'agent ne voit rien du téléphone. Avec, il ne voit que ce que tu as " +
-                "autorisé, pendant que le service tourne. « Révoquer » invalide l'ancien token.",
+            text = stringResource(R.string.bridge_footer),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 16.dp, bottom = 28.dp),
@@ -361,7 +364,7 @@ private fun CopyableField(
         Column(modifier = Modifier.weight(1f)) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
             Text(
-                text = if (copied) "Copié" else value,
+                text = if (copied) stringResource(R.string.bridge_copied) else value,
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 color = if (copied) colors.accent else colors.textPrimary,
                 maxLines = 1,

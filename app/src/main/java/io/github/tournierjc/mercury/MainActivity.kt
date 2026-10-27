@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.bots.AttentionPrefs
+import io.github.tournierjc.mercury.device.LocaleStore
 import io.github.tournierjc.mercury.bots.BotNotifier
 import io.github.tournierjc.mercury.bots.WatchService
 import io.github.tournierjc.mercury.ui.ChatScreen
@@ -29,8 +30,19 @@ import io.github.tournierjc.mercury.vm.ChatViewModel
 
 class MainActivity : ComponentActivity() {
 
-    /** Bot named by the notification being opened, if any — consumed by the UI once shown. */
-    private val pendingBotId = mutableStateOf<String?>(null)
+    /** The chosen language is applied here, before anything draws. */
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(LocaleStore.wrap(newBase))
+    }
+
+    /**
+     * Bot named by the notification being opened, with a nonce — consumed by the UI once shown.
+     *
+     * The nonce is why it is a pair: two taps on the same notification have to be two events, or
+     * the second one lands on unchanged state and the app stays where the owner left it.
+     */
+    private val pendingBot = mutableStateOf<Pair<String, Int>?>(null)
+    private var openNonce = 0
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* refus = pas de notif, l'app continue */ }
@@ -38,7 +50,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        pendingBotId.value = intent?.getStringExtra(BotNotifier.EXTRA_BOT_ID)
+        pendingBot.value = intent?.getStringExtra(BotNotifier.EXTRA_BOT_ID)?.let { it to 0 }
         val container = (application as MercuryApp).container
         askForNotifications()
         // The watch service survives the activity, but a reboot (or a system kill) does not
@@ -52,7 +64,12 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(LocalMercuryColors.current.canvas),
                 ) {
-                    MercuryRoot(container, pendingBotId.value) { pendingBotId.value = null }
+                    MercuryRoot(
+                        container = container,
+                        openBotId = pendingBot.value?.first,
+                        openBotNonce = pendingBot.value?.second ?: 0,
+                        onBotOpened = { pendingBot.value = null },
+                    )
                 }
             }
         }
@@ -65,7 +82,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.getStringExtra(BotNotifier.EXTRA_BOT_ID)?.let { pendingBotId.value = it }
+        intent.getStringExtra(BotNotifier.EXTRA_BOT_ID)?.let { id ->
+            openNonce += 1
+            pendingBot.value = id to openNonce
+        }
     }
 
     /** Bot notifications need POST_NOTIFICATIONS on Android 13+; a refusal is harmless. */
@@ -77,7 +97,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MercuryRoot(container: AppContainer, openBotId: String?, onBotOpened: () -> Unit) {
+private fun MercuryRoot(
+    container: AppContainer,
+    openBotId: String?,
+    openBotNonce: Int,
+    onBotOpened: () -> Unit,
+) {
     val viewModel: ChatViewModel = viewModel(factory = ChatViewModel.factory(container))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val threads by viewModel.threads.collectAsStateWithLifecycle()
@@ -112,6 +137,7 @@ private fun MercuryRoot(container: AppContainer, openBotId: String?, onBotOpened
             onDismissError = viewModel::dismissError,
             onDismissWarning = viewModel::dismissWarning,
             openBotId = openBotId,
+            openBotNonce = openBotNonce,
             onOpenBotConsumed = onBotOpened,
         )
     }

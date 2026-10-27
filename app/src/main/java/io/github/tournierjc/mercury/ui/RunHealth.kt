@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.data.BotOps
@@ -26,6 +27,7 @@ import io.github.tournierjc.mercury.data.RunRow
 import io.github.tournierjc.mercury.data.dto.DlqJobDto
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.R
 
 /**
  * Run health: what the bot did, how it ended, and what the queue gave up on.
@@ -42,7 +44,7 @@ fun RunsSection(
 ) {
     val colors = LocalMercuryColors.current
     // Collapsible like every other block of the sheet: a run list is a log, not the headline.
-    CollapsibleSection("Runs") {
+    CollapsibleSection(stringResource(R.string.run_title)) {
         if (runs.isEmpty()) {
             Text(text = emptyText, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
             return@CollapsibleSection
@@ -51,14 +53,14 @@ fun RunsSection(
             ActionRow(
                 title = BotOps.runSubtitle(run),
                 subtitle = BotOps.runDetail(run).ifBlank { run.summary.take(140) },
-                trailing = if (run.hasTranscript) "détail" else "",
+                trailing = if (run.hasTranscript) stringResource(R.string.run_details) else "",
                 enabled = run.hasTranscript,
                 onClick = if (run.hasTranscript) ({ onOpen(run) }) else null,
             )
         }
         if (runs.size > 12) {
             Text(
-                text = "… ${runs.size - 12} run(s) plus ancien(s)",
+                text = stringResource(R.string.run_older, runs.size - 12),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp),
@@ -79,7 +81,7 @@ fun RunDetailDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Détail du run", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.run_detail_title), color = colors.textPrimary) },
         text = {
             Column(
                 modifier = Modifier
@@ -89,21 +91,21 @@ fun RunDetailDialog(
             ) {
                 val loaded = transcript
                 if (loading || loaded == null) {
-                    Text("Chargement…", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                    Text(stringResource(R.string.run_loading), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
                     return@Column
                 }
                 val record = loaded.record
-                KeyValueRow("État", BotOps.runStateLabel(record.state), highlight = !BotOps.runStateFailed(record.state))
-                KeyValueRow("Démarré", BotOps.dateLabel(record.startedAt))
-                KeyValueRow("Durée", BotOps.durationLabel(record.durationMs))
-                KeyValueRow("Tokens", BotOps.tokensLabel(record.tokensIn, record.tokensOut))
-                KeyValueRow("Déclencheur", record.trigger.ifBlank { "—" })
-                KeyValueRow("Outils", "${record.toolCalls} appel(s) · ${record.steps} étape(s)")
-                record.outcome.takeIf { it.isNotBlank() }?.let { KeyValueRow("Résultat", it) }
-                record.summary.takeIf { it.isNotBlank() }?.let { KeyValueRow("Résumé", it) }
+                KeyValueRow(stringResource(R.string.run_state), BotOps.runStateLabel(record.state), highlight = !BotOps.runStateFailed(record.state))
+                KeyValueRow(stringResource(R.string.run_started), BotOps.dateLabel(record.startedAt))
+                KeyValueRow(stringResource(R.string.run_duration), BotOps.durationLabel(record.durationMs))
+                KeyValueRow(stringResource(R.string.run_tokens), BotOps.tokensLabel(record.tokensIn, record.tokensOut))
+                KeyValueRow(stringResource(R.string.run_trigger), record.trigger.ifBlank { "—" })
+                KeyValueRow(stringResource(R.string.run_tools), stringResource(R.string.run_tool_calls, record.toolCalls, record.steps))
+                record.outcome.takeIf { it.isNotBlank() }?.let { KeyValueRow(stringResource(R.string.run_result), it) }
+                record.summary.takeIf { it.isNotBlank() }?.let { KeyValueRow(stringResource(R.string.run_summary), it) }
                 record.error.takeIf { it.isNotBlank() }?.let {
                     Text(
-                        text = "Erreur : $it",
+                        text = stringResource(R.string.run_error, it),
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                         color = colors.danger,
                         modifier = Modifier
@@ -112,8 +114,8 @@ fun RunDetailDialog(
                             .padding(10.dp),
                     )
                 }
-                loaded.prompt.takeIf { it.isNotBlank() }?.let { Block("Consigne", it) }
-                loaded.output.takeIf { it.isNotBlank() }?.let { Block("Réponse", it) }
+                loaded.prompt.takeIf { it.isNotBlank() }?.let { Block(stringResource(R.string.run_prompt), it) }
+                loaded.output.takeIf { it.isNotBlank() }?.let { Block(stringResource(R.string.run_answer), it) }
                 if (loaded.trace.isNotEmpty()) {
                     Text(
                         text = "TRACE",
@@ -131,7 +133,7 @@ fun RunDetailDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.run_close)) } },
     )
 }
 
@@ -169,10 +171,10 @@ fun DlqSection(
     val colors = LocalMercuryColors.current
     var confirmClear by remember { mutableStateOf(false) }
 
-    CollapsibleSection("Incidents") {
+    CollapsibleSection(stringResource(R.string.run_incidents)) {
         if (incidents.isEmpty()) {
             Text(
-                text = "Aucun incident : la file n'a abandonné aucun job.",
+                text = stringResource(R.string.run_no_incident),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -180,16 +182,16 @@ fun DlqSection(
         }
         incidents.forEach { job ->
             ActionRow(
-                title = job.prompt.take(120).ifBlank { "job ${job.id.take(8)}" },
+                title = job.prompt.take(120).ifBlank { stringResource(R.string.run_job, job.id.take(8)) },
                 subtitle = BotOps.incidentSubtitle(job),
-                trailing = "relancer",
+                trailing = stringResource(R.string.run_retry),
                 enabled = !busy,
                 onClick = { onReplay(job) },
             )
         }
         ButtonRow {
             TextButton(onClick = { confirmClear = true }, enabled = !busy) {
-                Text("Vider la DLQ", color = colors.danger)
+                Text(stringResource(R.string.run_purge), color = colors.danger)
             }
         }
     }
@@ -198,11 +200,10 @@ fun DlqSection(
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             containerColor = colors.surface,
-            title = { Text("Vider la DLQ ?", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.run_purge_title), color = colors.textPrimary) },
             text = {
                 Text(
-                    text = "Tous les jobs abandonnés de toute la flotte sont supprimés. " +
-                        "Rien n'est relancé : utilisez « Relancer » sur un incident pour le rejouer.",
+                    text = stringResource(R.string.run_purge_body),
                     color = colors.textSecondary,
                 )
             },
@@ -210,9 +211,9 @@ fun DlqSection(
                 TextButton(onClick = {
                     confirmClear = false
                     onClear()
-                }) { Text("Vider", color = colors.danger) }
+                }) { Text(stringResource(R.string.run_purge_confirm), color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.run_cancel)) } },
         )
     }
 }

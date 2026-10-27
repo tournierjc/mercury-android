@@ -21,7 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
@@ -43,8 +45,8 @@ fun NewBotDialog(
     onDismiss: () -> Unit,
     onCreate: (name: String, id: String, tier: String, persona: String) -> Unit,
     /** "Nouvel équipier" from the roster, "Nouveau membre" from a fleet. */
-    title: String = "Nouvel équipier",
-    submitLabel: String = "Créer",
+    title: String = stringResource(R.string.newbot_title),
+    submitLabel: String = stringResource(R.string.newbot_submit),
 ) {
     var name by remember { mutableStateOf("") }
     var id by remember { mutableStateOf("") }
@@ -70,8 +72,8 @@ fun NewBotDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
-                    placeholder = { Text("Veille, Rédacteur, Atelier…") },
+                    label = { Text(stringResource(R.string.newbot_label_name)) },
+                    placeholder = { Text(stringResource(R.string.newbot_placeholder_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -81,23 +83,23 @@ fun NewBotDialog(
                         idEdited = true
                         id = BotSlug.from(it)
                     },
-                    label = { Text("Identifiant") },
-                    supportingText = { Text("Minuscules, chiffres et tirets. Sert de nom de dossier.") },
+                    label = { Text(stringResource(R.string.newbot_label_id)) },
+                    supportingText = { Text(stringResource(R.string.newbot_supporting_id)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    text = "Ce qu'il a le droit de faire",
+                    text = stringResource(R.string.newbot_label_tier),
                     style = MaterialTheme.typography.labelLarge,
                 )
                 // FlowRow, not Row: four chips do not fit on a narrow phone, and a chip cut
                 // off at the edge is a choice the owner cannot make.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(
-                        "readonly" to "Lecture",
-                        "builder" to "Écriture",
-                        "operator" to "Opérateur",
-                        "full" to "Complet",
+                        "readonly" to stringResource(R.string.newbot_tier_read_only),
+                        "builder" to stringResource(R.string.newbot_tier_write),
+                        "operator" to stringResource(R.string.newbot_tier_operator),
+                        "full" to stringResource(R.string.newbot_tier_full),
                     ).forEach { (tierId, label) ->
                         FilterChip(
                             selected = tier == tierId,
@@ -109,8 +111,8 @@ fun NewBotDialog(
                 OutlinedTextField(
                     value = persona,
                     onValueChange = { persona = it },
-                    label = { Text("Persona (optionnel)") },
-                    placeholder = { Text("Tu es…") },
+                    label = { Text(stringResource(R.string.newbot_label_persona)) },
+                    placeholder = { Text(stringResource(R.string.newbot_placeholder_persona)) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -125,7 +127,7 @@ fun NewBotDialog(
             }
         },
         dismissButton = {
-            TextButton(enabled = !busy, onClick = onDismiss) { Text("Annuler") }
+            TextButton(enabled = !busy, onClick = onDismiss) { Text(stringResource(R.string.newbot_action_cancel)) }
         },
     )
 }
@@ -139,20 +141,17 @@ fun ConfirmDeleteBotDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Supprimer « $botName » ?") },
+        title = { Text(stringResource(R.string.newbot_confirm_delete_title, botName)) },
         text = {
-            Text(
-                "Son profil, son historique et ses fichiers de travail seront effacés. " +
-                    "Ses équipiers, s'il en a, partent avec lui. C'est définitif.",
-            )
+            Text(stringResource(R.string.newbot_confirm_delete_body))
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Supprimer", color = LocalMercuryColors.current.danger)
+                Text(stringResource(R.string.newbot_action_delete), color = LocalMercuryColors.current.danger)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.newbot_action_cancel)) }
         },
     )
 }

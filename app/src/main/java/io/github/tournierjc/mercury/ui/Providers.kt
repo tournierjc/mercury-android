@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.R
 
 /**
  * The provider rows, shared by Réglages.
@@ -81,10 +83,10 @@ internal fun ProviderRow(
             )
             Text(
                 text = when {
-                    !provider.enabled -> "désactivé"
-                    !provider.hasKey -> "sans clé"
+                    !provider.enabled -> stringResource(R.string.prov_disabled)
+                    !provider.hasKey -> stringResource(R.string.prov_no_key)
                     provider.model.isNotBlank() -> provider.model
-                    else -> "prêt"
+                    else -> stringResource(R.string.prov_ready)
                 } + provider.baseUrl.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
@@ -95,7 +97,7 @@ internal fun ProviderRow(
         IconButton(onClick = onEdit, enabled = !busy) {
             Icon(
                 Icons.Rounded.Edit,
-                contentDescription = "Modifier $name",
+                contentDescription = stringResource(R.string.prov_edit, name),
                 tint = colors.textSecondary,
                 modifier = Modifier.size(19.dp),
             )
@@ -103,7 +105,7 @@ internal fun ProviderRow(
         IconButton(onClick = onTest, enabled = !busy) {
             Icon(
                 Icons.Rounded.Bolt,
-                contentDescription = "Tester $name",
+                contentDescription = stringResource(R.string.prov_test, name),
                 tint = colors.accent,
                 modifier = Modifier.size(19.dp),
             )
@@ -117,16 +119,20 @@ internal fun ProviderTestLine(result: ProviderTestResult) {
     if (result.success) {
         val catalogue = result.models.take(4).joinToString(", ")
         Text(
-            text = "Connecté · ${result.models.size} modèle(s)" +
+            text = stringResource(R.string.prov_connected, result.models.size) +
                 (if (catalogue.isNotBlank()) " : $catalogue" else "") +
-                (if (result.recommendedModel.isNotBlank()) " · conseillé ${result.recommendedModel}" else ""),
+                (if (result.recommendedModel.isNotBlank()) {
+                    stringResource(R.string.prov_recommended, result.recommendedModel)
+                } else {
+                    ""
+                }),
             style = MaterialTheme.typography.labelSmall,
             color = colors.accent,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     } else {
         Text(
-            text = "Échec · " + result.error.ifBlank { "connexion refusée" },
+            text = stringResource(R.string.prov_failed) + result.error.ifBlank { stringResource(R.string.prov_refused) },
             style = MaterialTheme.typography.labelSmall,
             color = colors.danger,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -159,7 +165,7 @@ internal fun ProviderEditDialog(
                 OutlinedTextField(
                     value = apiKey,
                     onValueChange = { apiKey = it },
-                    label = { Text("Clé API (vide = inchangée)") },
+                    label = { Text(stringResource(R.string.prov_key_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -168,7 +174,7 @@ internal fun ProviderEditDialog(
                 OutlinedTextField(
                     value = baseUrl,
                     onValueChange = { baseUrl = it },
-                    label = { Text("URL de base (vide = inchangée)") },
+                    label = { Text(stringResource(R.string.prov_url_label)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
@@ -176,14 +182,14 @@ internal fun ProviderEditDialog(
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
-                    label = { Text("Modèle par défaut (vide = inchangé)") },
+                    label = { Text(stringResource(R.string.prov_model_label)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Activé",
+                        text = stringResource(R.string.prov_enabled),
                         style = MaterialTheme.typography.bodyLarge,
                         color = colors.textPrimary,
                         modifier = Modifier.weight(1f),
@@ -202,8 +208,8 @@ internal fun ProviderEditDialog(
                         enabled,
                     )
                 },
-            ) { Text("Enregistrer") }
+            ) { Text(stringResource(R.string.prov_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.prov_cancel)) } },
     )
 }

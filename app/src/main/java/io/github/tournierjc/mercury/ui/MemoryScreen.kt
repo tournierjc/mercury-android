@@ -43,9 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.dto.MEMORY_TYPES
 import io.github.tournierjc.mercury.data.dto.BeliefDto
 import io.github.tournierjc.mercury.data.dto.MemoryDto
@@ -79,8 +81,8 @@ fun MemoryScreen(onBack: () -> Unit) {
             .safeDrawingPadding(),
     ) {
         ScreenHeader(
-            title = "Mémoire",
-            subtitle = "${state.total} souvenirs · ${state.beliefs.size} croyances",
+            title = stringResource(R.string.memory_titre),
+            subtitle = stringResource(R.string.memory_sous_titre, state.total, state.beliefs.size),
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
@@ -170,17 +172,21 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
     OutlinedTextField(
         value = state.query,
         onValueChange = viewModel::search,
-        label = { Text("Rechercher dans la mémoire") },
+        label = { Text(stringResource(R.string.memory_rechercher)) },
         singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 10.dp),
     )
-    SectionTitle("Souvenirs")
+    SectionTitle(stringResource(R.string.memory_souvenirs))
     CardBlock {
         if (state.memories.isEmpty()) {
             Text(
-                text = if (state.loading) "Chargement…" else "Rien en mémoire pour cette recherche.",
+                text = if (state.loading) {
+                    stringResource(R.string.memory_chargement)
+                } else {
+                    stringResource(R.string.memory_aucun_souvenir)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -192,7 +198,7 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
             listOf(
                 QuickAction(
                     icon = Icons.Rounded.Add,
-                    label = "Ajouter",
+                    label = stringResource(R.string.memory_ajouter),
                     tint = colors.accent,
                     onClick = onAdd,
                 ),
@@ -236,7 +242,12 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
                 )
             }
             Text(
-                text = "confiance ${(memory.confidence * 100).toInt()} % · importance ${(memory.importance * 100).toInt()} % · ${memory.scope}",
+                text = stringResource(
+                    R.string.memory_souvenir_scores,
+                    (memory.confidence * 100).toInt(),
+                    (memory.importance * 100).toInt(),
+                    memory.scope,
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp),
@@ -246,7 +257,7 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
             IconButton(onClick = onForget, modifier = Modifier.size(38.dp)) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
-                    contentDescription = "Oublier ce souvenir",
+                    contentDescription = stringResource(R.string.memory_oublier_souvenir),
                     tint = colors.danger,
                     modifier = Modifier.size(19.dp),
                 )
@@ -258,11 +269,11 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
 @Composable
 private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorrect: (String) -> Unit) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Croyances")
+    SectionTitle(stringResource(R.string.memory_croyances))
     CardBlock {
         if (state.beliefs.isEmpty()) {
             Text(
-                text = "Aucune croyance extraite pour l'instant.",
+                text = stringResource(R.string.memory_aucune_croyance),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -291,7 +302,12 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                         modifier = Modifier.padding(top = 4.dp),
                     )
                     Text(
-                        text = "support ${belief.support} · contre ${belief.against} · ${belief.timescale.ifBlank { "—" }}",
+                        text = stringResource(
+                            R.string.memory_croyance_scores,
+                            belief.support,
+                            belief.against,
+                            belief.timescale.ifBlank { "—" },
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
                         modifier = Modifier.padding(top = 4.dp),
@@ -306,7 +322,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                     IconButton(onClick = { viewModel.confirmBelief(belief.id) }, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.Check,
-                            contentDescription = "Confirmer cette croyance",
+                            contentDescription = stringResource(R.string.memory_confirmer_croyance),
                             tint = colors.accent,
                             modifier = Modifier.size(19.dp),
                         )
@@ -314,7 +330,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                     IconButton(onClick = { onCorrect(belief.id) }, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.Edit,
-                            contentDescription = "Corriger cette croyance",
+                            contentDescription = stringResource(R.string.memory_corriger_croyance_action),
                             tint = colors.textSecondary,
                             modifier = Modifier.size(19.dp),
                         )
@@ -322,7 +338,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                     IconButton(onClick = { viewModel.forgetBelief(belief.id) }, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.DeleteOutline,
-                            contentDescription = "Oublier cette croyance",
+                            contentDescription = stringResource(R.string.memory_oublier_croyance),
                             tint = colors.danger,
                             modifier = Modifier.size(19.dp),
                         )
@@ -336,16 +352,16 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
 @Composable
 private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Écartés par le cerveau")
+    SectionTitle(stringResource(R.string.memory_quarantaine_titre))
     CardBlock {
         Text(
-            text = "Souvenirs mis de côté parce qu'ils contredisaient quelque chose de plus solide. Les réintégrer les remet dans le circuit.",
+            text = stringResource(R.string.memory_quarantaine_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
         if (state.quarantined.isEmpty()) {
             Text(
-                text = "Rien en quarantaine.",
+                text = stringResource(R.string.memory_quarantaine_vide),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 8.dp),
@@ -389,7 +405,7 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
                     ) {
                         Icon(
                             Icons.Rounded.Restore,
-                            contentDescription = "Réintégrer",
+                            contentDescription = stringResource(R.string.memory_reintegrer),
                             tint = colors.accent,
                             modifier = Modifier.size(20.dp),
                         )
@@ -403,39 +419,61 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
 @Composable
 private fun AboutTab(state: MemoryUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Runtime")
+    SectionTitle(stringResource(R.string.memory_runtime))
     CardBlock {
         val config = state.config
         if (config == null) {
-            Text("Configuration indisponible.", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+            Text(
+                stringResource(R.string.memory_config_indisponible),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
         } else {
-            KeyValueRow("Agent", config.identity.name.ifBlank { "—" })
-            KeyValueRow("Propriétaire", config.identity.owner.ifBlank { "—" })
-            KeyValueRow("Fournisseur", config.defaultProvider.ifBlank { "—" })
-            KeyValueRow("Budget", formatTokens(config.tokenBudget))
-            KeyValueRow("Battement", formatUptime(config.heartbeatInterval * 60))
-            KeyValueRow("Second cerveau", if (config.secondBrainEnabled) "activé" else "désactivé")
-            KeyValueRow("Telegram", if (config.telegramEnabled) "activé" else "désactivé")
+            KeyValueRow(stringResource(R.string.memory_agent), config.identity.name.ifBlank { "—" })
+            KeyValueRow(stringResource(R.string.memory_proprietaire), config.identity.owner.ifBlank { "—" })
+            KeyValueRow(stringResource(R.string.memory_fournisseur), config.defaultProvider.ifBlank { "—" })
+            KeyValueRow(stringResource(R.string.memory_budget), formatTokens(config.tokenBudget))
+            KeyValueRow(stringResource(R.string.memory_battement), formatUptime(config.heartbeatInterval * 60))
+            KeyValueRow(
+                stringResource(R.string.memory_second_cerveau),
+                if (config.secondBrainEnabled) {
+                    stringResource(R.string.memory_active)
+                } else {
+                    stringResource(R.string.memory_desactive)
+                },
+            )
+            KeyValueRow(
+                stringResource(R.string.memory_telegram),
+                if (config.telegramEnabled) {
+                    stringResource(R.string.memory_active)
+                } else {
+                    stringResource(R.string.memory_desactive)
+                },
+            )
         }
     }
-    SectionTitle("Graphe")
+    SectionTitle(stringResource(R.string.memory_graphe))
     CardBlock {
         val graph = state.graph
         if (graph == null) {
-            Text("Graphe indisponible.", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+            Text(
+                stringResource(R.string.memory_graphe_indisponible),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
         } else {
-            KeyValueRow("Nœuds", graph.nodes.size.toString())
-            KeyValueRow("Liens", graph.edges.size.toString())
+            KeyValueRow(stringResource(R.string.memory_noeuds), graph.nodes.size.toString())
+            KeyValueRow(stringResource(R.string.memory_liens), graph.edges.size.toString())
             graph.nodes.take(6).forEach { node ->
                 ActionRow(title = node.fullLabel.ifBlank { node.label }, subtitle = node.type)
             }
         }
     }
-    SectionTitle("Personnes")
+    SectionTitle(stringResource(R.string.memory_personnes))
     CardBlock {
         if (state.persons.isEmpty()) {
             Text(
-                text = "Le cerveau n'a encore identifié personne.",
+                text = stringResource(R.string.memory_aucune_personne),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -451,21 +489,23 @@ private fun AboutTab(state: MemoryUiState) {
  * state machine (ADR-026). Shown in English it reads as jargon; the badge is the one place that
  * says whether a claim is being acted on.
  */
+@Composable
 private fun BeliefDto.statusLabel(): String = when (status.lowercase()) {
-    "candidate" -> "candidate"
-    "held" -> "tenue"
-    "confirmed" -> "confirmée"
-    "contested" -> "contestée"
-    "retired" -> "retirée"
-    "forgotten" -> "oubliée"
+    "candidate" -> stringResource(R.string.memory_statut_candidate)
+    "held" -> stringResource(R.string.memory_statut_held)
+    "confirmed" -> stringResource(R.string.memory_statut_confirmed)
+    "contested" -> stringResource(R.string.memory_statut_contested)
+    "retired" -> stringResource(R.string.memory_statut_retired)
+    "forgotten" -> stringResource(R.string.memory_statut_forgotten)
     else -> status
 }
 
+@Composable
 private fun MemoryTab.label(): String = when (this) {
-    MemoryTab.Memories -> "Souvenirs"
-    MemoryTab.Beliefs -> "Croyances"
-    MemoryTab.Quarantine -> "Quarantaine"
-    MemoryTab.About -> "À propos"
+    MemoryTab.Memories -> stringResource(R.string.memory_souvenirs)
+    MemoryTab.Beliefs -> stringResource(R.string.memory_croyances)
+    MemoryTab.Quarantine -> stringResource(R.string.memory_quarantaine)
+    MemoryTab.About -> stringResource(R.string.memory_a_propos)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -482,7 +522,7 @@ private fun AddMemoryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Nouveau souvenir", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.memory_nouveau_souvenir), color = colors.textPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -497,14 +537,14 @@ private fun AddMemoryDialog(
                 OutlinedTextField(
                     value = summary,
                     onValueChange = { summary = it },
-                    label = { Text("Résumé") },
+                    label = { Text(stringResource(R.string.memory_resume)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = detail,
                     onValueChange = { detail = it },
-                    label = { Text("Détail (optionnel)") },
+                    label = { Text(stringResource(R.string.memory_detail_optionnel)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -512,10 +552,10 @@ private fun AddMemoryDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(type, summary, detail) }, enabled = summary.isNotBlank()) {
-                Text("Ajouter")
+                Text(stringResource(R.string.memory_ajouter))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.memory_annuler)) } },
     )
 }
 
@@ -526,21 +566,21 @@ private fun CorrectBeliefDialog(onDismiss: () -> Unit, onConfirm: (String) -> Un
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Corriger la croyance", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.memory_corriger_croyance), color = colors.textPrimary) },
         text = {
             OutlinedTextField(
                 value = statement,
                 onValueChange = { statement = it },
-                label = { Text("Formulation correcte") },
+                label = { Text(stringResource(R.string.memory_formulation)) },
                 minLines = 2,
                 modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(statement) }, enabled = statement.trim().length >= 3) {
-                Text("Enregistrer")
+                Text(stringResource(R.string.memory_enregistrer))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.memory_annuler)) } },
     )
 }

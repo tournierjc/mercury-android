@@ -25,8 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
 @Composable
@@ -41,7 +43,7 @@ fun Composer(
     attachmentCount: Int,
     busy: Boolean,
     /** What the empty field invites, in the words of the current conversation. */
-    hint: String = "Demande à Mercury…",
+    hint: String = stringResource(R.string.composer_hint_default),
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMercuryColors.current
@@ -59,7 +61,7 @@ fun Composer(
             IconButton(onClick = onAttach, enabled = !busy) {
                 Icon(
                     imageVector = Icons.Rounded.AttachFile,
-                    contentDescription = "Joindre une photo ou un PDF",
+                    contentDescription = stringResource(R.string.composer_attach),
                     tint = colors.textSecondary,
                 )
             }
@@ -68,7 +70,7 @@ fun Composer(
             IconButton(onClick = onVoice) {
                 Icon(
                     imageVector = Icons.Rounded.Mic,
-                    contentDescription = "Dicter",
+                    contentDescription = stringResource(R.string.composer_dictate),
                     tint = colors.textSecondary,
                 )
             }
@@ -115,7 +117,7 @@ private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
         IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(40.dp)) {
             Icon(
                 imageVector = Icons.Rounded.ArrowUpward,
-                contentDescription = "Envoyer",
+                contentDescription = stringResource(R.string.composer_send),
                 tint = if (enabled) colors.canvas else colors.textSecondary,
                 modifier = Modifier.size(20.dp),
             )

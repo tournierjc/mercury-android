@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
@@ -80,16 +81,14 @@ import io.github.tournierjc.mercury.data.QuoteReply
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.R
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import java.util.Locale
 
 private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots }
 
-private val suggestions = listOf(
-    "Que sais-tu de ce Spark ?",
-    "Résume ma dernière session",
-    "Écris un test pour le parseur SSE",
-)
+
 
 @Composable
 fun ChatScreen(
@@ -108,21 +107,27 @@ fun ChatScreen(
     onDismissWarning: () -> Unit,
     /** Bot named by the notification the owner tapped, opened once the screen is up. */
     openBotId: String? = null,
+    /** Bumped on every tap of a notification, so tapping the same bot twice still arrives. */
+    openBotNonce: Int = 0,
     onOpenBotConsumed: () -> Unit = {},
 ) {
     val colors = LocalMercuryColors.current
     var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
     var botToOpen by remember { mutableStateOf<String?>(null) }
-    var botChat by rememberSaveable { mutableStateOf<String?>(null) }
+    // Seeded from the notification, not set afterwards: the Mercury conversation used to be the
+    // first frame of a cold start, so tapping a notification showed it, then jumped.
+    var botChat by rememberSaveable { mutableStateOf(openBotId) }
     // Where the open conversation was entered from, so Back retraces one step.
     var cameFromBots by rememberSaveable { mutableStateOf(false) }
 
     // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
     // bot id, and the app lands on that bot instead of the last conversation.
-    LaunchedEffect(openBotId) {
+    LaunchedEffect(openBotId, openBotNonce) {
         if (openBotId != null) {
-            // Straight into the conversation: that is where the work it announced lives.
-            botChat = openBotId
+            // Straight into the conversation: that is where the work it announced lives. The
+            // nonce makes a second tap on the same bot a new event rather than a no-op.
+            if (botChat != openBotId) botChat = openBotId
+            cameFromBots = false
             screen = Screen.Chat
             onOpenBotConsumed()
         }
@@ -221,16 +226,22 @@ fun ChatScreen(
 
     // Photos and PDFs: the system picker needs no storage permission, and a picked
     // file is read once, downscaled, and reduced to bytes — never copied to storage.
+    val attachmentUnreadable = stringResource(R.string.chat_attachment_unreadable)
     val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
         val files = uris.mapNotNull { uri ->
             MediaPicker.read(context, uri).getOrElse { error ->
-                attachmentError = error.message ?: "Pièce jointe illisible"
+                attachmentError = error.message ?: attachmentUnreadable
                 null
             }
         }
         if (files.isNotEmpty()) onPickAttachments(files)
     }
+
+    // Read once, in the composable: the launcher callbacks are not composable scopes.
+    val voicePrompt = stringResource(R.string.chat_title)
+    val voiceUnavailable = stringResource(R.string.chat_voice_unavailable)
+    val micDenied = stringResource(R.string.chat_mic_denied)
 
     val speechLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -247,10 +258,10 @@ fun ChatScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
-            runCatching { speechLauncher.launch(speechIntent()) }
-                .onFailure { voiceError = "Dictée indisponible sur cet appareil" }
+            runCatching { speechLauncher.launch(speechIntent(voicePrompt)) }
+                .onFailure { voiceError = voiceUnavailable }
         } else {
-            voiceError = "Micro refusé — autorise l'accès dans les réglages"
+            voiceError = micDenied
         }
     }
 
@@ -261,8 +272,8 @@ fun ChatScreen(
             Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) {
-            runCatching { speechLauncher.launch(speechIntent()) }
-                .onFailure { voiceError = "Dictée indisponible sur cet appareil" }
+            runCatching { speechLauncher.launch(speechIntent(voicePrompt)) }
+                .onFailure { voiceError = voiceUnavailable }
         } else {
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
@@ -346,7 +357,12 @@ fun ChatScreen(
             val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
             val botLive = botId?.let { botWatch.live[it] }
             val botName = bot?.let { BotJson.name(it) } ?: botId.orEmpty()
-            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botId) {
+            // Read in the composable: the list below is built inside remember { }, where a
+            // resource lookup is not allowed.
+            val queuedLabel = stringResource(R.string.chat_bot_queued)
+            val failedLabel = stringResource(R.string.chat_bot_failed)
+            val noAnswerLabel = stringResource(R.string.chat_bot_no_answer)
+            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botId, queuedLabel, failedLabel, noAnswerLabel) {
                 if (botId == null) {
                     emptyList()
                 } else {
@@ -366,9 +382,9 @@ fun ChatScreen(
                             text = message.text.ifBlank {
                                 when {
                                     message.streaming -> "…"
-                                    message.state == "queued" -> "en file…"
-                                    message.state == "failed" -> "échec du run"
-                                    else -> "sans réponse"
+                                    message.state == "queued" -> queuedLabel
+                                    message.state == "failed" -> failedLabel
+                                    else -> noAnswerLabel
                                 }
                             },
                             streaming = message.streaming,
@@ -383,8 +399,8 @@ fun ChatScreen(
                     title = botName,
                     subtitle = listOfNotNull(
                         bot?.let { BotJson.stateLabel(BotJson.state(it)) },
-                        botLive?.takeIf { it.running }?.let { "écrit…" } ?: botWatch.activity[botId],
-                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "au repos" },
+                        botLive?.takeIf { it.running }?.let { stringResource(R.string.chat_bot_writing) } ?: botWatch.activity[botId],
+                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
                     onMenu = { scope.launch { drawerState.open() } },
                     onNewChat = null,
                     avatar = { if (bot != null) BotFace(bot, botAvatars[botId], small = true) },
@@ -392,7 +408,7 @@ fun ChatScreen(
                         IconButton(onClick = { showBotDeliverables = true }) {
                             Icon(
                                 imageVector = Icons.Rounded.FolderOpen,
-                                contentDescription = "Livrables de $botName",
+                                contentDescription = stringResource(R.string.chat_bot_deliverables, botName),
                                 tint = if (botsState.outputs.isEmpty()) colors.textSecondary else colors.accent,
                             )
                         }
@@ -400,12 +416,23 @@ fun ChatScreen(
                             botToOpen = botId
                             screen = Screen.Bots
                         }) {
-                            Icon(Icons.Rounded.MoreHoriz, contentDescription = "Réglages de $botName", tint = colors.textSecondary)
+                            Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.chat_bot_settings, botName), tint = colors.textSecondary)
                         }
                     },
                 )
                 Box(modifier = Modifier.weight(1f)) {
-                    if (botMessages.isEmpty()) {
+                    if (botMessages.isEmpty() && botsState.detailLoading) {
+                        // Arriving from a notification: the transcript takes a beat, and the
+                        // welcome screen used to flash in that gap as if the conversation were
+                        // empty.
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = colors.accent,
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                    } else if (botMessages.isEmpty()) {
                         BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt, chat = true) }
                     } else {
                         MessageList(
@@ -444,7 +471,7 @@ fun ChatScreen(
                     onAttach = null,
                     attachmentCount = 0,
                     busy = botsState.busy,
-                    hint = "Écrire à $botName…",
+                    hint = stringResource(R.string.chat_bot_write, botName),
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 )
                 if (showBotDeliverables && botId != null) {
@@ -551,10 +578,10 @@ fun ChatScreen(
     }
 }
 
-private fun speechIntent(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+private fun speechIntent(prompt: String): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
     putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
-    putExtra(RecognizerIntent.EXTRA_PROMPT, "Parle à Mercury")
+    putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
 }
 
 @Composable
@@ -577,7 +604,7 @@ internal fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onMenu) {
-            Icon(Icons.Rounded.Menu, contentDescription = "Sessions et équipiers", tint = colors.textPrimary)
+            Icon(Icons.Rounded.Menu, contentDescription = stringResource(R.string.chat_subtitle), tint = colors.textPrimary)
         }
         Row(
             modifier = Modifier.weight(1f),
@@ -609,7 +636,7 @@ internal fun TopBar(
         when {
             actions != null -> actions()
             onNewChat != null -> IconButton(onClick = onNewChat) {
-                Icon(Icons.Rounded.Add, contentDescription = "Nouvelle session", tint = colors.textPrimary)
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.chat_new_session), tint = colors.textPrimary)
             }
             else -> Box(modifier = Modifier.padding(horizontal = 24.dp))
         }
@@ -628,21 +655,20 @@ private fun BotWelcome(name: String, onPick: (String) -> Unit) {
         horizontalAlignment = Alignment.Start,
     ) {
         Text(
-            text = name.ifBlank { "Équipier" },
+            text = name.ifBlank { stringResource(R.string.chat_teammate) },
             style = MaterialTheme.typography.displaySmall,
             color = colors.textPrimary,
         )
         Text(
-            text = "Un message part en tâche de fond : sa réponse s'écrit ici pendant qu'il travaille, " +
-                "et ses livrables s'ouvrent par le dossier en haut.",
+            text = stringResource(R.string.chat_team_intro),
             style = MaterialTheme.typography.bodyLarge,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
         )
         listOf(
-            "Que sais-tu de ce Spark ?",
-            "Résume l'état de la flotte",
-            "Écris un fichier de notes",
+            stringResource(R.string.chat_suggestion_spark),
+            stringResource(R.string.chat_suggestion_fleet),
+            stringResource(R.string.chat_suggestion_notes),
         ).forEach { prompt ->
             Text(
                 text = prompt,
@@ -676,12 +702,16 @@ private fun Welcome(onPick: (String) -> Unit) {
             color = colors.textPrimary,
         )
         Text(
-            text = "Ton agent tourne sur le Spark. Même mémoire, mêmes outils.",
+            text = stringResource(R.string.chat_welcome),
             style = MaterialTheme.typography.bodyLarge,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 8.dp, bottom = 28.dp),
         )
-        suggestions.forEach { suggestion ->
+        listOf(
+            stringResource(R.string.chat_suggestion_spark),
+            stringResource(R.string.chat_suggestion_session),
+            stringResource(R.string.chat_suggestion_test),
+        ).forEach { suggestion ->
             // The hint says "appuie sur une suggestion" — it has to be clickable to be true.
             Row(
                 modifier = Modifier
@@ -700,7 +730,7 @@ private fun Welcome(onPick: (String) -> Unit) {
             }
         }
         Text(
-            text = "Appuie sur une suggestion ou écris le premier message.",
+            text = stringResource(R.string.chat_tap_suggestion),
             style = MaterialTheme.typography.labelSmall,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 12.dp),
@@ -757,12 +787,12 @@ internal fun MessageList(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Sélection du texte — appui long sur un mot pour étendre",
+                    text = stringResource(R.string.chat_selection_hint),
                     style = MaterialTheme.typography.labelSmall,
                     color = LocalMercuryColors.current.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { selecting = null }) { Text("Terminé") }
+                TextButton(onClick = { selecting = null }) { Text(stringResource(R.string.chat_done)) }
             }
         }
         LazyColumn(
@@ -788,21 +818,21 @@ internal fun MessageList(
                         onDismissRequest = { menuFor = null },
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Répondre") },
+                            text = { Text(stringResource(R.string.chat_reply)) },
                             onClick = {
                                 menuFor = null
                                 onReply(message)
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Copier") },
+                            text = { Text(stringResource(R.string.chat_copy)) },
                             onClick = {
                                 menuFor = null
                                 clipboard.setText(AnnotatedString(message.text))
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Sélectionner du texte") },
+                            text = { Text(stringResource(R.string.chat_select_text)) },
                             onClick = {
                                 menuFor = null
                                 selecting = message.id
@@ -936,7 +966,7 @@ private fun ReplyChip(message: ChatMessage, onClear: () -> Unit) {
         )
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
             Text(
-                text = if (message.role == ChatMessage.Role.User) "Vous répondez à votre message" else "Vous répondez à Mercury",
+                text = if (message.role == ChatMessage.Role.User) stringResource(R.string.chat_replying_to_self) else stringResource(R.string.chat_replying_to_mercury),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.accent,
             )
@@ -949,7 +979,7 @@ private fun ReplyChip(message: ChatMessage, onClear: () -> Unit) {
             )
         }
         IconButton(onClick = onClear) {
-            Icon(Icons.Rounded.Close, contentDescription = "Annuler la réponse", tint = colors.textSecondary)
+            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.chat_cancel_reply), tint = colors.textSecondary)
         }
     }
 }
@@ -1040,7 +1070,7 @@ private fun AttachmentStrip(attachments: List<PendingFile>, onRemove: (Int) -> U
                 IconButton(onClick = { onRemove(index) }, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
-                        contentDescription = "Retirer ${file.name}",
+                        contentDescription = stringResource(R.string.chat_remove_attachment, file.name),
                         tint = colors.textSecondary,
                         modifier = Modifier.size(15.dp),
                     )

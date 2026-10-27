@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mercury conversation -->
+    <string name="chat_title">Talk to Mercury</string>
+    <string name="chat_subtitle">Sessions and teammates</string>
+    <string name="chat_new_session">New session</string>
+    <string name="chat_teammate">Teammate</string>
+    <string name="chat_team_intro">A message leaves as a background job: its answer is written here while it works, and its deliverables open from the folder above.</string>
+    <string name="chat_welcome">Your agent runs on the Spark. Same memory, same tools.</string>
+    <string name="chat_tap_suggestion">Tap a suggestion or write the first message.</string>
+    <string name="chat_suggestion_spark">What do you know about this Spark?</string>
+    <string name="chat_suggestion_session">Summarise my last session</string>
+    <string name="chat_suggestion_test">Write a test for the SSE parser</string>
+    <string name="chat_suggestion_fleet">Summarise the fleet status</string>
+    <string name="chat_suggestion_notes">Write a notes file</string>
+    <string name="chat_selection_hint">Text selection — long-press a word to extend</string>
+    <string name="chat_attachment_unreadable">Unreadable attachment</string>
+    <string name="chat_voice_unavailable">Dictation unavailable on this device</string>
+    <string name="chat_mic_denied">Microphone denied — allow access in settings</string>
+    <string name="chat_remove_attachment">Remove %1$s</string>
+
+    <!-- Message actions -->
+    <string name="chat_done">Done</string>
+    <string name="chat_reply">Reply</string>
+    <string name="chat_copy">Copy</string>
+    <string name="chat_select_text">Select text</string>
+    <string name="chat_replying_to_self">You are replying to your own message</string>
+    <string name="chat_replying_to_mercury">You are replying to Mercury</string>
+    <string name="chat_cancel_reply">Cancel reply</string>
+
+    <!-- A teammate's conversation -->
+    <string name="chat_bot_queued">queued…</string>
+    <string name="chat_bot_failed">run failed</string>
+    <string name="chat_bot_no_answer">no answer</string>
+    <string name="chat_bot_writing">writing…</string>
+    <string name="chat_bot_idle">idle</string>
+    <string name="chat_bot_deliverables">Deliverables from %1$s</string>
+    <string name="chat_bot_settings">Settings for %1$s</string>
+    <string name="chat_bot_write">Message %1$s…</string>
+</resources>

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawer, device bridge, runs, deliverables and providers. -->
+<resources>
+    <!-- Drawer -->
+    <string name="drawer_section_crew">Teammates</string>
+    <string name="drawer_all_crew">All teammates</string>
+    <string name="drawer_section_sessions">Sessions</string>
+    <string name="drawer_new_session">New session</string>
+    <string name="drawer_no_session">No session yet.</string>
+    <string name="drawer_delete_session">Delete session</string>
+    <string name="drawer_deliverables">Deliverables</string>
+    <string name="drawer_boards">Boards</string>
+    <string name="drawer_memory">Memory</string>
+    <string name="drawer_console">Console</string>
+    <string name="drawer_settings">Settings</string>
+    <string name="drawer_bridge">Device bridge</string>
+    <string name="drawer_delete_session_title">Delete this session?</string>
+    <string name="drawer_delete">Delete</string>
+    <string name="drawer_cancel">Cancel</string>
+    <string name="drawer_sign_out">Sign out</string>
+
+    <!-- Device bridge -->
+    <string name="bridge_title">Device bridge</string>
+    <string name="bridge_back">Back</string>
+    <string name="bridge_calendar">Calendar</string>
+    <string name="bridge_read_events">read events</string>
+    <string name="bridge_contacts">Contacts</string>
+    <string name="bridge_contacts_detail">names, numbers, emails</string>
+    <string name="bridge_read_received">read received messages</string>
+    <string name="bridge_intro">Mercury reads your phone read-only, on demand, over the tailnet. Nothing is copied to the Spark: every agent request re-reads the local data.</string>
+    <string name="bridge_active">Bridge running</string>
+    <string name="bridge_listening">The server listens on port %1$d</string>
+    <string name="bridge_stopped">Server stopped</string>
+    <string name="bridge_access_title">Data access</string>
+    <string name="bridge_granted">granted · %1$s</string>
+    <string name="bridge_allow">Allow</string>
+    <string name="bridge_app_messages">App messages</string>
+    <string name="bridge_notif_granted">notification access granted · WhatsApp, Signal, Messenger…</string>
+    <string name="bridge_notif_hint">through notification access (WhatsApp, Signal…)</string>
+    <string name="bridge_enable">Enable</string>
+    <string name="bridge_give_title">Give these to Mercury</string>
+    <string name="bridge_url_label">URL</string>
+    <string name="bridge_token_label">Token</string>
+    <string name="bridge_show_token">Show token</string>
+    <string name="bridge_hide_token">Hide token</string>
+    <string name="bridge_revoke">Revoke the token</string>
+    <string name="bridge_readable_title">What the agent can read</string>
+    <string name="bridge_endpoints">GET /health · version, device, active providers\nGET /device/status · battery, network, timezone\nGET /calendar?from=&amp;to=&amp;limit= · events (ISO 8601)\nGET /contacts?q=&amp;limit= · names, numbers, emails\nGET /sms?limit=&amp;address= · received SMS\nGET /messages?limit= · SMS + app notifications\nRequired header: Authorization: Bearer ***</string>
+    <string name="bridge_footer">Without the bridge, the agent sees nothing of the phone. With it, it sees only what you allowed, while the service runs. « Revoke » invalidates the old token.</string>
+    <string name="bridge_copied">Copied</string>
+
+    <!-- Runs and incidents -->
+    <string name="run_title">Runs</string>
+    <string name="run_details">details</string>
+    <string name="run_older">… %1$d older run(s)</string>
+    <string name="run_detail_title">Run detail</string>
+    <string name="run_loading">Loading…</string>
+    <string name="run_state">State</string>
+    <string name="run_started">Started</string>
+    <string name="run_duration">Duration</string>
+    <string name="run_tokens">Tokens</string>
+    <string name="run_trigger">Trigger</string>
+    <string name="run_tools">Tools</string>
+    <string name="run_tool_calls">%1$d call(s) · %2$d step(s)</string>
+    <string name="run_result">Result</string>
+    <string name="run_summary">Summary</string>
+    <string name="run_error">Error: %1$s</string>
+    <string name="run_prompt">Instruction</string>
+    <string name="run_answer">Answer</string>
+    <string name="run_close">Close</string>
+    <string name="run_incidents">Incidents</string>
+    <string name="run_no_incident">No incident: the queue abandoned no job.</string>
+    <string name="run_job">job %1$s</string>
+    <string name="run_retry">retry</string>
+    <string name="run_purge">Purge the DLQ</string>
+    <string name="run_purge_title">Purge the DLQ?</string>
+    <string name="run_purge_body">Every abandoned job in the whole fleet is deleted. Nothing is replayed: use « Retry » on an incident to run it again.</string>
+    <string name="run_purge_confirm">Purge</string>
+    <string name="run_cancel">Cancel</string>
+
+    <!-- Deliverables -->
+    <string name="out_title">Deliverables</string>
+    <string name="out_subtitle">what your teammates produced</string>
+    <string name="out_one_file">1 file</string>
+    <string name="out_n_files">%1$d files</string>
+    <string name="out_preview_of">Preview %1$s</string>
+    <string name="out_share_of">Share %1$s</string>
+    <string name="out_delete_of">Delete %1$s</string>
+    <string name="out_delete_title">Delete this deliverable?</string>
+    <string name="out_delete_body">The file is removed from the teammate\'s folder. This cannot be undone.</string>
+    <string name="out_delete_confirm">Delete</string>
+    <string name="out_cancel">Cancel</string>
+    <string name="out_kind_final">final</string>
+    <string name="out_kind_work">work</string>
+    <string name="out_loading">Loading…</string>
+    <string name="out_empty_file">(empty file)</string>
+    <string name="out_truncated">Preview truncated to the first 64 kB — share the file to read it whole.</string>
+    <string name="out_unavailable">Preview unavailable.</string>
+    <string name="out_close">Close</string>
+    <string name="out_share">Share</string>
+    <string name="out_none_fleet">No deliverable in the fleet yet.</string>
+    <string name="out_of_bot">Deliverables from %1$s</string>
+    <string name="out_none_bot">Nothing yet: ask for a file in the conversation.</string>
+    <string name="out_count_one">1 file · preview, share, delete.</string>
+    <string name="out_count_many">%1$d files · preview, share, delete.</string>
+    <string name="out_files">Files</string>
+    <string name="out_none_this">No deliverable for this teammate.</string>
+    <string name="out_refresh">Refresh</string>
+
+    <!-- Providers -->
+    <string name="prov_disabled">disabled</string>
+    <string name="prov_no_key">no key</string>
+    <string name="prov_ready">ready</string>
+    <string name="prov_edit">Edit %1$s</string>
+    <string name="prov_test">Test %1$s</string>
+    <string name="prov_connected">Connected · %1$d model(s)</string>
+    <string name="prov_recommended"> · suggested %1$s</string>
+    <string name="prov_failed">Failed · </string>
+    <string name="prov_refused">connection refused</string>
+    <string name="prov_key_label">API key (empty = unchanged)</string>
+    <string name="prov_url_label">Base URL (empty = unchanged)</string>
+    <string name="prov_model_label">Default model (empty = unchanged)</string>
+    <string name="prov_enabled">Enabled</string>
+    <string name="prov_save">Save</string>
+    <string name="prov_cancel">Cancel</string>
+
+    <!-- openui rendering -->
+    <string name="openui_not_rendered">not rendered</string>
+    <string name="openui_in">in %1$s</string>
+</resources>
