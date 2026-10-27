@@ -33,10 +33,14 @@ fun Composer(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
-    onVoice: () -> Unit,
-    onAttach: () -> Unit,
+    /** Null hides the microphone: a screen that cannot dictate should not offer it. */
+    onVoice: (() -> Unit)?,
+    /** Null hides the paperclip, same reason. */
+    onAttach: (() -> Unit)?,
     attachmentCount: Int,
     busy: Boolean,
+    /** What the empty field invites, in the words of the current conversation. */
+    hint: String = "Demande à Mercury…",
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMercuryColors.current
@@ -48,19 +52,23 @@ fun Composer(
             .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onAttach, enabled = !busy) {
-            Icon(
-                imageVector = Icons.Rounded.AttachFile,
-                contentDescription = "Joindre une photo ou un PDF",
-                tint = colors.textSecondary,
-            )
+        if (onAttach != null) {
+            IconButton(onClick = onAttach, enabled = !busy) {
+                Icon(
+                    imageVector = Icons.Rounded.AttachFile,
+                    contentDescription = "Joindre une photo ou un PDF",
+                    tint = colors.textSecondary,
+                )
+            }
         }
-        IconButton(onClick = onVoice) {
-            Icon(
-                imageVector = Icons.Rounded.Mic,
-                contentDescription = "Dicter",
-                tint = colors.textSecondary,
-            )
+        if (onVoice != null) {
+            IconButton(onClick = onVoice) {
+                Icon(
+                    imageVector = Icons.Rounded.Mic,
+                    contentDescription = "Dicter",
+                    tint = colors.textSecondary,
+                )
+            }
         }
         BasicTextField(
             value = value,
@@ -77,7 +85,7 @@ fun Composer(
                 Box {
                     if (value.isEmpty()) {
                         Text(
-                            text = "Demande à Mercury…",
+                            text = hint,
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.textSecondary,
                         )

@@ -8,6 +8,7 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.DrawerValue
@@ -40,8 +43,8 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,11 +54,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.bots.BotThread
+import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ChatMessage
+import io.github.tournierjc.mercury.vm.BotsViewModel
 import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.ThreadDto
@@ -64,7 +72,7 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots, BotChat }
+private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots }
 
 private val suggestions = listOf(
     "Que sais-tu de ce Spark ?",
@@ -102,7 +110,7 @@ fun ChatScreen(
         if (openBotId != null) {
             // Straight into the conversation: that is where the work it announced lives.
             botChat = openBotId
-            screen = Screen.BotChat
+            screen = Screen.Chat
             onOpenBotConsumed()
         }
     }
@@ -150,26 +158,9 @@ fun ChatScreen(
                 onOpened = { botToOpen = null },
                 onOpenChat = { id ->
                     botChat = id
-                    screen = Screen.BotChat
+                    screen = Screen.Chat
                 },
             )
-            return
-        }
-
-        Screen.BotChat -> {
-            val id = botChat
-            if (id == null) {
-                screen = Screen.Bots
-            } else {
-                BotChatScreen(
-                    botId = id,
-                    onBack = { screen = Screen.Bots },
-                    onOpenAdmin = { adminId ->
-                        botToOpen = adminId
-                        screen = Screen.Bots
-                    },
-                )
-            }
             return
         }
 
@@ -183,6 +174,17 @@ fun ChatScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
+    val container = remember { (context.applicationContext as MercuryApp).container }
+    val botsVm: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
+    val botsState by botsVm.state.collectAsState()
+    val botWatch by container.botWatcher.state.collectAsState()
+    val botAvatars by botsVm.avatars.collectAsState()
+    LaunchedEffect(botWatch.bots) { botsVm.loadAvatars(botWatch.bots) }
+    LaunchedEffect(botChat) { botChat?.let { botsVm.select(it) } }
+
+    BackHandler(enabled = botChat != null) { botChat = null }
 
     var composerText by rememberSaveable { mutableStateOf("") }
     var voiceError by remember { mutableStateOf<String?>(null) }
@@ -247,10 +249,12 @@ fun ChatScreen(
                 threads = threads,
                 currentSessionId = state.sessionId,
                 onNewChat = {
+                    botChat = null
                     onNewChat()
                     scope.launch { drawerState.close() }
                 },
                 onOpenThread = { thread ->
+                    botChat = null
                     onOpenThread(thread)
                     scope.launch { drawerState.close() }
                 },
@@ -282,6 +286,14 @@ fun ChatScreen(
                     screen = Screen.Deliverables
                     scope.launch { drawerState.close() }
                 },
+                bots = botWatch.bots,
+                avatars = botAvatars,
+                activeBotId = botChat,
+                onOpenBot = { id ->
+                    botChat = id
+                    screen = Screen.Chat
+                    scope.launch { drawerState.close() }
+                },
                 onDeleteThread = { thread ->
                     onDeleteThread(thread)
                     scope.launch { drawerState.close() }
@@ -300,6 +312,115 @@ fun ChatScreen(
                 .safeDrawingPadding()
                 .imePadding(),
         ) {
+            val botId = botChat
+            val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
+            val botLive = botId?.let { botWatch.live[it] }
+            val botName = bot?.let { BotJson.name(it) } ?: botId.orEmpty()
+            val botMessages = remember(botsState.records, botsState.prompts, botsState.pending, botLive, botId) {
+                if (botId == null) {
+                    emptyList()
+                } else {
+                    val built = BotThread.build(
+                        botsState.records,
+                        botsState.prompts,
+                        botLive?.jobId,
+                        botLive?.text.orEmpty(),
+                    )
+                    val known = built.filter { !it.fromBot }.map { it.text }.toSet()
+                    (built + botsState.pending.filter { it.text !in known }).map { message ->
+                        ChatMessage(
+                            id = message.key,
+                            role = if (message.fromBot) ChatMessage.Role.Assistant else ChatMessage.Role.User,
+                            text = message.text.ifBlank {
+                                when {
+                                    message.streaming -> "…"
+                                    message.state == "queued" -> "en file…"
+                                    message.state == "failed" -> "échec du run"
+                                    else -> "sans réponse"
+                                }
+                            },
+                            streaming = message.streaming,
+                        )
+                    }
+                }
+            }
+            var showBotDeliverables by remember { mutableStateOf(false) }
+
+            if (botId != null) {
+                TopBar(
+                    title = botName,
+                    subtitle = listOfNotNull(
+                        bot?.let { BotJson.stateLabel(BotJson.state(it)) },
+                        botLive?.takeIf { it.running }?.let { "écrit…" } ?: botWatch.activity[botId],
+                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "au repos" },
+                    onMenu = { scope.launch { drawerState.open() } },
+                    onNewChat = null,
+                    avatar = { if (bot != null) BotFace(bot, botAvatars[botId], small = true) },
+                    actions = {
+                        IconButton(onClick = { showBotDeliverables = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.FolderOpen,
+                                contentDescription = "Livrables de $botName",
+                                tint = if (botsState.outputs.isEmpty()) colors.textSecondary else colors.accent,
+                            )
+                        }
+                        IconButton(onClick = {
+                            botToOpen = botId
+                            screen = Screen.Bots
+                        }) {
+                            Icon(Icons.Rounded.MoreHoriz, contentDescription = "Réglages de $botName", tint = colors.textSecondary)
+                        }
+                    },
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    if (botMessages.isEmpty()) {
+                        BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt) }
+                    } else {
+                        MessageList(botMessages)
+                    }
+                }
+                botsState.error?.let { message -> ErrorBar(message = message, onDismiss = { botsVm.clearBanner() }) }
+                botsState.dispatchFeedback?.let { feedback ->
+                    Text(
+                        text = feedback,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (feedback.startsWith("Refusé")) colors.danger else colors.textSecondary,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                    )
+                }
+                Composer(
+                    value = composerText,
+                    onValueChange = { composerText = it },
+                    onSend = {
+                        val text = composerText.trim()
+                        if (text.isNotEmpty()) {
+                            composerText = ""
+                            botsVm.dispatch(text)
+                        }
+                    },
+                    onVoice = { startVoice() },
+                    onAttach = null,
+                    attachmentCount = 0,
+                    busy = botsState.busy,
+                    hint = "Écrire à $botName…",
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                )
+                if (showBotDeliverables && botId != null) {
+                    LaunchedEffect(showBotDeliverables) { botsVm.reloadOutputs(botId) }
+                    BotDeliverablesSheet(
+                        botId = botId,
+                        botName = botName,
+                        outputs = botsState.outputs,
+                        busy = botsState.busy,
+                        onPreview = botsVm::previewOutput,
+                        onShare = botsVm::shareOutput,
+                        onDelete = botsVm::deleteOutput,
+                        onReload = { botsVm.reloadOutputs(botId) },
+                        onDismiss = { showBotDeliverables = false },
+                    )
+                }
+                BotOutputPreviewHost(botsState, botsVm)
+            } else {
             TopBar(
                 title = state.title.ifBlank { "Mercury" },
                 subtitle = listOf(state.provider, state.model).filter { it.isNotBlank() }.joinToString(" · "),
@@ -316,7 +437,7 @@ fun ChatScreen(
                         },
                     )
                 } else {
-                    MessageList(state)
+                    MessageList(state.messages)
                 }
             }
 
@@ -376,6 +497,7 @@ fun ChatScreen(
                 busy = state.streaming,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             )
+            }
         }
     }
 }
@@ -387,45 +509,104 @@ private fun speechIntent(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SP
 }
 
 @Composable
-private fun TopBar(
+internal fun TopBar(
     title: String,
     subtitle: String,
     onMenu: () -> Unit,
-    onNewChat: () -> Unit,
+    /** The main conversation offers a new session; a bot's conversation does not. */
+    onNewChat: (() -> Unit)? = null,
+    /** Left of the title, when the conversation is with someone in particular. */
+    avatar: (@Composable () -> Unit)? = null,
+    /** Right of the title: the actions of the current conversation. */
+    actions: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
 ) {
     val colors = LocalMercuryColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onMenu) {
-            Icon(Icons.Rounded.Menu, contentDescription = "Sessions", tint = colors.textPrimary)
+            Icon(Icons.Rounded.Menu, contentDescription = "Sessions et équipiers", tint = colors.textPrimary)
         }
-        Column(
+        Row(
             modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (subtitle.isNotBlank()) {
+            if (avatar != null) {
+                Box(modifier = Modifier.padding(end = 8.dp)) { avatar() }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
-        IconButton(onClick = onNewChat) {
-            Icon(Icons.Rounded.Add, contentDescription = "Nouvelle session", tint = colors.textPrimary)
+        when {
+            actions != null -> actions()
+            onNewChat != null -> IconButton(onClick = onNewChat) {
+                Icon(Icons.Rounded.Add, contentDescription = "Nouvelle session", tint = colors.textPrimary)
+            }
+            else -> Box(modifier = Modifier.padding(horizontal = 24.dp))
+        }
+    }
+}
+
+/** The empty state of a teammate's conversation: what to say, and what it will cost. */
+@Composable
+private fun BotWelcome(name: String, onPick: (String) -> Unit) {
+    val colors = LocalMercuryColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 28.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.Start,
+    ) {
+        Text(
+            text = name.ifBlank { "Équipier" },
+            style = MaterialTheme.typography.displaySmall,
+            color = colors.textPrimary,
+        )
+        Text(
+            text = "Un message part en tâche de fond : sa réponse s'écrit ici pendant qu'il travaille, " +
+                "et ses livrables s'ouvrent par le dossier en haut.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
+        )
+        listOf(
+            "Que sais-tu de ce Spark ?",
+            "Résume l'état de la flotte",
+            "Écris un fichier de notes",
+        ).forEach { prompt ->
+            Text(
+                text = prompt,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surface)
+                    .clickable { onPick(prompt) }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            )
         }
     }
 }
@@ -477,12 +658,12 @@ private fun Welcome(onPick: (String) -> Unit) {
 }
 
 @Composable
-private fun MessageList(state: ChatState) {
+internal fun MessageList(messages: List<ChatMessage>) {
     val listState = rememberLazyListState()
-    val lastLength = state.messages.lastOrNull()?.text?.length ?: 0
-    LaunchedEffect(state.messages.size, lastLength) {
-        if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.lastIndex)
+    val lastLength = messages.lastOrNull()?.text?.length ?: 0
+    LaunchedEffect(messages.size, lastLength) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.lastIndex)
         }
     }
     LazyColumn(
@@ -493,14 +674,14 @@ private fun MessageList(state: ChatState) {
         verticalArrangement = Arrangement.spacedBy(22.dp),
         contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
     ) {
-        items(state.messages, key = { it.id }) { message ->
+        items(messages, key = { it.id }) { message ->
             MessageItem(message)
         }
     }
 }
 
 @Composable
-private fun MessageItem(message: ChatMessage) {
+internal fun MessageItem(message: ChatMessage) {
     val colors = LocalMercuryColors.current
     if (message.role == ChatMessage.Role.User) {
         Row(
