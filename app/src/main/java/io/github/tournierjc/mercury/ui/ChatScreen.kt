@@ -477,7 +477,7 @@ private fun MessageItem(message: ChatMessage) {
                 }
             }
         }
-        MarkdownText(text = message.text)
+        MarkdownText(text = message.text, streaming = message.streaming)
         if (message.streaming) {
             Text(
                 text = "▍",
