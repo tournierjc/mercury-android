@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirror of values/strings_notices.xml: same names, same positional arguments. -->
+<resources>
+    <string name="notice_connect_failed">Could not reach the server</string>
+    <string name="notice_send_failed">Could not send</string>
+    <string name="notice_stream_failed">The answer broke off</string>
+    <string name="notice_reply_refused">Reply refused</string>
+    <string name="notice_history_unavailable">History unavailable</string>
+    <string name="notice_delete_failed">Could not delete</string>
+    <string name="notice_attachments_limit">4 attachments at most</string>
+    <string name="notice_dispatch_queued">Queued (job %1$s) — the main thread carries on.</string>
+    <string name="notice_dispatch_refused">Refused</string>
+    <string name="notice_name_required">A name is required</string>
+    <string name="notice_restart_refused">Restart refused</string>
+    <string name="notice_session_expired">Session expired — sign in again</string>
+    <string name="notice_request_refused">Request refused</string>
+</resources>

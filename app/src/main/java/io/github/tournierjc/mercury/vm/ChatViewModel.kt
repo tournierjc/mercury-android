@@ -10,6 +10,9 @@ import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.data.ChatReducer
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.PendingFile
@@ -63,9 +66,9 @@ class ChatViewModel(
                 ensureEvents(_state.value.sessionId)
                 refreshThreads()
             } catch (e: AuthException) {
-                _state.update { ChatReducer.setError(it, e.message) }
+                _state.update { ChatReducer.setError(it, e.toNotice()) }
             } catch (e: Exception) {
-                _state.update { ChatReducer.setError(it, e.message ?: "Connexion impossible") }
+                _state.update { ChatReducer.setError(it, Notice(NoticeKey.CONNECT_FAILED).withDetail(e.message)) }
             } finally {
                 _busy.value = false
             }
@@ -125,13 +128,14 @@ class ChatViewModel(
      */
     fun attach(files: List<PendingFile>) {
         val next = (_attachments.value + files).take(Attachments.MAX_FILES)
-        val problem = Attachments.problemWith(next) ?: if (files.size + _attachments.value.size > Attachments.MAX_FILES) {
-            "4 pièces jointes au maximum"
-        } else {
-            null
+        val problem = Attachments.problemWith(next)
+        val notice = when {
+            files.size + _attachments.value.size > Attachments.MAX_FILES -> Notice(NoticeKey.ATTACHMENTS_LIMIT)
+            problem != null -> Notice(NoticeKey.REQUEST_REFUSED).withDetail(problem)
+            else -> null
         }
-        if (problem != null) {
-            _state.update { ChatReducer.setError(it, problem) }
+        if (notice != null) {
+            _state.update { ChatReducer.setError(it, notice) }
             return
         }
         _attachments.value = next
@@ -145,8 +149,9 @@ class ChatViewModel(
         val trimmed = text.trim()
         val files = _attachments.value
         if ((trimmed.isEmpty() && files.isEmpty()) || _state.value.streaming) return
-        // A photo with no caption still shows as a turn: say what travels.
-        val shown = trimmed.ifBlank { "(" + files.size + " pièce(s) jointe(s))" }
+        // A photo with no caption still shows as a turn: name what travels rather than count it,
+        // so the bubble needs no sentence (and no translation).
+        val shown = trimmed.ifBlank { files.joinToString(" · ") { it.name } }
         _state.update { ChatReducer.addUserMessage(it, shown) }
         viewModelScope.launch {
             try {
@@ -161,12 +166,12 @@ class ChatViewModel(
                 }
             } catch (e: AuthException) {
                 _signedIn.value = false
-                _state.update { ChatReducer.setError(it, e.message) }
+                _state.update { ChatReducer.setError(it, e.toNotice()) }
             } catch (e: Exception) {
                 // "Envoi impossible" alone told the owner nothing and hid a null message.
                 // Name the failure instead of guessing: the class, and the message if any.
-                val reason = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName ?: "erreur"
-                _state.update { ChatReducer.setError(it, "Envoi impossible — $reason") }
+                val reason = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName
+                _state.update { ChatReducer.setError(it, Notice(NoticeKey.SEND_FAILED).withDetail(reason)) }
             }
         }
     }
@@ -176,7 +181,7 @@ class ChatViewModel(
         viewModelScope.launch {
             runCatching { api.resolvePermission(id, action) }
                 .onFailure { e ->
-                    _state.update { ChatReducer.setError(it, e.message ?: "Réponse refusée") }
+                    _state.update { ChatReducer.setError(it, Notice(NoticeKey.REPLY_REFUSED).withDetail(e.message)) }
                 }
         }
     }
@@ -211,7 +216,7 @@ class ChatViewModel(
                     ensureEvents(thread.id)
                 }
                 .onFailure { e ->
-                    _state.update { ChatReducer.setError(it, e.message ?: "Historique indisponible") }
+                    _state.update { ChatReducer.setError(it, Notice(NoticeKey.HISTORY_UNAVAILABLE).withDetail(e.message)) }
                 }
         }
     }
@@ -225,7 +230,7 @@ class ChatViewModel(
                     if (_state.value.sessionId == thread.id) newChat()
                 }
                 .onFailure { e ->
-                    _state.update { ChatReducer.setError(it, e.message ?: "Suppression impossible") }
+                    _state.update { ChatReducer.setError(it, Notice(NoticeKey.DELETE_FAILED).withDetail(e.message)) }
                 }
         }
     }

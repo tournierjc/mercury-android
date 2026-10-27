@@ -118,7 +118,8 @@ class ChatReducerTest {
         state = ChatReducer.onEvent(state, ChatEvent.Failure("réseau coupé"))
 
         assertFalse(state.streaming)
-        assertEquals("réseau coupé", state.error)
+        assertEquals(NoticeKey.STREAM_FAILED, state.error?.key)
+        assertEquals("réseau coupé", state.error?.detail)
         assertFalse(state.messages.last().streaming)
     }
 

@@ -51,7 +51,8 @@ data class ChatState(
     val connected: Boolean = false,
     val interactions: List<Interaction> = emptyList(),
     val warning: String? = null,
-    val error: String? = null,
+    /** A failure the screen shows as a banner; the words are resolved where it is drawn. */
+    val error: Notice? = null,
 ) {
     val isWelcome: Boolean get() = messages.isEmpty()
 
@@ -78,7 +79,7 @@ object ChatReducer {
         interactions = if (id == null) state.interactions.drop(1) else state.interactions.filterNot { it.id == id },
     )
 
-    fun setError(state: ChatState, message: String?): ChatState = state.copy(error = message)
+    fun setError(state: ChatState, notice: Notice?): ChatState = state.copy(error = notice)
 
     fun dismissWarning(state: ChatState): ChatState = state.copy(warning = null)
 
@@ -159,7 +160,7 @@ object ChatReducer {
 
         is ChatEvent.Failure -> state.copy(
             streaming = false,
-            error = event.message,
+            error = Notice(NoticeKey.STREAM_FAILED).withDetail(event.message),
             messages = state.messages.map { if (it.streaming) it.copy(streaming = false) else it },
         )
 

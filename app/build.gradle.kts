@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.tournierjc.mercury"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "0.27.0"
+        versionCode = 31
+        versionName = "0.28.0"
     }
 
     buildTypes {
@@ -54,6 +54,10 @@ android {
 
 dependencies {
     implementation(project(":core"))
+
+    // The app module had no test source set: the resource contract of a notice (a key spelled in
+    // both locales, with the same arguments) is the first thing only this module can check.
+    testImplementation(libs.junit)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

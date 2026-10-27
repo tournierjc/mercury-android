@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.BotThread
+import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.vm.BotsViewModel
@@ -446,12 +447,13 @@ fun ChatScreen(
                         )
                     }
                 }
-                botsState.error?.let { message -> ErrorBar(message = message, onDismiss = { botsVm.clearBanner() }) }
-                botsState.dispatchFeedback?.let { feedback ->
+                botsState.error?.let { notice -> ErrorBar(notice = notice, onDismiss = { botsVm.clearBanner() }) }
+                botsState.dispatchFeedback?.let { notice ->
                     Text(
-                        text = feedback,
+                        text = noticeText(notice),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (feedback.startsWith("Refusé")) colors.danger else colors.textSecondary,
+                        // The severity carries the colour: no more guessing from a leading word.
+                        color = noticeTint(notice.severity),
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                     )
                 }
@@ -512,10 +514,7 @@ fun ChatScreen(
                 }
             }
 
-            val errorMessage = state.error
-            if (errorMessage != null) {
-                ErrorBar(message = errorMessage, onDismiss = onDismissError)
-            }
+            state.error?.let { notice -> ErrorBar(notice = notice, onDismiss = onDismissError) }
             attachmentError?.let { message ->
                 Text(
                     text = message,
@@ -1014,7 +1013,7 @@ private fun QuoteBlock(quote: String) {
 }
 
 @Composable
-private fun ErrorBar(message: String, onDismiss: () -> Unit) {
+private fun ErrorBar(notice: Notice, onDismiss: () -> Unit) {
     val colors = LocalMercuryColors.current
     Row(
         modifier = Modifier
@@ -1026,9 +1025,9 @@ private fun ErrorBar(message: String, onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = message,
+            text = noticeText(notice),
             style = MaterialTheme.typography.bodyMedium,
-            color = colors.danger,
+            color = noticeTint(notice.severity),
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onDismiss) {
