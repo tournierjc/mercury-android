@@ -226,11 +226,27 @@ class MercuryApi(
      * never blocked. A busy or paused bot answers 409 `{accepted:false, reasonCode}`; that
      * body is decoded instead of thrown so the UI can explain the refusal.
      */
+    /**
+     * `POST /api/bots/:id/chat` — a message in the owner's conversation with a bot.
+     *
+     * Same queue and the same `202 {jobId}` answer as [dispatchBot], but the turn runs in
+     * chat mode: the bot answers instead of filing a work report. A daemon that predates the
+     * route answers 404; the caller keeps working because this throws, and the caller decides
+     * — the conversation screen shows the reason rather than a silent nothing.
+     */
+    suspend fun chatWithBot(
+        id: String,
+        message: String,
+        attachments: List<AttachmentUpload> = emptyList(),
+    ): BotDispatch = dispatchBot(id, message, from = null, attachments = attachments, chat = true)
+
     suspend fun dispatchBot(
         id: String,
         message: String,
         from: String? = null,
         attachments: List<AttachmentUpload> = emptyList(),
+        /** True to answer like a conversation, false to run as a delivery task. */
+        chat: Boolean = false,
     ): BotDispatch =
         withContext(Dispatchers.IO) {
             val payload = buildJsonObject {
@@ -248,7 +264,7 @@ class MercuryApi(
                 }
             }.toString()
             val request = Request.Builder()
-                .url(url("/api/bots/${encode(id)}/message"))
+                .url(url("/api/bots/${encode(id)}/${if (chat) "chat" else "message"}"))
                 .post(payload.toRequestBody(jsonMedia))
                 .build()
             client.newCall(request).execute().use { response ->

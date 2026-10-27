@@ -316,13 +316,14 @@ fun ChatScreen(
             val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
             val botLive = botId?.let { botWatch.live[it] }
             val botName = bot?.let { BotJson.name(it) } ?: botId.orEmpty()
-            val botMessages = remember(botsState.records, botsState.prompts, botsState.pending, botLive, botId) {
+            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botId) {
                 if (botId == null) {
                     emptyList()
                 } else {
                     val built = BotThread.build(
                         botsState.records,
                         botsState.prompts,
+                        botsState.answers,
                         botLive?.jobId,
                         botLive?.text.orEmpty(),
                     )
@@ -374,7 +375,7 @@ fun ChatScreen(
                 )
                 Box(modifier = Modifier.weight(1f)) {
                     if (botMessages.isEmpty()) {
-                        BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt) }
+                        BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt, chat = true) }
                     } else {
                         MessageList(botMessages)
                     }
@@ -395,7 +396,8 @@ fun ChatScreen(
                         val text = composerText.trim()
                         if (text.isNotEmpty()) {
                             composerText = ""
-                            botsVm.dispatch(text)
+                            // Chat mode: the bot answers, it does not file a work report.
+                            botsVm.dispatch(text, chat = true)
                         }
                     },
                     onVoice = { startVoice() },

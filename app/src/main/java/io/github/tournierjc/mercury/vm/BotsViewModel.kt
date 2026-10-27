@@ -53,6 +53,8 @@ data class BotsUiState(
     val records: List<BotRunDto> = emptyList(),
     /** `runId` → the task the owner dispatched, from the run transcripts. */
     val prompts: Map<String, String> = emptyMap(),
+    /** `runId` → the full answer: the journal truncates its summary at 300 characters. */
+    val answers: Map<String, String> = emptyMap(),
     /** The conversation as the chat screen draws it, oldest first. */
     val messages: List<BotMessage> = emptyList(),
     /** Turns sent from this screen that the journal does not know about yet. */
@@ -175,6 +177,7 @@ class BotsViewModel(
                 outputPreview = null,
                 records = emptyList(),
                 prompts = emptyMap(),
+                answers = emptyMap(),
                 messages = emptyList(),
                 pending = emptyList(),
                 detailLoading = true,
@@ -196,9 +199,11 @@ class BotsViewModel(
             // transcript. Twelve of them, fetched side by side, are enough to read a
             // conversation and cheap enough to load with the sheet.
             val last = records.orEmpty().takeLast(12)
-            val prompts = last.map { record ->
-                async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull()?.prompt.orEmpty() }
+            val turns = last.map { record ->
+                async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull() }
             }.awaitAll().toMap()
+            val prompts = turns.mapValues { (_, transcript) -> transcript?.prompt.orEmpty() }
+            val answers = turns.mapValues { (_, transcript) -> transcript?.output.orEmpty() }
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -214,7 +219,8 @@ class BotsViewModel(
                     runs = BotOps.mergeRuns(transcripts?.runs.orEmpty(), records.orEmpty()),
                     records = last,
                     prompts = prompts,
-                    messages = BotThread.build(last, prompts),
+                    answers = answers,
+                    messages = BotThread.build(last, prompts, answers),
                     pending = emptyList(),
                     dlq = dlq?.dlq.orEmpty(),
                     detailLoading = false,
@@ -239,17 +245,22 @@ class BotsViewModel(
         viewModelScope.launch {
             runCatching {
                 val records = api.botRunJournal(id).takeLast(12)
-                val prompts = records.map { record ->
-                    async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull()?.prompt.orEmpty() }
+                val turns = records.map { record ->
+                    async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull() }
                 }.awaitAll().toMap()
-                records to prompts
-            }.onSuccess { (records, prompts) ->
+                Triple(
+                    records,
+                    turns.mapValues { (_, t) -> t?.prompt.orEmpty() },
+                    turns.mapValues { (_, t) -> t?.output.orEmpty() },
+                )
+            }.onSuccess { (records, prompts, answers) ->
                 if (_state.value.selectedId != id) return@onSuccess
                 _state.update {
                     it.copy(
                         records = records,
                         prompts = prompts,
-                        messages = BotThread.build(records, prompts),
+                        answers = answers,
+                        messages = BotThread.build(records, prompts, answers),
                         pending = emptyList(),
                     )
                 }
@@ -273,7 +284,7 @@ class BotsViewModel(
      * Files can go alone — the route accepts an empty prompt when something is attached,
      * and the server captions the turn itself.
      */
-    fun dispatch(message: String, files: List<PendingFile> = emptyList()) {
+    fun dispatch(message: String, files: List<PendingFile> = emptyList(), chat: Boolean = false) {
         val id = _state.value.selectedId ?: return
         if (message.isBlank() && files.isEmpty()) return
         val problem = Attachments.problemWith(files)
@@ -283,7 +294,13 @@ class BotsViewModel(
         }
         viewModelScope.launch {
             _state.update { it.copy(busy = true, dispatchFeedback = null, error = null) }
-            runCatching { api.dispatchBot(id, message.trim(), attachments = files.map { it.toUpload() }) }
+            runCatching {
+                if (chat) {
+                    api.chatWithBot(id, message.trim(), attachments = files.map { it.toUpload() })
+                } else {
+                    api.dispatchBot(id, message.trim(), attachments = files.map { it.toUpload() })
+                }
+            }
                 .onSuccess { result ->
                     _state.update {
                         it.copy(
