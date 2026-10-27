@@ -18,6 +18,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.data.GitJson
+import io.github.tournierjc.mercury.data.SpotifyJson
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.OutputSharing
@@ -119,6 +122,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             CostSection(state)
             StorageSection(state)
             TerminalSection(state, viewModel)
+            GitSection(state, viewModel)
             TasksSection(state, viewModel)
             SchedulesSection(state, viewModel)
             AgentsSection(state, viewModel)
@@ -126,6 +130,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             PluginsSection(state)
             McpSection(state)
             WorkspaceSection(state, viewModel)
+            MusicSection(state, viewModel)
 
             SectionTitle("Système")
             CardBlock {
@@ -1355,6 +1360,427 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
             },
             dismissButton = { TextButton(onClick = { pending = null }) { Text("Annuler") } },
         )
+    }
+}
+
+/**
+ * What the Git card is about to do, once the owner confirms it. Kept local to the screen:
+ * the pending action is UI state, not something the runtime should ever see.
+ */
+private class GitConfirm(
+    val title: String,
+    val body: String,
+    val confirm: String,
+    val danger: Boolean = false,
+    val action: () -> Unit,
+)
+
+/**
+ * Git: branch, upstream distance, both sides of the index, a commit box the runtime can
+ * fill, push/pull, a branch switcher and the log.
+ *
+ * A refusal from git reaches the banner above this card verbatim — that text ("nothing to
+ * commit", "non-fast-forward") is the only useful description of what went wrong.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val colors = LocalMercuryColors.current
+    var confirm by remember { mutableStateOf<GitConfirm?>(null) }
+    val git = state.git
+
+    SectionTitle("Git")
+    CardBlock {
+        if (git == null) {
+            Text(
+                text = "Aucun dépôt git accessible dans l'espace de travail.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            TextButton(onClick = viewModel::refreshGit) { Text("Vérifier à nouveau") }
+            return@CardBlock
+        }
+
+        KeyValueRow("Branche", git.branch.ifBlank { "—" }, highlight = true)
+        KeyValueRow("Amont", git.upstream.ifBlank { "aucun" })
+        KeyValueRow("Synchronisation", GitJson.syncLabel(git.ahead, git.behind))
+        Text(
+            text = GitJson.summaryLabel(git),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+
+        val stagedFiles = GitJson.staged(git)
+        val unstagedFiles = GitJson.unstaged(git)
+
+        if (stagedFiles.isNotEmpty()) {
+            Text(
+                text = "Indexé",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+            stagedFiles.forEach { file ->
+                ActionRow(
+                    title = file.path,
+                    subtitle = GitJson.changeLabel(file),
+                    trailing = "désindexer",
+                    enabled = !state.gitBusy,
+                    onClick = { viewModel.unstage(listOf(file.path)) },
+                )
+            }
+        }
+        if (unstagedFiles.isNotEmpty()) {
+            Text(
+                text = "Modifié",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+            unstagedFiles.forEach { file ->
+                ActionRow(
+                    title = file.path,
+                    subtitle = GitJson.changeLabel(file),
+                    trailing = "indexer",
+                    enabled = !state.gitBusy,
+                    onClick = { viewModel.stage(listOf(file.path)) },
+                )
+            }
+        }
+        if (stagedFiles.isEmpty() && unstagedFiles.isEmpty()) {
+            Text(
+                text = "Arbre propre : rien à indexer.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+
+        ButtonRow {
+            TextButton(
+                onClick = viewModel::stageAll,
+                enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
+            ) { Text("Tout indexer") }
+            TextButton(
+                onClick = viewModel::unstageAll,
+                enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
+            ) { Text("Tout désindexer") }
+        }
+        ButtonRow {
+            TextButton(
+                onClick = { viewModel.showDiff(null, false) },
+                enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
+            ) { Text("Diff non indexé") }
+            TextButton(
+                onClick = { viewModel.showDiff(null, true) },
+                enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
+            ) { Text("Diff indexé") }
+        }
+
+        OutlinedTextField(
+            value = state.commitDraft,
+            onValueChange = viewModel::setCommitDraft,
+            label = { Text("Message de commit") },
+            minLines = 2,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+        )
+        ButtonRow {
+            TextButton(
+                onClick = viewModel::generateCommitMessage,
+                enabled = !state.gitBusy,
+            ) { Text(if (state.gitBusy) "…" else "Générer") }
+            TextButton(
+                onClick = { confirm = GitConfirm(
+                    title = "Créer le commit ?",
+                    body = "Le message part tel quel. Mercury ajoute lui-même la ligne " +
+                        "« Co-authored-by » et ne commite que ce qui est indexé.",
+                    confirm = "Committer",
+                    action = viewModel::commit,
+                ) },
+                enabled = !state.gitBusy && state.commitDraft.isNotBlank(),
+            ) { Text("Committer") }
+        }
+        ButtonRow {
+            TextButton(
+                onClick = { confirm = GitConfirm(
+                    title = "Pousser la branche ?",
+                    body = "Les commits partent sur origin. Rien n'est réécrit, rien n'est forcé.",
+                    confirm = "Pousser",
+                    action = viewModel::push,
+                ) },
+                enabled = !state.gitBusy,
+            ) { Text("Pousser") }
+            TextButton(
+                onClick = { confirm = GitConfirm(
+                    title = "Tirer les changements ?",
+                    body = "git pull sur la branche courante : le répertoire de travail peut " +
+                        "recevoir des commits distants.",
+                    confirm = "Tirer",
+                    action = viewModel::pull,
+                ) },
+                enabled = !state.gitBusy,
+            ) { Text("Tirer") }
+            TextButton(onClick = viewModel::refreshGit, enabled = !state.gitBusy) { Text("Rafraîchir") }
+        }
+
+        val branches = state.gitBranches.filter { it.name.isNotBlank() }
+        if (branches.isNotEmpty()) {
+            Text(
+                text = "Branches",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                branches.forEach { branch ->
+                    val current = branch.isCurrent || branch.name == git.branch
+                    FilterChip(
+                        selected = current,
+                        enabled = !state.gitBusy && !current,
+                        onClick = { confirm = GitConfirm(
+                            title = "Changer de branche ?",
+                            body = "Le répertoire de travail passe sur « ${branch.name} ». " +
+                                "Un arbre modifié peut faire échouer le changement.",
+                            confirm = "Changer",
+                            action = { viewModel.checkout(branch.name) },
+                        ) },
+                        label = { Text(branch.name) },
+                    )
+                }
+            }
+        }
+
+        if (state.gitLog.isNotEmpty()) {
+            Text(
+                text = "Derniers commits",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            state.gitLog.forEach { commit ->
+                Text(
+                    text = "${commit.short}  ${commit.message}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = colors.textPrimary,
+                    maxLines = 2,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Text(
+                    text = listOf(commit.author, commit.date).filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+    }
+
+    val pending = confirm
+    if (pending != null) {
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            containerColor = colors.surface,
+            title = { Text(pending.title, color = colors.textPrimary) },
+            text = { Text(pending.body, color = colors.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirm = null
+                    pending.action()
+                }) { Text(pending.confirm, color = if (pending.danger) colors.danger else colors.textPrimary) }
+            },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Annuler") } },
+        )
+    }
+
+    val diff = state.gitDiff
+    if (diff != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDiff,
+            containerColor = colors.surface,
+            title = {
+                Text(
+                    text = state.gitDiffTitle.ifBlank { "Diff" },
+                    color = colors.textPrimary,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            },
+            text = {
+                // The patch as text: this branch has no diff renderer, and pretending to
+                // colour one would be worse than showing git's own output.
+                Text(
+                    text = diff,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = colors.textPrimary,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = { TextButton(onClick = viewModel::dismissDiff) { Text("Fermer") } },
+        )
+    }
+}
+
+/**
+ * Musique: one compact card — what plays, transport, volume, shuffle and the devices.
+ *
+ * Spotify's `now-playing` route answers a formatted line, so progress comes from parsing
+ * it; nothing here guesses a playback state it was not told.
+ */
+@Composable
+private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val colors = LocalMercuryColors.current
+    val music = state.music
+    var volume by remember {
+        // The volume Spotify reports for the active device is the only starting point the
+        // routes give us; 50 is a neutral guess when no device answers.
+        mutableStateOf((SpotifyJson.activeDevice(state.devices)?.volume ?: 50).toFloat())
+    }
+    var shuffle by remember { mutableStateOf(false) }
+
+    SectionTitle("Musique")
+    CardBlock {
+        if (music == null || !music.available) {
+            Text(
+                text = "Spotify n'est pas configuré sur ce runtime.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        if (!music.connected) {
+            Text(
+                text = "Compte Spotify non connecté. Lance « /spotify auth » sur le runtime, " +
+                    "puis rafraîchis cette carte.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+
+        KeyValueRow(
+            "Compte",
+            listOf(music.accountName?.ifBlank { "—" } ?: "—", SpotifyJson.productLabel(music.product))
+                .joinToString(" · "),
+        )
+
+        val track = state.nowPlaying
+        if (track == null) {
+            Text(
+                text = "Rien en lecture.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        } else {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                maxLines = 2,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                maxLines = 1,
+            )
+            ProgressLine(track.ratio)
+            Text(
+                text = track.progressLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        ButtonRow {
+            TextButton(onClick = viewModel::previous, enabled = !state.musicBusy) { Text("Précédent") }
+            TextButton(onClick = viewModel::play, enabled = !state.musicBusy) { Text("Lecture") }
+            TextButton(onClick = viewModel::pause, enabled = !state.musicBusy) { Text("Pause") }
+            TextButton(onClick = viewModel::next, enabled = !state.musicBusy) { Text("Suivant") }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        ) {
+            Text(
+                text = "Volume",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            Slider(
+                value = volume,
+                onValueChange = { volume = it },
+                // The route is called once the finger leaves the slider, not per pixel.
+                onValueChangeFinished = { viewModel.setVolume(volume.toInt()) },
+                valueRange = 0f..100f,
+                enabled = !state.musicBusy,
+                modifier = Modifier.weight(2f),
+            )
+            Text(
+                text = "${volume.toInt()} %",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Aléatoire",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = shuffle,
+                onCheckedChange = { checked ->
+                    shuffle = checked
+                    viewModel.setShuffle(checked)
+                },
+                enabled = !state.musicBusy,
+            )
+        }
+
+        val devices = state.devices
+        if (devices.size == 1) {
+            KeyValueRow("Appareil", devices[0].name.ifBlank { devices[0].label })
+        } else if (devices.size > 1) {
+            Text(
+                text = "Appareils",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+            devices.forEach { device ->
+                ActionRow(
+                    title = device.name.ifBlank { device.id },
+                    subtitle = device.label,
+                    trailing = if (device.active) "actif" else null,
+                    selected = device.active,
+                )
+            }
+            Text(
+                text = "Le runtime joue sur l'appareil qu'il a choisi (« /spotify device ») : " +
+                    "cette liste le montre, elle ne le déplace pas.",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        ButtonRow {
+            TextButton(onClick = viewModel::refreshMusic, enabled = !state.musicBusy) { Text("Rafraîchir") }
+        }
     }
 }
 
