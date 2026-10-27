@@ -6,6 +6,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,13 +39,16 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.HideImage
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.PersonAddAlt
 import androidx.compose.material.icons.rounded.PersonRemove
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.IconButton
@@ -63,7 +67,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +83,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.BotWatchState
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.data.Attachments
@@ -87,6 +96,7 @@ import io.github.tournierjc.mercury.vm.BotsViewModel
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 
 /**
  * Teammates: the roster with live activity and passive state, plus a detail view for
@@ -335,6 +345,7 @@ private fun BotDetail(
     var confirmDelete by remember { mutableStateOf(false) }
     // Two steps, one form: the picker lists what is free, "Créer un bot" opens NewBotDialog.
     var showNewCrew by remember { mutableStateOf(false) }
+    var showModelPicker by remember { mutableStateOf(false) }
     val bot = (state.manifest ?: watch.bots.firstOrNull { BotJson.id(it) == id }) ?: return
     val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
 
@@ -361,7 +372,6 @@ private fun BotDetail(
     }
     var personaText by remember(state.personaLoaded, id) { mutableStateOf(state.persona) }
     var showAddCrew by remember { mutableStateOf(false) }
-    var modelText by remember(id) { mutableStateOf("") }
     var budgetText by remember(id) { mutableStateOf("") }
     var avatarError by remember(id) { mutableStateOf<String?>(null) }
 
@@ -482,16 +492,61 @@ private fun BotDetail(
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
-        IconActionBar(
-            listOf(
-                QuickAction(icon = Icons.AutoMirrored.Rounded.Chat, label = "Conversation", onClick = { onOpenChat(id) }),
-            ),
-        )
+
+        // The buttons live inside the field: a task is typed and sent in one gesture, and the
+        // two rows of text buttons beneath it were the least modern thing on the screen.
         OutlinedTextField(
             value = dispatchText,
             onValueChange = { dispatchText = it },
-            label = { Text("Tâche rapide à confier") },
+            placeholder = { Text("Tâche rapide à confier") },
             minLines = 2,
+            maxLines = 5,
+            shape = RoundedCornerShape(16.dp),
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    IconButton(
+                        onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            Icons.Rounded.AttachFile,
+                            contentDescription = "Joindre un fichier",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(
+                                if (!state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())) {
+                                    colors.accent
+                                } else {
+                                    colors.surfaceMuted
+                                },
+                            )
+                            .clickable(enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())) {
+                                viewModel.dispatch(dispatchText, dispatchFiles)
+                                dispatchText = ""
+                                dispatchFiles = emptyList()
+                                dispatchFileError = null
+                            },
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.Send,
+                            contentDescription = "Envoyer la tâche",
+                            tint = if (!state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())) {
+                                colors.canvas
+                            } else {
+                                colors.textSecondary
+                            },
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            },
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
         if (dispatchFiles.isNotEmpty()) {
@@ -521,29 +576,6 @@ private fun BotDetail(
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
-        IconActionBar(
-            listOf(
-                QuickAction(
-                    icon = Icons.Rounded.AttachFile,
-                    label = "Joindre",
-                    onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
-                ),
-                QuickAction(
-                    icon = Icons.AutoMirrored.Rounded.Send,
-                    label = "Envoyer",
-                    tint = colors.accent,
-                    enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty()),
-                    onClick = {
-                        viewModel.dispatch(dispatchText, dispatchFiles)
-                        // Cleared at once: a refusal comes back in the feedback line with its
-                        // reason, and re-picking a file is cheaper than a stale batch.
-                        dispatchText = ""
-                        dispatchFiles = emptyList()
-                        dispatchFileError = null
-                    },
-                ),
-            ),
-        )
     }
 
     CollapsibleSection("Persona") {
@@ -576,35 +608,132 @@ private fun BotDetail(
     CollapsibleSection("Permissions") {
         val tier = state.permissions?.let { permissions ->
             (permissions["tier"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-        }.orEmpty()
-        KeyValueRow("Palier actuel", tier.ifBlank { BotJson.tier(bot).ifBlank { "—" } })
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf("readonly" to "Lecture", "builder" to "Écriture", "operator" to "Opérateur", "full" to "Complet")
-                .forEach { (tierId, label) ->
-                    FilterChip(
-                        selected = tier == tierId,
-                        onClick = { viewModel.setTier(id, tierId) },
-                        label = { Text(label) },
+        }.orEmpty().ifBlank { BotJson.tier(bot) }
+        val tiers = listOf(
+            "readonly" to ("Lecture" to "lire"),
+            "builder" to ("Écriture" to "écrire"),
+            "operator" to ("Opérateur" to "exécuter"),
+            "full" to ("Complet" to "tout"),
+        )
+        // One row, four cells: the active tier is filled and ticked, the others are outlines.
+        // A chip row that only tints its label is not readable at a glance on a phone.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+        ) {
+            tiers.forEach { (tierId, labels) ->
+                val (label, verb) = labels
+                val selected = tier == tierId
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (selected) colors.accent.copy(alpha = 0.16f) else Color.Transparent)
+                        .then(
+                            if (selected) Modifier
+                            else Modifier.border(1.dp, colors.hairlineStrong, RoundedCornerShape(12.dp)),
+                        )
+                        .clickable { viewModel.setTier(id, tierId) }
+                        .padding(vertical = 9.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selected) {
+                            Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = null,
+                                tint = colors.accent,
+                                modifier = Modifier.size(13.dp),
+                            )
+                        }
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selected) colors.accent else colors.textSecondary,
+                            modifier = Modifier.padding(start = if (selected) 4.dp else 0.dp),
+                        )
+                    }
+                    Text(
+                        text = verb,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) colors.accent.copy(alpha = 0.7f) else colors.textSecondary.copy(alpha = 0.55f),
                     )
                 }
+            }
         }
     }
 
     CollapsibleSection("Modèle et budget") {
-        PromptField(
-            value = modelText,
-            onValueChange = { modelText = it },
-            label = "Modèle (vide = défaut)",
-            confirmLabel = "Appliquer",
-            onConfirm = { if (modelText.isNotBlank()) viewModel.setModel(id, modelText.trim()) },
-        )
-        PromptField(
-            value = budgetText,
-            onValueChange = { budgetText = it },
-            label = "Budget quotidien (tokens, 0 = illimité)",
-            confirmLabel = "Appliquer",
-            onConfirm = { budgetText.trim().toIntOrNull()?.let { viewModel.setDailyBudget(id, it) } },
-        )
+        // A list of what the instance actually offers, not a free field: the daemon stores
+        // { provider, model } and a typo used to fall back to the default in silence.
+        val pickedProvider = BotJson.modelProvider(bot)
+        val pickedModel = BotJson.modelName(bot)
+        val currentLabel = state.models.firstOrNull { it.name == pickedProvider }
+            ?.let { ref -> listOf(ref.displayLabel, pickedModel).filter { it.isNotBlank() }.joinToString(" · ") }
+            .orEmpty()
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(colors.surfaceMuted)
+                .clickable { viewModel.loadModels(); showModelPicker = true }
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+        ) {
+            Icon(Icons.Rounded.Memory, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
+            Text(
+                text = "Modèle",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
+            )
+            Text(
+                text = currentLabel.ifBlank { "défaut" },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (currentLabel.isBlank()) colors.textSecondary else colors.accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1.2f),
+            )
+            Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
+        }
+        if (pickedProvider.isNotBlank()) {
+            IconActionBar(
+                listOf(
+                    QuickAction(
+                        icon = Icons.Rounded.RestartAlt,
+                        label = "Défaut",
+                        onClick = { viewModel.clearModel(id) },
+                    ),
+                ),
+            )
+        }
+        // One line, digits only, the check inside the field: a budget is a number, not prose.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        ) {
+            OutlinedTextField(
+                value = budgetText,
+                onValueChange = { budgetText = it.filter { ch -> ch.isDigit() } },
+                label = { Text("Budget quotidien (tokens)") },
+                placeholder = { Text("0 = illimité") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { budgetText.trim().toIntOrNull()?.let { viewModel.setDailyBudget(id, it) } },
+                ),
+                shape = RoundedCornerShape(14.dp),
+                trailingIcon = {
+                    if (budgetText.isNotBlank()) {
+                        IconButton(onClick = { budgetText.trim().toIntOrNull()?.let { viewModel.setDailyBudget(id, it) } }) {
+                            Icon(Icons.Rounded.Check, contentDescription = "Appliquer le budget", tint = colors.accent)
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 
     CollapsibleSection("Flotte") {
@@ -695,12 +824,23 @@ private fun BotDetail(
 
     if (state.journal.isNotEmpty()) {
         CollapsibleSection("Journal") {
-            state.journal.takeLast(8).reversed().forEach { entry ->
+            // The journal line is { runId, startedAt, state, outcome, durationMs, summary } — not
+            // { at, message }. Reading the wrong keys is why the section showed a column of "—".
+            state.journal.takeLast(10).reversed().forEach { entry ->
+                val started = (entry["startedAt"] as? JsonPrimitive)?.longOrNull
+                val duration = (entry["durationMs"] as? JsonPrimitive)?.longOrNull
+                val stateLabel = (entry["state"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+                    .ifBlank { (entry["outcome"] as? JsonPrimitive)?.contentOrNull.orEmpty() }
+                val summary = (entry["summary"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+                    .lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
+                val trigger = (entry["trigger"] as? JsonPrimitive)?.contentOrNull.orEmpty()
                 KeyValueRow(
-                    (entry["at"] as? JsonPrimitive)?.contentOrNull.orEmpty().take(16).ifBlank { "—" },
-                    (entry["message"] as? JsonPrimitive)?.contentOrNull.orEmpty()
-                        .ifBlank { (entry["event"] as? JsonPrimitive)?.contentOrNull.orEmpty() }
-                        .take(160),
+                    label = listOf(
+                        started?.let { BotOps.dateLabel(it) }.orEmpty(),
+                        stateLabel,
+                        duration?.let { "${it / 1000}.${(it % 1000) / 100} s" }.orEmpty(),
+                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { trigger.ifBlank { "—" } },
+                    value = summary.take(140).ifBlank { "—" },
                 )
             }
         }
@@ -769,6 +909,80 @@ private fun BotDetail(
                 showNewCrew = true
             },
             onDismiss = { showAddCrew = false },
+        )
+    }
+    if (showModelPicker) {
+        val picked = BotJson.modelProvider(bot)
+        AlertDialog(
+            onDismissRequest = { showModelPicker = false },
+            containerColor = colors.surface,
+            title = { Text("Modèle de l'équipier", color = colors.textPrimary) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    // "Default" is a real choice, not the absence of one: it removes the key so
+                    // the bot follows whatever the instance is set to.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { showModelPicker = false; viewModel.clearModel(id) }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                    ) {
+                        Text(
+                            text = "Défaut de l'instance",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (picked.isBlank()) {
+                            Icon(Icons.Rounded.Check, contentDescription = "Sélectionné", tint = colors.accent, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    HorizontalDivider(color = colors.hairline)
+                    if (state.models.isEmpty()) {
+                        Text(
+                            text = "Aucun modèle : ajoute une clé dans Réglages → Fournisseurs.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(vertical = 10.dp),
+                        )
+                    }
+                    state.models.forEach { ref ->
+                        val selected = picked == ref.name
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    showModelPicker = false
+                                    viewModel.setModel(id, ref.name, ref.model)
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = ref.displayLabel,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (ref.available) colors.textPrimary else colors.textSecondary,
+                                )
+                                Text(
+                                    text = "${ref.name} · ${ref.model}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                            if (selected) {
+                                Icon(Icons.Rounded.Check, contentDescription = "Sélectionné", tint = colors.accent, modifier = Modifier.size(18.dp))
+                            } else if (!ref.available) {
+                                Text("clé absente", style = MaterialTheme.typography.labelSmall, color = colors.danger)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text("Fermer") } },
         )
     }
     if (showNewCrew) {

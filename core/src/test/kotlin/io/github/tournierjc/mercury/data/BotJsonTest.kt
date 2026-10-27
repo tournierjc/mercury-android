@@ -132,5 +132,23 @@ class BotJsonTest {
         assertNotEquals(BotJson.attentionKey(first), BotJson.attentionKey(newQuestion))
     }
 
+    @Test
+    fun `model is read from the {provider, model} object the daemon stores`() {
+        // Le manifeste garde un objet, pas une chaîne : la lecture précédente rendait "" sur
+        // cette forme, donc chaque bot s'affichait « défaut » même avec un modèle épinglé.
+        val pinned = obj("""{"id":"a","model":{"provider":"deepseek","model":"deepseek-flash"}}""")
+        assertEquals("deepseek", BotJson.modelProvider(pinned))
+        assertEquals("deepseek-flash", BotJson.modelName(pinned))
+        assertEquals("deepseek · deepseek-flash", BotJson.model(pinned))
+
+        val providerOnly = obj("""{"id":"b","model":{"provider":"openaiCompat"}}""")
+        assertEquals("openaiCompat", BotJson.modelProvider(providerOnly))
+        assertEquals("openaiCompat", BotJson.model(providerOnly))
+
+        // Absent ou null : le bot suit le défaut de l'instance, et rien ne s'affiche.
+        assertEquals("", BotJson.modelProvider(obj("""{"id":"c","model":null}""")))
+        assertEquals("", BotJson.model(obj("""{"id":"d"}""")))
+    }
+
     private fun rosterOf(vararg bots: String) = bots.map { Json.parseToJsonElement(it).jsonObject }
 }

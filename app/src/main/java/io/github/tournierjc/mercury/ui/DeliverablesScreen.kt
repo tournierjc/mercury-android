@@ -35,6 +35,7 @@ fun DeliverablesScreen(onBack: () -> Unit) {
     val container = remember { (context.applicationContext as MercuryApp).container }
     val viewModel: ConsoleViewModel = viewModel(factory = ConsoleViewModel.factory(container))
     val state by viewModel.state.collectAsState()
+    val avatars by viewModel.avatars.collectAsState()
     val colors = LocalMercuryColors.current
 
     LaunchedEffect(Unit) { viewModel.refresh() }
@@ -57,7 +58,7 @@ fun DeliverablesScreen(onBack: () -> Unit) {
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
-        FleetDeliverablesSection(state, viewModel)
+        FleetDeliverablesSection(state, viewModel, avatars)
         state.error?.let { message ->
             Text(
                 text = message,
