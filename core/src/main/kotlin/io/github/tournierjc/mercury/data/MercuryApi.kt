@@ -268,6 +268,19 @@ class MercuryApi(
         )
 
     /**
+     * `POST /api/bots/:leadId/crew/:memberId/detach` — a member leaves its fleet.
+     *
+     * The bot keeps its identity, its history and its files; it stops being a crew member and
+     * its profile moves back out of the lead's folder.
+     */
+    suspend fun detachBotCrew(leadId: String, memberId: String): JsonObject =
+        postJson(
+            "/api/bots/${encode(leadId)}/crew/${encode(memberId)}/detach",
+            JsonObject(emptyMap()),
+            JsonObject.serializer(),
+        )
+
+    /**
      * `PATCH /api/bots/:id` — the only route that rewrites a manifest. Accepted keys:
      * `enabled`, `description`, `model`, `tools`, `memory`, `comms`, `schedules`,
      * `autonomy`, `retention`. There is no name and no avatar field in Mercury 1.4.2.

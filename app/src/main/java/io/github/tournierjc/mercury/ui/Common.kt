@@ -11,16 +11,23 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -99,6 +106,50 @@ fun CardBlock(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
             .padding(horizontal = 16.dp, vertical = 14.dp),
         content = content,
     )
+}
+
+/**
+ * A titled block that folds away.
+ *
+ * The bot sheet grew to a dozen sections — persona, permissions, model, budget, fleet, tasks,
+ * mailbox, journal, deletion — and every one of them is a wall of text on a phone. Collapsed by
+ * default, the sheet becomes a list of names you can scan and open one at a time; the two the
+ * screen exists for (the summary and "write to it") are passed `defaultOpen = true`.
+ *
+ * `rememberSaveable(title)` keeps one section's state across a rotation without tying it to a
+ * sibling's.
+ */
+@Composable
+fun CollapsibleSection(
+    title: String,
+    defaultOpen: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    var open by rememberSaveable(title) { mutableStateOf(defaultOpen) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 14.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { open = !open }
+            .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+    ) {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = if (open) "Réduire $title" else "Déplier $title",
+            tint = colors.textSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+    if (open) CardBlock(content = content)
 }
 
 @Composable

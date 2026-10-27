@@ -26,8 +26,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -49,12 +52,14 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.BotWatchState
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.PendingFile
@@ -216,7 +221,7 @@ private fun RosterList(
                     title = BotJson.name(bot),
                     subtitle = BotJson.activity(bot).ifBlank { "Il attend une réponse avant de continuer." },
                     trailing = "ouvrir",
-                    onClick = { onSelect(BotJson.id(bot)) },
+                    onClick = { onOpenChat(BotJson.id(bot)) },
                 )
             }
         }
@@ -226,7 +231,7 @@ private fun RosterList(
     CardBlock {
         if (watch.bots.isEmpty()) {
             Text(
-                text = "Aucun équipier. Créez-en un depuis la Console.",
+                text = "Aucun équipier. Le + en haut à droite en crée un.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -239,7 +244,10 @@ private fun RosterList(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenChat(id) }
+                    // Tap = settings, icon = conversation. The roster is a management screen:
+                    // the default action there is to configure, and chatting is one deliberate
+                    // tap away (the drawer stays the quick way to switch conversations).
+                    .clickable { onSelect(id) }
                     .padding(vertical = 6.dp),
             ) {
                 BotFace(bot, avatars[BotJson.id(bot)])
@@ -271,11 +279,10 @@ private fun RosterList(
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
-                // The row opens the conversation; settings are one tap away, not the default.
-                IconButton(onClick = { onSelect(id) }) {
+                IconButton(onClick = { onOpenChat(id) }) {
                     Icon(
-                        imageVector = Icons.Rounded.MoreHoriz,
-                        contentDescription = "Réglages de ${BotJson.name(bot)}",
+                        imageVector = Icons.AutoMirrored.Rounded.Chat,
+                        contentDescription = "Conversation avec ${BotJson.name(bot)}",
                         tint = colors.textSecondary,
                     )
                 }
@@ -300,6 +307,8 @@ private fun BotDetail(
     val id = state.selectedId.orEmpty()
     // Deleting is irreversible: the button asks, this remembers the question.
     var confirmDelete by remember { mutableStateOf(false) }
+    // Two steps, one form: the picker lists what is free, "Créer un bot" opens NewBotDialog.
+    var showNewCrew by remember { mutableStateOf(false) }
     val bot = (state.manifest ?: watch.bots.firstOrNull { BotJson.id(it) == id }) ?: return
     val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
 
@@ -347,8 +356,7 @@ private fun BotDetail(
             .onFailure { error -> avatarError = error.message ?: "Photo illisible" }
     }
 
-    SectionTitle("Aperçu")
-    CardBlock {
+    CollapsibleSection("Aperçu", defaultOpen = true) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BotFace(bot, avatars[BotJson.id(bot)])
             Column(modifier = Modifier.padding(start = 10.dp)) {
@@ -408,8 +416,7 @@ private fun BotDetail(
         )
     }
 
-    SectionTitle("Lui écrire")
-    CardBlock {
+    CollapsibleSection("Lui écrire", defaultOpen = true) {
         Text(
             text = "La conversation est un écran à part : ce panneau ne sert qu'à le régler. " +
                 "Un message part en tâche de fond, la réponse s'écrit dans la conversation.",
@@ -471,8 +478,7 @@ private fun BotDetail(
         }
     }
 
-    SectionTitle("Persona")
-    CardBlock {
+    CollapsibleSection("Persona") {
         Text(
             text = "Qui il est et comment il travaille — c'est ce que Mercury relit à chaque réveil.",
             style = MaterialTheme.typography.bodyMedium,
@@ -494,8 +500,7 @@ private fun BotDetail(
         }
     }
 
-    SectionTitle("Permissions")
-    CardBlock {
+    CollapsibleSection("Permissions") {
         val tier = state.permissions?.let { permissions ->
             (permissions["tier"] as? JsonPrimitive)?.contentOrNull.orEmpty()
         }.orEmpty()
@@ -512,8 +517,7 @@ private fun BotDetail(
         }
     }
 
-    SectionTitle("Modèle et budget")
-    CardBlock {
+    CollapsibleSection("Modèle et budget") {
         PromptField(
             value = modelText,
             onValueChange = { modelText = it },
@@ -530,8 +534,7 @@ private fun BotDetail(
         )
     }
 
-    SectionTitle("Flotte")
-    CardBlock {
+    CollapsibleSection("Flotte") {
         val crew = state.crew
         KeyValueRow("Rôle", if (BotJson.isLead(bot)) "chef de flotte" else BotJson.fleetRole(bot).ifBlank { "solo" })
         crew?.crew?.let { members ->
@@ -549,11 +552,32 @@ private fun BotDetail(
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
+                    // Leaving a fleet is reversible (the member can be added back), so a tap,
+                    // not a confirmation: the banner says what happened.
+                    IconButton(onClick = { viewModel.detachCrew(id, BotJson.id(member)) }) {
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = "Retirer ${BotJson.name(member)} de la flotte",
+                            tint = colors.textSecondary,
+                        )
+                    }
                 }
             }
         }
         if (crew?.error?.isNotBlank() == true) {
             Text(crew.error, color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
+        }
+        if (BotJson.parent(bot).isNotBlank()) {
+            Text(
+                text = "Membre de la flotte de ${BotJson.parent(bot)}.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            ButtonRow {
+                TextButton(onClick = { viewModel.detachCrew(BotJson.parent(bot), id) }) {
+                    Text("Quitter la flotte")
+                }
+            }
         }
         ButtonRow {
             TextButton(onClick = { viewModel.promote(id) }) { Text("Promouvoir") }
@@ -563,8 +587,7 @@ private fun BotDetail(
     }
 
     if (state.tasks.isNotEmpty()) {
-        SectionTitle("Tâches déléguées")
-        CardBlock {
+        CollapsibleSection("Tâches déléguées") {
             state.tasks.forEach { task ->
                 val goal = (task["goal"] as? JsonPrimitive)?.contentOrNull.orEmpty()
                 val status = (task["status"] as? JsonPrimitive)?.contentOrNull.orEmpty()
@@ -580,8 +603,7 @@ private fun BotDetail(
     }
 
     if (state.inbox.isNotEmpty()) {
-        SectionTitle("Boîte aux lettres")
-        CardBlock {
+        CollapsibleSection("Boîte aux lettres") {
             state.inbox.forEach { mail ->
                 KeyValueRow(
                     (mail["from"] as? JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { "message" },
@@ -592,8 +614,7 @@ private fun BotDetail(
     }
 
     if (state.journal.isNotEmpty()) {
-        SectionTitle("Journal")
-        CardBlock {
+        CollapsibleSection("Journal") {
             state.journal.takeLast(8).reversed().forEach { entry ->
                 KeyValueRow(
                     (entry["at"] as? JsonPrimitive)?.contentOrNull.orEmpty().take(16).ifBlank { "—" },
@@ -630,8 +651,7 @@ private fun BotDetail(
         onClear = viewModel::clearDlq,
     )
 
-    SectionTitle("Suppression")
-    CardBlock {
+    CollapsibleSection("Suppression") {
         Text(
             text = "Supprime l'équipier et son profil. Une flotte emporte ses membres.",
             style = MaterialTheme.typography.bodyMedium,
@@ -652,14 +672,27 @@ private fun BotDetail(
         }
         AddCrewSheet(
             adoptable = adoptable,
+            avatars = avatars,
             onAdopt = { memberId ->
                 showAddCrew = false
                 viewModel.adoptCrew(id, memberId)
             },
-            onDismiss = { showAddCrew = false },
-            onConfirm = { crewId, name, description, persona, tier ->
+            onCreateNew = {
                 showAddCrew = false
-                viewModel.addCrew(id, crewId, name, description, persona, tier)
+                showNewCrew = true
+            },
+            onDismiss = { showAddCrew = false },
+        )
+    }
+    if (showNewCrew) {
+        NewBotDialog(
+            busy = state.busy,
+            title = "Nouveau membre",
+            submitLabel = "Ajouter",
+            onDismiss = { showNewCrew = false },
+            onCreate = { name, crewId, tier, persona ->
+                showNewCrew = false
+                viewModel.addCrew(id, crewId.ifBlank { BotSlug.from(name) }, name, null, persona.ifBlank { null }, tier)
             },
         )
     }
@@ -745,71 +778,81 @@ private fun PromptField(
 @Composable
 private fun AddCrewSheet(
     adoptable: List<JsonObject> = emptyList(),
+    avatars: Map<String, ByteArray> = emptyMap(),
     onAdopt: (String) -> Unit = {},
+    onCreateNew: () -> Unit = {},
     onDismiss: () -> Unit,
-    onConfirm: (id: String, name: String, description: String?, persona: String?, tier: String?) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    var id by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var persona by remember { mutableStateOf("") }
-    var tier by remember { mutableStateOf<String?>(null) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Nouveau membre", color = colors.textPrimary) },
+        title = { Text("Ajouter un membre", color = colors.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // An existing solo bot can simply join: creating a second one with the same
-                // job was the only offer, and it is not what "add a member" means.
-                if (adoptable.isNotEmpty()) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "Un équipier libre rejoint la flotte en un tap.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                if (adoptable.isEmpty()) {
                     Text(
-                        text = "Prendre un équipier existant",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.textPrimary,
-                    )
-                    adoptable.forEach { candidate ->
-                        val candidateName = BotJson.name(candidate)
-                        TextButton(
-                            onClick = { onAdopt(BotJson.id(candidate)) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "$candidateName · ${BotJson.id(candidate)}",
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text("Ajouter", color = colors.accent)
-                        }
-                    }
-                    Text(
-                        text = "Ou en créer un nouveau :",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "Aucun équipier libre : tous sont déjà en flotte, ou il n'y en a pas encore.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary,
+                        modifier = Modifier.padding(vertical = 8.dp),
                     )
                 }
-                OutlinedTextField(value = id, onValueChange = { id = it }, label = { Text("Identifiant") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nom") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Spécialité") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = persona, onValueChange = { persona = it }, label = { Text("Persona (optionnel)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("readonly", "builder", "operator", "full").forEach { candidate ->
-                        FilterChip(
-                            selected = tier == candidate,
-                            onClick = { tier = if (tier == candidate) null else candidate },
-                            label = { Text(candidate) },
-                        )
+                adoptable.forEach { candidate ->
+                    val candidateId = BotJson.id(candidate)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onAdopt(candidateId) }
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                    ) {
+                        BotFace(candidate, avatars[candidateId], small = true)
+                        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                            Text(
+                                text = BotJson.name(candidate),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = BotJson.stateLabel(BotJson.state(candidate)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                        Icon(Icons.Rounded.Add, contentDescription = "Ajouter ${BotJson.name(candidate)}", tint = colors.accent)
                     }
+                }
+                HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 10.dp))
+                // One form for both paths: the roster's "+" and this sheet open the same dialog,
+                // so a field added later is added once.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onCreateNew() }
+                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                ) {
+                    Text(
+                        text = "Créer un bot",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.accent,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(Icons.Rounded.Add, contentDescription = "Créer un bot", tint = colors.accent)
                 }
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(id.trim(), name.trim(), description.trim().ifBlank { null }, persona.trim().ifBlank { null }, tier) },
-                enabled = id.isNotBlank() && name.isNotBlank(),
-            ) { Text("Ajouter") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
     )
 }
