@@ -53,6 +53,11 @@ object MercuryEventParser {
     val defaultJson: Json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
+        // The daemon sends explicit `null` for fields that are "not set" (permissionMode is the
+        // one that bit: `{..., "permissionMode": null}`), and a non-nullable field with a default
+        // is otherwise a hard parse error the owner sees as a red banner in Réglages. Coercing
+        // the null to the default is exactly what the decoder's own error message recommends.
+        coerceInputValues = true
     }
 
     fun parse(raw: RawSseEvent, json: Json = defaultJson): ChatEvent {

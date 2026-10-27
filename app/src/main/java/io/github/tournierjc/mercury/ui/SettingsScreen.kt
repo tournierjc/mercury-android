@@ -9,7 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -223,6 +225,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                         Text("Réglages de batterie", color = colors.accent)
                     }
                 }
+                // Une ligne pour séparer les deux réglages : collés, ils se lisaient comme un
+                // seul bloc de texte et le second interrupteur semblait appartenir au premier.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp)
+                        .height(1.dp)
+                        .background(colors.hairline),
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
