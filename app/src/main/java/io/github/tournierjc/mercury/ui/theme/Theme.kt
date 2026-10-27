@@ -26,6 +26,8 @@ data class MercuryColors(
     val userBubble: Color,
     val danger: Color,
     val hairline: Color,
+    /** The line around a field: one step brighter than a divider, so a rounded box reads as a box. */
+    val hairlineStrong: Color,
 )
 
 val DarkColors = MercuryColors(
@@ -38,6 +40,7 @@ val DarkColors = MercuryColors(
     userBubble = Color(0xFF262626),
     danger = Color(0xFFFF6B6B),
     hairline = Color(0xFF1E1E1E),
+    hairlineStrong = Color(0xFF2E2E2C),
 )
 
 val LightColors = MercuryColors(
@@ -50,6 +53,7 @@ val LightColors = MercuryColors(
     userBubble = Color(0xFFEDEDEA),
     danger = Color(0xFFC0392B),
     hairline = Color(0xFFE4E4E0),
+    hairlineStrong = Color(0xFFD3D3CE),
 )
 
 val LocalMercuryColors = staticCompositionLocalOf { DarkColors }
@@ -96,6 +100,21 @@ private val MercuryTypography = Typography(
     ),
 )
 
+/**
+ * Shapes, set once.
+ *
+ * Material's `extraSmall` is what `OutlinedTextField` and `FilterChip` take their corner from,
+ * so the whole app's fields become rounded by changing this instead of remembering a `shape =`
+ * argument on every call site.
+ */
+private val MercuryShapes = androidx.compose.material3.Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+)
+
 @Composable
 fun MercuryTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -111,6 +130,9 @@ fun MercuryTheme(
             primary = colors.accent,
             onPrimary = Color.Black,
             error = colors.danger,
+            outline = colors.hairlineStrong,
+            outlineVariant = colors.hairline,
+            surfaceVariant = colors.surfaceMuted,
         )
     } else {
         lightColorScheme(
@@ -121,10 +143,18 @@ fun MercuryTheme(
             primary = colors.accent,
             onPrimary = Color.White,
             error = colors.danger,
+            outline = colors.hairlineStrong,
+            outlineVariant = colors.hairline,
+            surfaceVariant = colors.surfaceMuted,
         )
     }
     CompositionLocalProvider(LocalMercuryColors provides colors) {
-        MaterialTheme(colorScheme = scheme, typography = MercuryTypography, content = content)
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = MercuryTypography,
+            shapes = MercuryShapes,
+            content = content,
+        )
     }
 }
 
