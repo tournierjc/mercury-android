@@ -205,9 +205,10 @@ fun ThreadDrawer(
             DrawerEntry(label = stringResource(R.string.drawer_boards), icon = Icons.Rounded.ViewKanban, onClick = onOpenBoards)
             DrawerEntry(label = stringResource(R.string.drawer_memory), icon = Icons.Rounded.Psychology, onClick = onOpenMemory)
             DrawerEntry(label = stringResource(R.string.drawer_console), icon = Icons.Rounded.Terminal, onClick = onOpenConsole)
-            DrawerEntry(label = stringResource(R.string.drawer_settings), icon = Icons.Rounded.Settings, onClick = onOpenSettings)
-            // It was a bespoke row, one pixel off from the six entries above it.
             DrawerEntry(label = stringResource(R.string.drawer_bridge), icon = Icons.Rounded.PhoneAndroid, onClick = onOpenBridge)
+            // Settings last, where a settings entry is looked for: it used to sit between Console and
+            // the bridge, i.e. in the middle of the work screens.
+            DrawerEntry(label = stringResource(R.string.drawer_settings), icon = Icons.Rounded.Settings, onClick = onOpenSettings)
             HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 6.dp))
             pendingDelete?.let { thread ->
                 AlertDialog(
@@ -232,20 +233,14 @@ fun ThreadDrawer(
                     },
                 )
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = stringResource(R.string.drawer_sign_out),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onSignOut) {
-                    Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = stringResource(R.string.drawer_sign_out), tint = colors.textSecondary)
-                }
-            }
+            // Sign-out used to be a hand-drawn row whose label was dead: only the trailing icon
+            // carried the click. Same shape as the entries above it, so the whole row is the target.
+            DrawerEntry(
+                label = stringResource(R.string.drawer_sign_out),
+                icon = Icons.AutoMirrored.Rounded.Logout,
+                onClick = onSignOut,
+                muted = true,
+            )
         }
     }
 }
@@ -255,6 +250,8 @@ private fun DrawerEntry(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
+    /** A quiet entry (sign-out): same shape and tap target, text and icon toned down. */
+    muted: Boolean = false,
 ) {
     val colors = LocalMercuryColors.current
     Row(
@@ -268,7 +265,7 @@ private fun DrawerEntry(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = colors.textPrimary,
+            color = if (muted) colors.textSecondary else colors.textPrimary,
             modifier = Modifier.weight(1f),
         )
         Icon(icon, contentDescription = null, tint = colors.textSecondary)
