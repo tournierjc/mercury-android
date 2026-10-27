@@ -37,15 +37,18 @@ import androidx.compose.material.icons.rounded.AttachFile
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.HideImage
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.IosShare
+import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.PersonAddAlt
 import androidx.compose.material.icons.rounded.PersonRemove
 import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.RestartAlt
@@ -141,7 +144,7 @@ fun BotsScreen(
     ) {
         val selected = state.selectedId?.let { id -> watch.bots.firstOrNull { BotJson.id(it) == id } }
         ScreenHeader(
-            title = selected?.let { BotJson.name(it) } ?: "Équipiers",
+            title = selected?.let { BotJson.name(it) } ?: "Équipiers et Flotte",
             subtitle = if (selected == null) {
                 "${watch.bots.size} équipiers · ${watch.queue.pending} en file" +
                     if (!watch.connected) " · hors ligne" else ""
@@ -200,6 +203,7 @@ fun BotsScreen(
                 .padding(horizontal = 14.dp),
         ) {
             if (state.selectedId == null) {
+                FleetBlock(viewModel, watch, avatars, onSelect = viewModel::select)
                 RosterList(watch, onSelect = viewModel::select, onOpenChat = onOpenChat, avatars = avatars)
                 if (watch.recent.isNotEmpty()) {
                     SectionTitle("Activité récente")
@@ -239,6 +243,114 @@ fun BotsScreen(
             loading = state.runDetailLoading,
             onDismiss = viewModel::closeRun,
         )
+    }
+}
+
+/**
+ * The fleet itself: import a shared bundle, and see who leads a crew.
+ *
+ * It used to be a block of the Console, next to everything else — with the leaders as a row of
+ * text chips. The fleet is this screen's business, and a leader reads as a bot: face, name, state.
+ */
+@Composable
+private fun FleetBlock(
+    viewModel: BotsViewModel,
+    watch: BotWatchState,
+    avatars: Map<String, ByteArray>,
+    onSelect: (String) -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    val context = LocalContext.current
+    var overwrite by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
+
+    // `import_bot_bundle` is a .json file; some pickers report it as text or octet-stream.
+    val bundlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull()
+        if (text.isNullOrBlank()) {
+            importError = "Fichier illisible"
+        } else {
+            importError = null
+            viewModel.importBundle(text, overwrite)
+        }
+    }
+
+    val leads = watch.bots.filter { BotJson.isLead(it) }
+
+    CollapsibleSection("Flotte") {
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.UploadFile,
+                    label = "Importer",
+                    tint = colors.accent,
+                    onClick = {
+                        bundlePicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                    },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Layers,
+                    label = if (overwrite) "Écraser : oui" else "Écraser",
+                    tint = if (overwrite) colors.accent else null,
+                    onClick = { overwrite = !overwrite },
+                ),
+            ),
+        )
+        Text(
+            text = "Un bundle importé arrive désactivé : la flotte ne dépense rien avant que tu l'actives.",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.textSecondary,
+        )
+        importError?.let { message ->
+            Text(message, style = MaterialTheme.typography.labelSmall, color = colors.danger)
+        }
+        if (leads.isEmpty()) {
+            Text(
+                text = "Aucun chef de flotte. Un chef engendre ses spécialistes depuis sa fiche.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        leads.forEach { lead ->
+            val id = BotJson.id(lead)
+            val crew = BotJson.crewWorking(lead) ?: 0
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onSelect(id) }
+                    .padding(vertical = 6.dp),
+            ) {
+                BotFace(lead, avatars[id], small = true)
+                Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                    Text(
+                        text = BotJson.name(lead),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = listOf(
+                            "chef de flotte",
+                            if (crew > 0) "$crew en cours" else null,
+                            BotJson.stateLabel(BotJson.state(lead)),
+                        ).filterNotNull().joinToString(" · "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                }
+                Icon(
+                    Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
 

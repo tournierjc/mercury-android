@@ -46,6 +46,28 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
+/**
+ * One line of the terminal session: the command as typed, and what came back.
+ *
+ * `failure` carries a transport/auth error, which is not the same thing as a command that ran and
+ * exited non-zero — the transcript shows them differently.
+ */
+data class TerminalEntry(
+    val command: String,
+    val result: TerminalResult? = null,
+    val failure: String? = null,
+) {
+    val ok: Boolean get() = result?.success == true
+    val body: String get() = result?.display ?: failure.orEmpty()
+    val status: String
+        get() = when {
+            failure != null -> "échec de la requête"
+            result == null -> ""
+            result.exitCode != 0 -> "code ${result.exitCode}"
+            else -> "ok"
+        }
+}
+
 data class ConsoleUiState(
     val loading: Boolean = true,
     val status: StatusDto? = null,
@@ -73,6 +95,14 @@ data class ConsoleUiState(
     val bundleFor: String = "",
     val terminal: TerminalResult? = null,
     val terminalBusy: Boolean = false,
+    /**
+     * The session: one entry per command, in order. A terminal is a transcript, not a result —
+     * the previous version replaced the answer on every run, so you could never read two commands
+     * together or scroll back.
+     */
+    val terminalLog: List<TerminalEntry> = emptyList(),
+    /** Where the next command runs, relative to the workspace. */
+    val terminalCwd: String = "",
     val queue: QueueCounts = QueueCounts(),
     /** Fleet inbox: every bot's deliverables, newest first. */
     val outputs: List<DeliverableDto> = emptyList(),
@@ -435,13 +465,34 @@ class ConsoleViewModel(
         viewModelScope.launch {
             _state.update { it.copy(terminalBusy = true, terminal = null, error = null) }
             runCatching { api.execTerminal(command.trim(), cwd?.trim()?.ifBlank { null }) }
-                .onSuccess { result -> _state.update { it.copy(terminalBusy = false, terminal = result) } }
-                .onFailure { e -> _state.update { it.copy(terminalBusy = false, error = e.readable()) } }
+                .onSuccess { result ->
+                    _state.update { s ->
+                        s.copy(
+                            terminalBusy = false,
+                            terminal = result,
+                            terminalLog = (s.terminalLog + TerminalEntry(command = command, result = result)).takeLast(60),
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _state.update { s ->
+                        s.copy(
+                            terminalBusy = false,
+                            error = e.readable(),
+                            terminalLog = (s.terminalLog + TerminalEntry(command = command, failure = e.readable()))
+                                .takeLast(60),
+                        )
+                    }
+                }
         }
     }
 
+    fun setTerminalCwd(cwd: String) {
+        _state.update { it.copy(terminalCwd = cwd.trim().trimStart('/')) }
+    }
+
     fun clearTerminal() {
-        _state.update { it.copy(terminal = null) }
+        _state.update { it.copy(terminal = null, terminalLog = emptyList()) }
     }
 
     // -------------------------------------------------------------------

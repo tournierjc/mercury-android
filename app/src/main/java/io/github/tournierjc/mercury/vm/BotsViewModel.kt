@@ -437,6 +437,16 @@ class BotsViewModel(
         act("Membre ajouté") { api.addBotCrew(leadId, id, name, description, persona, tier) }
 
     /** An existing solo bot joins the fleet instead of a new one being created. */
+    /**
+     * `POST /api/bots/import` — a shared bundle, verbatim, as the body.
+     *
+     * It lives here rather than in the Console: the fleet is the Équipiers screen, and importing
+     * one is the first thing that screen offers to an instance with no bots.
+     */
+    fun importBundle(bundleJson: String, overwrite: Boolean) = act("Bundle importé · il arrive désactivé") {
+        api.importBotBundle(bundleJson, overwrite)
+    }
+
     fun adoptCrew(leadId: String, memberId: String) =
         act("Équipier rattaché à la flotte") { api.adoptBotCrew(leadId, memberId) }
 
