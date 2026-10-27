@@ -56,25 +56,48 @@ object OpenUi {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = false }
 
-    /** Root of a parsed spec, or why it cannot be rendered. */
+    /**
+     * Root of a parsed spec, or why it cannot be rendered yet.
+     *
+     * [Pending] only ever comes out of a streaming parse: the fence is still being written,
+     * nothing complete enough to draw has arrived, and there is no error to report.
+     */
     sealed interface Result {
         data class Rendered(val root: OpenUiNode) : Result
         data class Refused(val errors: List<String>) : Result
+        data object Pending : Result
     }
 
-    fun parse(spec: String): Result {
+    /**
+     * Parse a spec.
+     *
+     * [partial] is the streaming mode: the block is still being written, so the last line of
+     * the text is the line being typed — dropping it is "wait for the next chunk", not an
+     * error — and structural completeness is not expected yet, so children that have not
+     * arrived are skipped instead of failing the spec. A closed spec keeps the strict
+     * contract: nothing missing, nothing dangling, no cycle.
+     *
+     * The rules are the ones `openui-contract`'s parser applies while streaming, so a spec
+     * drawn by the dashboard and by the phone is drawn at the same moment.
+     */
+    fun parse(spec: String, partial: Boolean = false): Result {
         val errors = mutableListOf<String>()
-        if (spec.isBlank()) return Result.Refused(listOf("spec vide"))
+        if (spec.isBlank()) {
+            return if (partial) Result.Pending else Result.Refused(listOf("spec vide"))
+        }
         if (spec.length > 32768) return Result.Refused(listOf("spec trop longue"))
 
         val nodes = LinkedHashMap<String, Node>()
-        spec.lines().forEachIndexed { index, raw ->
+        val lines = spec.lines()
+        lines.forEachIndexed { index, raw ->
             val line = raw.trim()
             if (line.isEmpty() || line.startsWith("//") || line.startsWith("#")) return@forEachIndexed
             val number = index + 1
+            // The last line is the one being typed: drop it while streaming, report it once closed.
+            val typed = partial && index == lines.lastIndex
             val match = STATEMENT.find(line)
             if (match == null) {
-                errors += "ligne $number : attendu `id = Composant(args)`"
+                if (!typed) errors += "ligne $number : attendu `id = Composant(args)`"
                 return@forEachIndexed
             }
             val (id, component, rawArgs) = match.destructured
@@ -93,7 +116,7 @@ object OpenUi {
             if (component in LAYOUT) {
                 val children = parseIds(rawArgs)
                 if (children.isEmpty()) {
-                    errors += "ligne $number : `$component` attend une liste d'identifiants"
+                    if (!typed) errors += "ligne $number : `$component` attend une liste d'identifiants"
                 } else {
                     nodes[id] = Node(id, component, children = children)
                 }
@@ -101,14 +124,17 @@ object OpenUi {
             }
             val props = runCatching { json.parseToJsonElement(rawArgs.trim()) as? JsonObject }.getOrNull()
             if (props == null) {
-                errors += "ligne $number : les props ne sont pas un objet JSON"
+                if (!typed) errors += "ligne $number : les props ne sont pas un objet JSON"
                 return@forEachIndexed
             }
             errors += checkProps(id, component, props, number)
             nodes[id] = Node(id, component, props = props)
         }
 
-        if (errors.isEmpty()) {
+        if (nodes.size > MAX_NODES) errors += "${nodes.size} composants, la limite est $MAX_NODES"
+        // A closed spec must be whole. While streaming these checks are premature: the tree
+        // is built from what has arrived and drawn as soon as anything is drawable.
+        if (errors.isEmpty() && !partial) {
             if (nodes["root"] == null) errors += "aucun `root`"
             for (node in nodes.values) {
                 for (child in node.children) {
@@ -119,7 +145,6 @@ object OpenUi {
             nodes.values.firstOrNull { it.id != "root" && it.id !in referenced }?.let {
                 errors += "`${it.id}` n'est référencé par personne"
             }
-            if (nodes.size > MAX_NODES) errors += "${nodes.size} composants, la limite est $MAX_NODES"
             if (errors.isEmpty() && hasCycle(nodes, "root", mutableSetOf(), mutableSetOf())) {
                 errors += "cycle dans les enfants"
             }
@@ -127,7 +152,7 @@ object OpenUi {
         if (errors.isNotEmpty()) return Result.Refused(errors)
 
         val built = build(nodes, "root", mutableSetOf())
-            ?: return Result.Refused(listOf("arbre impossible à construire"))
+            ?: return if (partial) Result.Pending else Result.Refused(listOf("arbre impossible à construire"))
         return Result.Rendered(built)
     }
 

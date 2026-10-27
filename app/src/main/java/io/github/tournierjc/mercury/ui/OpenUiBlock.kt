@@ -53,14 +53,26 @@ private val WarnAmber = Color(0xFFD29922)
  * Everything here draws only from [OpenUiNode], a tree the parser already vetted: no
  * string in it is a URL, a script or a style. A spec that fails to parse is shown as
  * code instead — a message is never lost, it is just not drawn.
+ *
+ * [streaming] is the answer still arriving: the block then draws whatever part of the
+ * spec is already complete and shows `…` while nothing is — a half-written statement is
+ * the normal state of a streamed fence, not something to report as an error.
  */
 @Composable
-fun OpenUiBlock(spec: String, modifier: Modifier = Modifier) {
-    val result = remember(spec) { OpenUi.parse(spec) }
+fun OpenUiBlock(spec: String, streaming: Boolean = false, modifier: Modifier = Modifier) {
+    val result = remember(spec, streaming) { OpenUi.parse(spec, partial = streaming) }
     when (result) {
         is OpenUi.Result.Rendered -> Column(modifier = modifier.fillMaxWidth()) {
             NodeView(result.root)
         }
+
+        OpenUi.Result.Pending -> Text(
+            text = "…",
+            style = MaterialTheme.typography.bodyLarge,
+            color = LocalMercuryColors.current.textSecondary,
+            modifier = modifier.padding(top = 2.dp, bottom = 2.dp),
+        )
+
         is OpenUi.Result.Refused -> RefusedSpec(spec, result.errors, modifier)
     }
 }

@@ -42,10 +42,13 @@ no plugin, no patch, no fork of the agent.
 - **Read its memory**: search what it remembers, add a fact by hand, forget one, confirm or correct
   a belief, restore what the brain set aside — and see the identity/budget the runtime runs with.
 - **Dynamic answers.** A message that carries an ` ```openui ` block is drawn as components — table,
-  chart, code snippet, cards, stats — instead of source. The contract is OpenUI Lang v1, enforced
-  server-side by the `openui-contract` plugin; a spec this client cannot parse falls back to the
-  fenced code block, never to a half-drawn screen. Needs the daemon to speak the contract (a persona
-  instruction is enough): the app renders what it is given and invents nothing.
+  chart, code snippet, cards, stats — instead of source, **and it draws while the answer is still
+  arriving**: the block renders the part of the spec that is already complete, so a table appears
+  line by line instead of after the last token. The contract is OpenUI Lang v1, enforced
+  server-side by the `openui-contract` plugin; a half-written statement is "wait for the next
+  chunk", not an error, and a spec this client cannot parse once the fence is closed falls back to
+  the fenced code block, never to a half-drawn screen. Needs the daemon to speak the contract (a
+  persona instruction is enough): the app renders what it is given and invents nothing.
 - **Hand files to a bot.** A photo or a PDF travels with a background dispatch the same way it travels
   with a chat turn — resized on the phone (1600 px, JPEG q80), capped at 4 files, and the file can go
   alone: the server captions the turn itself. Needs the upstream route from

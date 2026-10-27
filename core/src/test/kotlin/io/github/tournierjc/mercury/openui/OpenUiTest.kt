@@ -1,6 +1,7 @@
 package io.github.tournierjc.mercury.openui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -11,11 +12,13 @@ import org.junit.Test
  */
 class OpenUiTest {
 
-    private fun render(spec: String): OpenUiNode =
-        (OpenUi.parse(spec) as OpenUi.Result.Rendered).root
+    private fun render(spec: String, partial: Boolean = false): OpenUiNode =
+        (OpenUi.parse(spec, partial) as OpenUi.Result.Rendered).root
 
-    private fun refused(spec: String): List<String> =
-        (OpenUi.parse(spec) as OpenUi.Result.Refused).errors
+    private fun refused(spec: String, partial: Boolean = false): List<String> =
+        (OpenUi.parse(spec, partial) as OpenUi.Result.Refused).errors
+
+    private fun pending(spec: String): Boolean = OpenUi.parse(spec, partial = true) is OpenUi.Result.Pending
 
     @Test
     fun `a table, a chart and a snippet build the tree the renderer expects`() {
@@ -125,5 +128,102 @@ class OpenUiTest {
     @Test
     fun `the fence language is the contract and is the marker the renderer keys on`() {
         assertEquals("openui", OpenUi.FENCE)
+    }
+
+    // ---- streaming (`partial = true`) ------------------------------------------------
+    //
+    // While the answer is being written the fence is a prefix of the spec, so every
+    // intermediate text is either drawable or not-yet-drawable — never an error. These
+    // tests pin the same rules `openui-contract`'s parser applies to a live stream.
+
+    private val streamedSpec = listOf(
+        "root = Stack([title, kpi, steps])",
+        "title = Text({\"text\": \"Spark deploy\", \"variant\": \"h1\"})",
+        "kpi = Stat({\"label\": \"p95\", \"value\": \"1.9s\", \"delta\": \"-12%\"})",
+        "steps = List({\"items\": [\"build\", \"push\", \"verify\"]})",
+    ).joinToString("\n")
+
+    @Test
+    fun `no prefix of a streamed spec is ever refused`() {
+        streamedSpec.indices.forEach { cut ->
+            val result = OpenUi.parse(streamedSpec.take(cut), partial = true)
+            assertFalse(
+                "prefix of $cut chars refused mid-stream: $result",
+                result is OpenUi.Result.Refused,
+            )
+        }
+        assertTrue(OpenUi.parse(streamedSpec, partial = true) is OpenUi.Result.Rendered)
+    }
+
+    @Test
+    fun `the same prefixes are refused once the fence is closed`() {
+        // Streaming is a mode, not a loosening of the contract: the closed spec is strict.
+        assertTrue(OpenUi.parse(streamedSpec.take(40), partial = false) is OpenUi.Result.Refused)
+        assertTrue(OpenUi.parse(streamedSpec, partial = false) is OpenUi.Result.Rendered)
+    }
+
+    @Test
+    fun `an open fence with nothing in it is pending, not an error`() {
+        assertTrue(pending(""))
+        assertTrue(pending("   \n "))
+        assertTrue(OpenUi.parse("", partial = false) is OpenUi.Result.Refused)
+    }
+
+    @Test
+    fun `a half-typed last line is dropped and what is complete still draws`() {
+        // `kpi` is mid-word: the block shows the title and leaves room for the stat.
+        val root = render(
+            "root = Stack([title, kpi])\n" +
+                "title = Text({\"text\": \"Spark deploy\"})\n" +
+                "kpi = Stat({\"label\": \"p9",
+            partial = true,
+        ) as OpenUiNode.Stack
+        assertEquals(1, root.children.size)
+        assertEquals("Spark deploy", (root.children.single() as OpenUiNode.Paragraph).text)
+    }
+
+    @Test
+    fun `a child that has not arrived yet is skipped, not refused`() {
+        val root = render("root = Stack([a, b])\na = Text({\"text\": \"ok\"})\n", partial = true) as OpenUiNode.Stack
+        assertEquals(1, root.children.size)
+        // the same text, closed, is a dangling reference and must be refused
+        assertTrue(refused("root = Stack([a, b])\na = Text({\"text\": \"ok\"})\n").isNotEmpty())
+    }
+
+    @Test
+    fun `a root that has not arrived yet is pending`() {
+        assertTrue(pending("title = Text({\"text\": \"Spark deploy\"})\n"))
+    }
+
+    @Test
+    fun `a broken statement before the last line refuses even while streaming`() {
+        val errors = refused(
+            "root = Stack([a])\nnot a statement\na = Text({\"text\": \"x\"})\ntail = Tex",
+            partial = true,
+        )
+        assertTrue(errors.toString(), errors.any { it.contains("ligne 2") })
+    }
+
+    @Test
+    fun `a spec that ends half-written is refused by the parse that closes it`() {
+        // What the app does when the stream ends: the same text, parsed closed, is refused
+        // rather than drawn half-way.
+        assertTrue(OpenUi.parse("root = Stack([a])\na = Text({\"te", partial = false) is OpenUi.Result.Refused)
+    }
+
+    @Test
+    fun `the closed parse of a complete spec is identical in both modes`() {
+        assertEquals(OpenUi.parse(streamedSpec, partial = false), OpenUi.parse(streamedSpec, partial = true))
+    }
+
+    @Test
+    fun `the node cap holds while streaming`() {
+        val ids = (1..61).joinToString(", ") { "n$it" }
+        val spec = buildString {
+            append("root = Stack([$ids])")
+            (1..61).forEach { append("\nn$it = Text({\"text\": \"x$it\"})") }
+        }
+        assertTrue(refused(spec, partial = true).isNotEmpty())
+        assertTrue(refused(spec).isNotEmpty())
     }
 }

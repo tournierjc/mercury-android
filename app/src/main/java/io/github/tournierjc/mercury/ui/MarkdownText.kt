@@ -36,6 +36,8 @@ fun MarkdownText(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = LocalMercuryColors.current.textPrimary,
+    /** The answer is still arriving: an openui block draws what is complete instead of waiting. */
+    streaming: Boolean = false,
 ) {
     val colors = LocalMercuryColors.current
     val blocks = remember(text) { MiniMarkdown.parse(text) }
@@ -76,7 +78,7 @@ fun MarkdownText(
                 is MdBlock.Code -> if (block.language.trim().lowercase() == OpenUi.FENCE) {
                     // A rendered answer from the openui contract: components instead of source.
                     Column(modifier = Modifier.padding(top = spacing)) {
-                        OpenUiBlock(spec = block.content)
+                        OpenUiBlock(spec = block.content, streaming = streaming)
                     }
                 } else Column(
                     modifier = Modifier
