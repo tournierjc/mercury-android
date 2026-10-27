@@ -7,7 +7,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.AuthException
+import io.github.tournierjc.mercury.data.GitJson
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.NowPlaying
+import io.github.tournierjc.mercury.data.SpotifyDevice
+import io.github.tournierjc.mercury.data.SpotifyJson
+import io.github.tournierjc.mercury.data.dto.GitBranchDto
+import io.github.tournierjc.mercury.data.dto.GitCommitDto
+import io.github.tournierjc.mercury.data.dto.GitStatusDto
+import io.github.tournierjc.mercury.data.dto.SpotifyStatusDto
 import io.github.tournierjc.mercury.data.dto.BotDetailDto
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.data.dto.BotTierDto
@@ -72,6 +80,19 @@ data class ConsoleUiState(
     val busy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
+    // Git: the workspace repository, driven from the console.
+    val git: GitStatusDto? = null,
+    val gitBranches: List<GitBranchDto> = emptyList(),
+    val gitLog: List<GitCommitDto> = emptyList(),
+    val commitDraft: String = "",
+    val gitDiff: String? = null,
+    val gitDiffTitle: String = "",
+    val gitBusy: Boolean = false,
+    // Spotify: a convenience surface, not a music app.
+    val music: SpotifyStatusDto? = null,
+    val nowPlaying: NowPlaying? = null,
+    val devices: List<SpotifyDevice> = emptyList(),
+    val musicBusy: Boolean = false,
 )
 
 /**
@@ -138,6 +159,8 @@ class ConsoleViewModel(
                         outputs = outputs?.outputs.orEmpty(),
                     )
                 }
+                loadGit()
+                loadMusic()
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.readable()) }
             }
@@ -447,6 +470,163 @@ class ConsoleViewModel(
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
+
+    // -------------------------------------------------------------------
+    // Git: status, index, commit, push/pull, branches, log
+    // -------------------------------------------------------------------
+
+    fun refreshGit() {
+        viewModelScope.launch { loadGit() }
+    }
+
+    /**
+     * Commits and failures both land here. The daemon answers `{error: <git stderr>}`, and
+     * [readable] keeps that text whole: "nothing to commit, working tree clean" is more
+     * useful to the owner than anything this client could paraphrase.
+     */
+    private fun gitAction(successMessage: String, onSuccess: () -> Unit = {}, block: suspend () -> Any?) {
+        viewModelScope.launch {
+            _state.update { it.copy(gitBusy = true, message = null, error = null) }
+            runCatching { block() }
+                .onSuccess {
+                    onSuccess()
+                    _state.update { s -> s.copy(gitBusy = false, message = successMessage) }
+                    loadGit()
+                }
+                .onFailure { e -> _state.update { s -> s.copy(gitBusy = false, error = e.readable()) } }
+        }
+    }
+
+    private suspend fun loadGit() {
+        // A workspace that is not a repository answers 500 on every route: the card then
+        // says so, but the rest of the console keeps working.
+        val status = runCatching { api.gitStatus() }.getOrNull()
+        val branches = if (status != null) runCatching { api.gitBranches() }.getOrDefault(emptyList()) else emptyList()
+        val log = if (status != null) runCatching { api.gitLog(8) }.getOrDefault(emptyList()) else emptyList()
+        _state.update { it.copy(git = status, gitBranches = branches, gitLog = log) }
+    }
+
+    fun stage(paths: List<String>) {
+        if (paths.isEmpty()) return
+        gitAction(if (paths.size == 1) "Fichier indexé" else "${paths.size} fichiers indexés") {
+            api.gitStage(paths)
+        }
+    }
+
+    fun unstage(paths: List<String>) {
+        if (paths.isEmpty()) return
+        gitAction(if (paths.size == 1) "Fichier désindexé" else "${paths.size} fichiers désindexés") {
+            api.gitUnstage(paths)
+        }
+    }
+
+    /** `Tout indexer` — every path on the unstaged side of the status, and no other. */
+    fun stageAll() = stage(GitJson.stageable(_state.value.git))
+
+    fun unstageAll() = unstage(GitJson.unstageable(_state.value.git))
+
+    fun setCommitDraft(text: String) {
+        _state.update { it.copy(commitDraft = text) }
+    }
+
+    /** Asks the runtime's model to write the message; the draft is replaced only on success. */
+    fun generateCommitMessage() {
+        viewModelScope.launch {
+            _state.update { it.copy(gitBusy = true, message = null, error = null) }
+            runCatching { api.generateCommitMessage() }
+                .onSuccess { message -> _state.update { it.copy(gitBusy = false, commitDraft = message) } }
+                .onFailure { e -> _state.update { it.copy(gitBusy = false, error = e.readable()) } }
+        }
+    }
+
+    /** Commits the index with the draft as-is; the daemon adds its own trailer. */
+    fun commit() {
+        val message = _state.value.commitDraft.trim()
+        if (message.isEmpty()) return
+        gitAction("Commit créé", onSuccess = { _state.update { it.copy(commitDraft = "") } }) {
+            api.gitCommit(message)
+        }
+    }
+
+    fun push() = gitAction("Poussé sur origin") { api.gitPush() }
+
+    fun pull() = gitAction("Dépôt mis à jour") { api.gitPull() }
+
+    fun checkout(branch: String) = gitAction("Branche « $branch »") { api.gitCheckout(branch) }
+
+    /**
+     * The diff route, shown as monospace text in a dialog. Nothing parses the patch here:
+     * a renderer is a separate concern.
+     */
+    fun showDiff(path: String?, staged: Boolean) {
+        viewModelScope.launch {
+            _state.update { it.copy(gitBusy = true, message = null, error = null) }
+            runCatching { api.gitDiff(path, staged) }
+                .onSuccess { diff ->
+                    val title = listOfNotNull(
+                        if (staged) "Diff indexé" else "Diff non indexé",
+                        path?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ")
+                    _state.update {
+                        it.copy(gitBusy = false, gitDiff = diff.ifBlank { "Aucune différence." }, gitDiffTitle = title)
+                    }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(gitBusy = false, error = e.readable()) } }
+        }
+    }
+
+    fun dismissDiff() {
+        _state.update { it.copy(gitDiff = null, gitDiffTitle = "") }
+    }
+
+    // -------------------------------------------------------------------
+    // Musique: what plays, transport, volume, devices
+    // -------------------------------------------------------------------
+
+    fun refreshMusic() {
+        viewModelScope.launch { loadMusic() }
+    }
+
+    private suspend fun loadMusic() {
+        val status = runCatching { api.spotifyStatus() }.getOrNull()
+        if (status?.connected != true) {
+            _state.update { it.copy(music = status, nowPlaying = null, devices = emptyList()) }
+            return
+        }
+        val line = runCatching { api.spotifyNowPlaying() }.getOrNull()
+        val devices = runCatching { api.spotifyDevices() }.getOrDefault(emptyList())
+        _state.update {
+            it.copy(music = status, nowPlaying = SpotifyJson.nowPlaying(line?.text), devices = devices)
+        }
+    }
+
+    /**
+     * Transport controls. A refusal (free account, no active device) is shown verbatim too;
+     * success is not announced — pressing "Suivant" needs no banner.
+     */
+    private fun musicAction(block: suspend () -> Any?) {
+        viewModelScope.launch {
+            _state.update { it.copy(musicBusy = true, message = null, error = null) }
+            runCatching { block() }
+                .onSuccess {
+                    _state.update { s -> s.copy(musicBusy = false) }
+                    loadMusic()
+                }
+                .onFailure { e -> _state.update { s -> s.copy(musicBusy = false, error = e.readable()) } }
+        }
+    }
+
+    fun play() = musicAction { api.spotifyPlay() }
+
+    fun pause() = musicAction { api.spotifyPause() }
+
+    fun next() = musicAction { api.spotifyNext() }
+
+    fun previous() = musicAction { api.spotifyPrevious() }
+
+    fun setVolume(volume: Int) = musicAction { api.spotifyVolume(volume) }
+
+    fun setShuffle(state: Boolean) = musicAction { api.spotifyShuffle(state) }
 
     companion object {
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {

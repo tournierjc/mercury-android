@@ -70,6 +70,16 @@ import io.github.tournierjc.mercury.data.dto.SwitchModelRequest
 import io.github.tournierjc.mercury.data.dto.UpdateMemoryRequest
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import io.github.tournierjc.mercury.data.dto.UsernameChangeRequest
+import io.github.tournierjc.mercury.data.dto.GitBranchDto
+import io.github.tournierjc.mercury.data.dto.GitBranchesDto
+import io.github.tournierjc.mercury.data.dto.GitCommitDto
+import io.github.tournierjc.mercury.data.dto.GitDiffDto
+import io.github.tournierjc.mercury.data.dto.GitLogDto
+import io.github.tournierjc.mercury.data.dto.GitStatusDto
+import io.github.tournierjc.mercury.data.dto.SpotifyDevicesDto
+import io.github.tournierjc.mercury.data.dto.SpotifyNowPlayingDto
+import io.github.tournierjc.mercury.data.dto.SpotifyStatusDto
+import io.github.tournierjc.mercury.data.dto.CommitMessageDto
 import io.github.tournierjc.mercury.data.dto.WorkspaceFileDto
 import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
 import io.github.tournierjc.mercury.data.dto.WorkspaceRootRequest
@@ -78,6 +88,8 @@ import io.github.tournierjc.mercury.data.dto.WorkspaceTreeDto
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -355,6 +367,120 @@ class MercuryApi(
         body("command" to command, "cwd" to cwd),
         TerminalResult.serializer(),
     )
+
+    // ---------------------------------------------------------------------
+    // Git: the workspace repository, eleven routes from `workspace-ide.ts`
+    // ---------------------------------------------------------------------
+
+    /** `GET /api/git/status` — branch, upstream distance, changed files (both sides). */
+    suspend fun gitStatus(): GitStatusDto = getDecoded("/api/git/status", GitStatusDto.serializer())
+
+    suspend fun gitBranches(): List<GitBranchDto> =
+        getDecoded("/api/git/branches", GitBranchesDto.serializer()).branches
+
+    /** `GET /api/git/log` — the daemon caps the count at 100. */
+    suspend fun gitLog(count: Int = 10): List<GitCommitDto> =
+        getDecoded("/api/git/log", GitLogDto.serializer(), mapOf("count" to count.toString())).commits
+
+    /**
+     * `GET /api/git/diff` — staged or unstaged, optionally one file. The answer is a raw
+     * patch: the console shows it as monospace text, it does not render it.
+     */
+    suspend fun gitDiff(path: String? = null, staged: Boolean = false): String = getDecoded(
+        "/api/git/diff",
+        GitDiffDto.serializer(),
+        buildMap {
+            put("staged", if (staged) "true" else "false")
+            if (!path.isNullOrBlank()) put("file", path)
+        },
+    ).diff
+
+    /** `POST /api/git/checkout` — `create` runs `checkout -b`. */
+    suspend fun gitCheckout(branch: String, create: Boolean = false): SimpleResponse = postJson(
+        "/api/git/checkout",
+        body("branch" to branch, "create" to create.takeIf { it }),
+        SimpleResponse.serializer(),
+    )
+
+    /** `POST /api/git/stage` — `{files:[…]}`, one `git add` per call. */
+    suspend fun gitStage(files: List<String>): SimpleResponse =
+        postJson("/api/git/stage", body("files" to jsonStrings(files)), SimpleResponse.serializer())
+
+    /** `POST /api/git/unstage` — `reset HEAD`, the paths stay in the working tree. */
+    suspend fun gitUnstage(files: List<String>): SimpleResponse =
+        postJson("/api/git/unstage", body("files" to jsonStrings(files)), SimpleResponse.serializer())
+
+    /**
+     * `POST /api/git/commit` — the daemon appends its own `Co-authored-by` trailer, so the
+     * message sent here is the message the owner typed and nothing more.
+     */
+    suspend fun gitCommit(message: String): SimpleResponse = postJson(
+        "/api/git/commit",
+        body("message" to message),
+        SimpleResponse.serializer(),
+    )
+
+    /** `POST /api/git/push` — defaults to `origin`, current branch, no `-u` unless asked. */
+    suspend fun gitPush(branch: String? = null, setUpstream: Boolean = false): SimpleResponse = postJson(
+        "/api/git/push",
+        body("branch" to branch, "setUpstream" to setUpstream.takeIf { it }),
+        SimpleResponse.serializer(),
+    )
+
+    suspend fun gitPull(): SimpleResponse =
+        postJson("/api/git/pull", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    /**
+     * `POST /api/git/generate-commit-message` — the runtime's model reads the staged diff
+     * (or the unstaged one when nothing is staged) and answers one message.
+     */
+    suspend fun generateCommitMessage(): String = postJson(
+        "/api/git/generate-commit-message",
+        JsonObject(emptyMap()),
+        CommitMessageDto.serializer(),
+    ).message
+
+    // ---------------------------------------------------------------------
+    // Spotify: a convenience surface, nine playback routes
+    // ---------------------------------------------------------------------
+
+    /** `GET /api/spotify/status` — always 200, `{available:false}` without a client. */
+    suspend fun spotifyStatus(): SpotifyStatusDto =
+        getDecoded("/api/spotify/status", SpotifyStatusDto.serializer())
+
+    /** `GET /api/spotify/now-playing` — one formatted line, or `{error}` when unconnected. */
+    suspend fun spotifyNowPlaying(): SpotifyNowPlayingDto =
+        getDecoded("/api/spotify/now-playing", SpotifyNowPlayingDto.serializer())
+
+    /** `GET /api/spotify/devices` — Spotify's own body, nested one level down. */
+    suspend fun spotifyDevices(): List<SpotifyDevice> =
+        SpotifyJson.devices(getDecoded("/api/spotify/devices", SpotifyDevicesDto.serializer()).devices)
+
+    suspend fun spotifyPlay(): SimpleResponse =
+        postJson("/api/spotify/play", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun spotifyPause(): SimpleResponse =
+        postJson("/api/spotify/pause", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun spotifyNext(): SimpleResponse =
+        postJson("/api/spotify/next", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    suspend fun spotifyPrevious(): SimpleResponse =
+        postJson("/api/spotify/previous", JsonObject(emptyMap()), SimpleResponse.serializer())
+
+    /** `POST /api/spotify/volume` — `{volume: 0…100}`. */
+    suspend fun spotifyVolume(volume: Int): SimpleResponse = postJson(
+        "/api/spotify/volume",
+        body("volume" to volume.coerceIn(0, 100)),
+        SimpleResponse.serializer(),
+    )
+
+    /** `POST /api/spotify/shuffle` — `{state: true|false}`. */
+    suspend fun spotifyShuffle(state: Boolean): SimpleResponse =
+        postJson("/api/spotify/shuffle", body("state" to state), SimpleResponse.serializer())
+
+    /** A JSON array of strings, as `/api/git/stage` and `/api/git/unstage` read it. */
+    private fun jsonStrings(values: List<String>): JsonArray = JsonArray(values.map { JsonPrimitive(it) })
 
     // ---------------------------------------------------------------------
     // Fleets: a lead bot and its crew
