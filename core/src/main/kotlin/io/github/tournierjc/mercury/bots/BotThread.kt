@@ -33,12 +33,15 @@ object BotThread {
     /**
      * @param records journal lines for one bot, any order.
      * @param prompts `runId` → the task the owner dispatched for that run.
+     * @param outputs `runId` → the full answer, when the transcript is at hand.
      * @param liveJobId the run currently streaming, if any.
      * @param liveTail the tail of the text the bot is writing, if any.
      */
     fun build(
         records: List<BotRunDto>,
         prompts: Map<String, String>,
+        /** `runId` → the full answer, from the run transcript. */
+        outputs: Map<String, String> = emptyMap(),
         liveJobId: String? = null,
         liveTail: String = "",
     ): List<BotMessage> {
@@ -61,6 +64,9 @@ object BotThread {
                 val streaming = liveJobId != null && record.runId == liveJobId && liveTail.isNotBlank()
                 val reply = when {
                     streaming -> liveTail
+                    // The journal truncates `summary` to 300 characters; the transcript keeps
+                    // the whole answer, which is what a conversation must show.
+                    outputs[record.runId]?.isNotBlank() == true -> outputs.getValue(record.runId)
                     record.summary.isNotBlank() -> record.summary
                     record.error.isNotBlank() -> record.error
                     // A run that produced neither a summary nor an error was still a turn: say
