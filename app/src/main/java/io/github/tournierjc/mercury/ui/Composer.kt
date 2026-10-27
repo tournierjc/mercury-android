@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
@@ -49,6 +50,8 @@ fun Composer(
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(colors.surface)
+            // Same hairline as a rounded field: without it the composer melts into the canvas.
+            .border(1.dp, colors.hairlineStrong, RoundedCornerShape(28.dp))
             .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
