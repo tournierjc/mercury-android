@@ -1,5 +1,12 @@
 package io.github.tournierjc.mercury.ui
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.AttentionPrefs
 import io.github.tournierjc.mercury.bots.AttentionSchedule
+import io.github.tournierjc.mercury.bots.WatchService
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.vm.SettingsViewModel
@@ -149,6 +157,72 @@ fun SettingsScreen(onBack: () -> Unit) {
                 val attention = remember { AttentionPrefs(context) }
                 var attentionOn by remember { mutableStateOf(attention.enabled) }
                 var interval by remember { mutableIntStateOf(attention.intervalMinutes) }
+                var watchOn by remember { mutableStateOf(attention.persistent) }
+                val notifications = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission(),
+                ) { }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Veille en temps réel",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            text = if (watchOn) {
+                                "La connexion reste ouverte : l'alerte arrive en quelques secondes. Une notification permanente l'indique."
+                            } else {
+                                "Sans elle, l'app ne prévient qu'en ouvrant, ou à la passe périodique ci-dessous."
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    Switch(
+                        checked = watchOn,
+                        onCheckedChange = { on ->
+                            if (!on) {
+                                attention.persistent = false
+                                watchOn = false
+                                WatchService.stop(context)
+                            } else {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                                    PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                // Le service est le seul moyen d'entendre un équipier sans
+                                // ouvrir l'app ; s'il refuse de démarrer, on retombe sur la
+                                // vérification périodique au lieu d'afficher un interrupteur menteur.
+                                if (WatchService.start(context)) {
+                                    attention.persistent = true
+                                    watchOn = true
+                                } else {
+                                    attention.persistent = false
+                                    watchOn = false
+                                    AttentionSchedule.apply(context)
+                                }
+                            }
+                        },
+                    )
+                }
+                if (watchOn) {
+                    Text(
+                        text = "Android peut arrêter la veille pour économiser la batterie : autorisez Mercury à ignorer l'optimisation.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                    TextButton(onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                            )
+                        }
+                    }) {
+                        Text("Réglages de batterie", color = colors.accent)
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(

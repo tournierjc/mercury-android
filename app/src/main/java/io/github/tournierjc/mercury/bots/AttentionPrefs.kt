@@ -17,6 +17,15 @@ class AttentionPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_ENABLED, value).apply()
 
+    /**
+     * Veille continue : service de premier plan qui garde le flux du roster ouvert.
+     * Indépendant de [enabled] (la vérification périodique reste le repli quand le
+     * système refuse de démarrer le service).
+     */
+    var persistent: Boolean
+        get() = prefs.getBoolean(KEY_PERSISTENT, false)
+        set(value) = prefs.edit().putBoolean(KEY_PERSISTENT, value).apply()
+
     /** Android refuse un travail périodique plus court que 15 minutes. */
     var intervalMinutes: Int
         get() = prefs.getInt(KEY_INTERVAL, MIN_INTERVAL_MINUTES).coerceAtLeast(MIN_INTERVAL_MINUTES)
@@ -33,6 +42,7 @@ class AttentionPrefs(context: Context) {
         const val MIN_INTERVAL_MINUTES = 15
         private const val KEY_ENABLED = "enabled"
         private const val KEY_INTERVAL = "intervalMinutes"
+        private const val KEY_PERSISTENT = "persistentWatch"
         private const val KEY_SEEN = "seenKeys"
     }
 }
