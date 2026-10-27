@@ -32,8 +32,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 
 data class BotsUiState(
@@ -403,17 +405,45 @@ class BotsViewModel(
      */
     fun setTier(id: String, tier: String) {
         viewModelScope.launch {
+            // No banner: the cells are the feedback, and a message appearing above them shifted
+            // the whole sheet on every tap.
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { api.setBotPermissions(id, tier) }
                 .onSuccess { result ->
                     val stored = result["permissions"] as? JsonObject
-                    _state.update { s ->
-                        s.copy(
-                            busy = false,
-                            message = "Palier appliqué",
-                            permissions = stored ?: s.permissions,
-                        )
-                    }
+                    _state.update { s -> s.copy(busy = false, permissions = stored ?: s.permissions) }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    /**
+     * Takes the tier back: the bot returns to the daemon's default document, and no cell is lit.
+     *
+     * Tapping the active tier used to leave it active, which made the row look read-only to
+     * anyone whose bot had never had a tier — the state was simply "no tier", not "nothing yet".
+     */
+    fun clearTier(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            val defaults = buildJsonObject {
+                put(
+                    "paths",
+                    JsonArray(
+                        listOf(
+                            buildJsonObject {
+                                put("scope", JsonPrimitive("self"))
+                                put("read", JsonPrimitive(true))
+                                put("write", JsonPrimitive(true))
+                            },
+                        ),
+                    ),
+                )
+            }
+            runCatching { api.setBotPermissionsDoc(id, defaults) }
+                .onSuccess { result ->
+                    val stored = result["permissions"] as? JsonObject
+                    _state.update { s -> s.copy(busy = false, permissions = stored ?: s.permissions) }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }

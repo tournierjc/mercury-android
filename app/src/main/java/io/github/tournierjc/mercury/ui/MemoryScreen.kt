@@ -263,53 +263,66 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
             )
         }
         state.beliefs.forEach { belief ->
-            Column(
+            // The three verbs sit in a column on the right, as glyphs: the card is a claim, and
+            // three labelled buttons under it were a third of its height for no information.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
                     .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
             ) {
-                Text(
-                    text = "${belief.kind.uppercase()} · ${belief.statusLabel()}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.accent,
-                )
-                Text(
-                    text = belief.statement,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.textPrimary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                Text(
-                    text = "support ${belief.support} · contre ${belief.against} · ${belief.timescale.ifBlank { "—" }}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                // Same glyph vocabulary as the bot sheet: tick to confirm, pencil to correct,
-                // bin to forget. A claim is confirmed or replaced, never edited in place.
-                IconActionBar(
-                    listOf(
-                        QuickAction(
-                            icon = Icons.Rounded.Check,
-                            label = "Confirmer",
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${belief.kind.uppercase()} · ${belief.statusLabel()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.accent,
+                    )
+                    Text(
+                        text = belief.statement,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textPrimary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text(
+                        text = "support ${belief.support} · contre ${belief.against} · ${belief.timescale.ifBlank { "—" }}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    // Same glyph vocabulary as the bot sheet: tick to confirm, pencil to correct,
+                    // bin to forget. A claim is confirmed or replaced, never edited in place.
+                    IconButton(onClick = { viewModel.confirmBelief(belief.id) }, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = "Confirmer cette croyance",
                             tint = colors.accent,
-                            onClick = { viewModel.confirmBelief(belief.id) },
-                        ),
-                        QuickAction(
-                            icon = Icons.Rounded.Edit,
-                            label = "Corriger",
-                            onClick = { onCorrect(belief.id) },
-                        ),
-                        QuickAction(
-                            icon = Icons.Rounded.DeleteOutline,
-                            label = "Oublier",
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                    IconButton(onClick = { onCorrect(belief.id) }, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Rounded.Edit,
+                            contentDescription = "Corriger cette croyance",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                    IconButton(onClick = { viewModel.forgetBelief(belief.id) }, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Rounded.DeleteOutline,
+                            contentDescription = "Oublier cette croyance",
                             tint = colors.danger,
-                            onClick = { viewModel.forgetBelief(belief.id) },
-                        ),
-                    ),
-                )
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
             }
         }
     }

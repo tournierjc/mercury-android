@@ -8,10 +8,15 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +25,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -65,6 +73,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     var dialog by remember { mutableStateOf<AccountDialog?>(null) }
 
+    var showModelPicker by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -88,23 +97,18 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             SectionTitle("Modèle")
             CardBlock {
-                state.models?.providers?.forEach { model ->
-                    ActionRow(
-                        title = model.displayLabel,
-                        subtitle = "${model.group.ifBlank { model.name }} · ${model.model}",
-                        trailing = if (model.isCurrent) "actif" else if (!model.available) "indisponible" else null,
-                        selected = model.isCurrent,
-                        enabled = model.available,
-                        onClick = { viewModel.selectModel(model.name, model.model) },
-                    )
-                }
-                if (state.models?.providers.isNullOrEmpty()) {
-                    Text(
-                        text = if (state.loading) "Chargement…" else "Aucun modèle exposé par le runtime.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
-                }
+                val current = state.models?.current
+                // The four rows were the runtime's whole catalogue printed on top of the two places
+                // that already choose a model (the conversation, and each bot). One row that opens
+                // the list says the same thing without owning the screen.
+                ActionRow(
+                    title = current?.displayLabel ?: "Mercury",
+                    subtitle = current?.let { "${it.group.ifBlank { it.name }} · ${it.model}" }
+                        ?: if (state.loading) "Chargement…" else "Aucun modèle exposé par le runtime.",
+                    trailing = "changer",
+                    enabled = !state.models?.providers.isNullOrEmpty(),
+                    onClick = { showModelPicker = true },
+                )
             }
 
             SectionTitle("Approbation des outils")
@@ -363,6 +367,58 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
 
         }
+    }
+
+    if (showModelPicker) {
+        val models = state.models?.providers.orEmpty()
+        AlertDialog(
+            onDismissRequest = { showModelPicker = false },
+            containerColor = colors.surface,
+            title = { Text("Modèle de la conversation", color = colors.textPrimary) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    models.forEach { model ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(enabled = model.available) {
+                                    showModelPicker = false
+                                    viewModel.selectModel(model.name, model.model)
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = model.displayLabel,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (model.available) colors.textPrimary else colors.textSecondary,
+                                )
+                                Text(
+                                    text = "${model.group.ifBlank { model.name }} · ${model.model}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                            if (model.isCurrent) {
+                                Icon(
+                                    Icons.Rounded.Check,
+                                    contentDescription = "Actif",
+                                    tint = colors.accent,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text("Fermer") } },
+        )
     }
 
     when (dialog) {

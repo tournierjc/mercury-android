@@ -10,6 +10,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -70,6 +72,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -607,62 +610,68 @@ private fun BotDetail(
             color = colors.textSecondary,
         )
 
-        // The buttons live inside the field: a task is typed and sent in one gesture, and the
-        // two rows of text buttons beneath it were the least modern thing on the screen.
-        OutlinedTextField(
-            value = dispatchText,
-            onValueChange = { dispatchText = it },
-            placeholder = { Text("Tâche rapide à confier") },
-            minLines = 2,
-            maxLines = 5,
-            shape = RoundedCornerShape(16.dp),
-            trailingIcon = {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    IconButton(
-                        onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
-                        modifier = Modifier.size(36.dp),
-                    ) {
-                        Icon(
-                            Icons.Rounded.AttachFile,
-                            contentDescription = "Joindre un fichier",
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(19.dp),
-                        )
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(
-                                if (!state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())) {
-                                    colors.accent
-                                } else {
-                                    colors.surfaceMuted
-                                },
-                            )
-                            .clickable(enabled = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())) {
-                                viewModel.dispatch(dispatchText, dispatchFiles)
-                                dispatchText = ""
-                                dispatchFiles = emptyList()
-                                dispatchFileError = null
-                            },
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.Send,
-                            contentDescription = "Envoyer la tâche",
-                            tint = if (!state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())) {
-                                colors.canvas
-                            } else {
-                                colors.textSecondary
-                            },
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+        // The buttons live inside the field: a task is typed and sent in one gesture. Laid out by
+        // hand rather than with OutlinedTextField, because its fixed internal padding left the
+        // glyphs touching the left edge and the send chip sitting on the border.
+        val canSend = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        ) {
+            Box(modifier = Modifier.weight(1f).padding(top = 6.dp)) {
+                if (dispatchText.isEmpty()) {
+                    Text(
+                        text = "Tâche rapide à confier",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary.copy(alpha = 0.7f),
+                    )
                 }
-            },
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        )
+                BasicTextField(
+                    value = dispatchText,
+                    onValueChange = { dispatchText = it },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.textPrimary),
+                    cursorBrush = SolidColor(colors.accent),
+                    maxLines = 5,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                )
+            }
+            IconButton(
+                onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    Icons.Rounded.AttachFile,
+                    contentDescription = "Joindre un fichier",
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(if (canSend) colors.accent else colors.surfaceMuted)
+                    .clickable(enabled = canSend) {
+                        viewModel.dispatch(dispatchText, dispatchFiles)
+                        dispatchText = ""
+                        dispatchFiles = emptyList()
+                        dispatchFileError = null
+                    },
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.Send,
+                    contentDescription = "Envoyer la tâche",
+                    tint = if (canSend) colors.canvas else colors.textSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
         if (dispatchFiles.isNotEmpty()) {
             ButtonRow {
                 dispatchFiles.forEach { file ->
@@ -697,6 +706,8 @@ private fun BotDetail(
             text = "Qui il est et comment il travaille — c'est ce que Mercury relit à chaque réveil.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
+            // Le champ collait à la phrase : la ligne respire avant le cadre.
+            modifier = Modifier.padding(bottom = 12.dp),
         )
         OutlinedTextField(
             value = personaText,
@@ -770,7 +781,12 @@ private fun BotDetail(
                             if (selected) Modifier
                             else Modifier.border(1.dp, colors.hairlineStrong, RoundedCornerShape(12.dp)),
                         )
-                        .clickable { viewModel.setTier(id, tierId) }
+                        // Tapping the active tier takes it back: a choice you cannot undo is not
+                        // a choice. It returns the bot to the daemon's default document, which
+                        // belongs to no tier — hence no cell lit, which is a real state.
+                        .clickable {
+                            if (tier == tierId) viewModel.clearTier(id) else viewModel.setTier(id, tierId)
+                        }
                         .padding(vertical = 9.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

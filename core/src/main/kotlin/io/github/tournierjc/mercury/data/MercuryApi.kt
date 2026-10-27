@@ -604,6 +604,19 @@ class MercuryApi(
         JsonObject.serializer(),
     )
 
+    /**
+     * `PUT /api/bots/:id/permissions {permissions}` — writes a document instead of a tier.
+     *
+     * This is how a tier is taken back: the daemon's default document
+     * (`{paths:[{scope:'self', read, write}]}`, no tool gate) is what a bot has before anyone
+     * picks a tier, and it belongs to no tier — so the sheet has nothing to light up.
+     */
+    suspend fun setBotPermissionsDoc(id: String, permissions: JsonObject): JsonObject = putJson(
+        "/api/bots/${encode(id)}/permissions",
+        buildJsonObject { put("permissions", permissions) },
+        JsonObject.serializer(),
+    )
+
     // ---------------------------------------------------------------------
     // Boards: Mercury's kanban execution surface (43 routes).
     // Shapes are navigated with BoardJson because no board exists on the
