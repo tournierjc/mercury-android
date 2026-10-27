@@ -33,6 +33,16 @@
     <string name="settings_providers_title">Providers</string>
     <string name="settings_providers_none">No provider configured.</string>
     <string name="settings_providers_restart">A saved key or model only applies on the next runtime start.</string>
+    <string name="settings_server_title">Server</string>
+    <string name="settings_server_address">Server address</string>
+    <string name="settings_server_unset">Not set</string>
+    <string name="settings_server_hint">Changing the address ends the current session: sign in again on the new server.</string>
+    <string name="settings_server_dialog_title">Mercury server address</string>
+    <string name="settings_server_placeholder">https://host:port</string>
+    <string name="settings_server_problem_empty">Empty address</string>
+    <string name="settings_server_problem_scheme">Only http:// and https:// addresses are accepted</string>
+    <string name="settings_server_problem_host">Missing host</string>
+    <string name="settings_server_apply">Change</string>
     <string name="settings_account_title">Account</string>
     <string name="settings_account_username">Change the username</string>
     <string name="settings_account_password">Change the password</string>

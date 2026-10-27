@@ -33,6 +33,16 @@
     <string name="settings_providers_title">Fournisseurs</string>
     <string name="settings_providers_none">Aucun fournisseur configuré.</string>
     <string name="settings_providers_restart">Une clé ou un modèle enregistré n\'agit qu\'au prochain démarrage du runtime.</string>
+    <string name="settings_server_title">Serveur</string>
+    <string name="settings_server_address">Adresse du serveur</string>
+    <string name="settings_server_unset">Non définie</string>
+    <string name="settings_server_hint">Une nouvelle adresse ferme la session en cours : il faut se reconnecter sur le nouveau serveur.</string>
+    <string name="settings_server_dialog_title">Adresse du serveur Mercury</string>
+    <string name="settings_server_placeholder">https://hôte:port</string>
+    <string name="settings_server_problem_empty">Adresse vide</string>
+    <string name="settings_server_problem_scheme">Seules les adresses http:// et https:// sont acceptées</string>
+    <string name="settings_server_problem_host">Hôte manquant</string>
+    <string name="settings_server_apply">Changer</string>
     <string name="settings_account_title">Compte</string>
     <string name="settings_account_username">Changer l\'identifiant</string>
     <string name="settings_account_password">Changer le mot de passe</string>

@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.data.ServerAddress
 import io.github.tournierjc.mercury.device.LocaleStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -67,7 +69,7 @@ private enum class AccountDialog { Username, Password }
  * actions. Each control writes straight to the matching Mercury route.
  */
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
     val context = LocalContext.current
     val container = remember { (context.applicationContext as MercuryApp).container }
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(container))
@@ -78,6 +80,9 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     var showModelPicker by remember { mutableStateOf(false) }
     var editingProvider by remember { mutableStateOf<String?>(null) }
+    // The host address used to be asked once, at first launch, and never again: following the
+    // server to another machine meant wiping the app. It now lives with the account rows.
+    var showServerDialog by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -389,6 +394,22 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
 
+            SectionTitle(stringResource(R.string.settings_server_title))
+            CardBlock {
+                ActionRow(
+                    title = stringResource(R.string.settings_server_address),
+                    subtitle = container.serverUrl.ifBlank { stringResource(R.string.settings_server_unset) },
+                    trailing = stringResource(R.string.settings_change),
+                    onClick = { showServerDialog = true },
+                )
+                Text(
+                    text = stringResource(R.string.settings_server_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+
             SectionTitle(stringResource(R.string.settings_account_title))
             CardBlock {
                 ActionRow(
@@ -418,6 +439,17 @@ fun SettingsScreen(onBack: () -> Unit) {
             onConfirm = { apiKey, baseUrl, model, enabled ->
                 editingProvider = null
                 viewModel.saveProvider(id, apiKey, baseUrl, model, enabled)
+            },
+        )
+    }
+
+    if (showServerDialog) {
+        ServerDialog(
+            current = container.serverUrl,
+            onDismiss = { showServerDialog = false },
+            onConfirm = { url ->
+                showServerDialog = false
+                onChangeServer(url)
             },
         )
     }
@@ -548,6 +580,71 @@ private fun CredentialDialog(
                 onClick = { onConfirm(current, value) },
                 enabled = current.isNotBlank() && value.length >= 6,
             ) { Text(confirmLabel) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) } },
+    )
+}
+
+/**
+ * The Mercury host, editable after the fact.
+ *
+ * It is a connection setting, so it sits with the account rows instead of only on the sign-in
+ * screen: the address was asked once at first launch, which left "wipe the app" as the only way to
+ * follow the server to another machine. Applying it closes the session — the cookie belongs to the
+ * old host — and the sign-in screen comes back with the new address already filled in.
+ */
+@Composable
+private fun ServerDialog(
+    current: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var value by remember { mutableStateOf(current) }
+    val colors = LocalMercuryColors.current
+    val problem = ServerAddress.validate(value)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text(stringResource(R.string.settings_server_dialog_title), color = colors.textPrimary) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.settings_server_placeholder), color = colors.textSecondary) },
+                    isError = problem != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (problem != null) {
+                    Text(
+                        text = stringResource(
+                            when (problem) {
+                                ServerAddress.Problem.Empty -> R.string.settings_server_problem_empty
+                                ServerAddress.Problem.UnsupportedScheme -> R.string.settings_server_problem_scheme
+                                ServerAddress.Problem.MissingHost -> R.string.settings_server_problem_host
+                            }
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.danger,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_server_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(ServerAddress.normalize(value)) },
+                enabled = problem == null,
+            ) { Text(stringResource(R.string.settings_server_apply)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) } },
     )
