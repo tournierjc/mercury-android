@@ -56,13 +56,33 @@ no plugin, no patch, no fork of the agent.
   the field is absent and the dispatch is a plain message.
 - **Hear about a bot that needs you while the app is closed.** Notifications used to stop with the
   process: the roster SSE only lives while the app runs, so a question posed at 3 am waited for you
-  to open it. A `WorkManager` check (15/30/60 min, opt-in, offline-safe) reads `GET /api/bots` and
-  raises the same notification the live roster would, once per pending question — the alert keys
-  make sure a fifteen-minute cadence does not turn the shade into noise. It deliberately reports
-  only what is self-evident without a previous roster (`needsYou`); run outcomes still need the SSE
-  diff, so they stay with the live stream.
-- **Supervise the daemon** from the console tab: state, uptime, loop lag, providers, bots and
-  their queue, background tasks, schedules, agents, skills on/off, plugins, workspace, restart.
+  to open it. Two things fix that, and the settings say which is on:
+  - **Veille en temps réel** (opt-in) — a `dataSync` foreground service keeps the process, and
+    therefore the roster stream, alive once the last activity is gone: alerts arrive in seconds,
+    run outcomes included. It costs a permanent notification, which is also the honest sign of it
+    ("4 équipiers · 2 vous attendent"), with an `Arrêter` action in the shade. Android 14+ refuses
+    to start such a service from the background, so a reboot may fall back to the check below until
+    the app is opened once.
+  - **Vérification périodique** (15/30/60 min, opt-in, offline-safe) — a `WorkManager` pass reads
+    `GET /api/bots` and raises the same notification, once per pending question. It reports only
+    what is self-evident without a previous roster (`needsYou`), which is why it is the fallback.
+- **Deliverables and runs.** A bot's files are openable from the phone: the fleet inbox
+  (`GET /api/bots/outputs`) and each bot's folder, with an inline preview (text, image), share, and
+  delete. Run detail, dead letters and replay live in the same sheet — a bot that died on a job is
+  relaunched without a terminal.
+- **Live boards.** The board you open follows `/api/boards/:id/events` instead of waiting for your
+  next tap, with a polling fallback and a visible mark when the stream is down. A card attachment
+  can be read: text inline, image inline, anything else handed to the system viewer or saved.
+- **Diff rendering.** A ` ```diff ` fence is drawn as a unified diff — header with `+N −M`, a sign
+  column, tinted lines — classified exactly like the dashboard's `diff-view` plugin, so a review
+  reads the same on both clients.
+- **Supervise the daemon** from the console tab: state, uptime, loop lag, providers (and their API
+  keys, with a test button), bots and their queue, background tasks, schedules, agents, skills
+  (install from a URL or the registry, remove, toggle), plugins, MCP servers, workspace root,
+  cost and storage per bot, restart and shutdown.
+- **Git and music, without a terminal.** The workspace's repository — branch, ahead/behind, staged
+  and unstaged files, stage/unstage, commit (message suggestable), push/pull, branch switch, log,
+  diff — plus a compact player for the daemon's Spotify transport.
 - **Send photos and PDFs** with a turn (up to 4, 8 MB per image, 15 MB per PDF): the picker
   needs no storage permission, an image is downscaled to 1600 px and re-encoded before it
   leaves the phone, and a photo may travel with no caption. The route it needs
