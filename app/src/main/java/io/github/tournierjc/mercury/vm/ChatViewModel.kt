@@ -82,6 +82,28 @@ class ChatViewModel(
         _state.value = ChatState(serverUrl = _state.value.serverUrl)
     }
 
+    /**
+     * Points the app at another Mercury host.
+     *
+     * The stored address, the HTTP client's base URL and the session cookie all belong to the old
+     * server, so they move together: keeping the cookie would leave the app signed in to a host it
+     * no longer talks to, and the next request would arrive as a stranger. Changing one without the
+     * other two is why this is a single method and not three calls from the dialog.
+     */
+    fun changeServer(rawUrl: String) {
+        val normalized = MercuryApi.normalizeBaseUrl(rawUrl)
+        if (normalized.isBlank()) return
+        eventsJob?.cancel()
+        eventsJob = null
+        streamSession = null
+        api.clearSession()
+        container.serverUrl = normalized
+        api.restoreBaseUrl(normalized)
+        _threads.value = emptyList()
+        _signedIn.value = false
+        _state.value = ChatState(serverUrl = normalized)
+    }
+
     fun refreshThreads() {
         viewModelScope.launch {
             runCatching { api.threads() }

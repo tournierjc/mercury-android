@@ -103,6 +103,8 @@ fun ChatScreen(
     onOpenThread: (ThreadDto) -> Unit,
     onDeleteThread: (ThreadDto) -> Unit,
     onSignOut: () -> Unit,
+    /** Réglages can point the app at another host; the conversation is over once it does. */
+    onChangeServer: (String) -> Unit = {},
     onDismissError: () -> Unit,
     onDismissWarning: () -> Unit,
     /** Bot named by the notification the owner tapped, opened once the screen is up. */
@@ -147,7 +149,7 @@ fun ChatScreen(
         }
 
         Screen.Settings -> {
-            SettingsScreen(onBack = { screen = Screen.Chat })
+            SettingsScreen(onBack = { screen = Screen.Chat }, onChangeServer = onChangeServer)
             return
         }
 

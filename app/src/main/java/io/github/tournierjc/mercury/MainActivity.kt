@@ -134,6 +134,7 @@ private fun MercuryRoot(
             onOpenThread = viewModel::openThread,
             onDeleteThread = viewModel::deleteThread,
             onSignOut = viewModel::signOut,
+            onChangeServer = viewModel::changeServer,
             onDismissError = viewModel::dismissError,
             onDismissWarning = viewModel::dismissWarning,
             openBotId = openBotId,
