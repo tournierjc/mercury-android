@@ -84,6 +84,27 @@ class BotThreadTest {
     }
 
     @Test
+    fun `a finished turn keeps its answer, even when the transcript has not arrived`() {
+        // The shape of the reported bug: the owner watched the answer being written, the turn
+        // ended, the transcript fetch lost the race and the bubble fell back to a 300-character
+        // summary. The daemon now keeps the whole answer in the journal, so the fallback is
+        // complete — this pins the client side of that contract.
+        val full = "Livré : fiche.md.\n\n" + "Une phrase de l'explication. ".repeat(40) + "Fin."
+        val records = listOf(run("done", 1_000, summary = full))
+        val messages = BotThread.build(
+            records,
+            mapOf("done" to "que sais-tu de ce Spark ?"),
+            outputs = emptyMap(),
+            liveJobId = "done",
+            liveTail = "Fin.",
+            liveRunning = false,
+        )
+
+        assertEquals(full, messages[1].text)
+        assertFalse("un tour fini ne clignote plus", messages[1].streaming)
+    }
+
+    @Test
     fun `no streaming tail means no duplicate bubble`() {
         val records = listOf(run("a", 1_000, summary = "réponse"))
         val messages = BotThread.build(records, mapOf("a" to "q"), liveJobId = "a", liveTail = "")

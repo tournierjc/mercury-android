@@ -341,6 +341,7 @@ fun ChatScreen(
                         botsState.answers,
                         botLive?.jobId,
                         botLive?.text.orEmpty(),
+                        botLive?.running == true,
                     )
                     val known = built.filter { !it.fromBot }.map { it.text }.toSet()
                     (built + botsState.pending.filter { it.text !in known }).map { message ->

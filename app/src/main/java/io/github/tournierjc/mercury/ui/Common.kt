@@ -39,6 +39,8 @@ fun ScreenHeader(
     subtitle: String? = null,
     onBack: () -> Unit,
     onRefresh: (() -> Unit)? = null,
+    /** Extra trailing actions — a "+", a menu — drawn after the refresh button. */
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
     val colors = LocalMercuryColors.current
     Row(
@@ -73,6 +75,7 @@ fun ScreenHeader(
                 Icon(Icons.Rounded.Refresh, contentDescription = "Rafraîchir", tint = colors.textSecondary)
             }
         }
+        actions()
     }
 }
 

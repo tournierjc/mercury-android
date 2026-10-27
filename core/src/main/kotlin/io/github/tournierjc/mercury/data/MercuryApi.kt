@@ -91,6 +91,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -211,6 +212,60 @@ class MercuryApi(
     // ---------------------------------------------------------------------
     // Bot customization, supervision and background dispatch
     // ---------------------------------------------------------------------
+
+    /**
+     * `POST /api/bots` — a new teammate.
+     *
+     * The daemon requires both an `id` and a `name`; `tier` (when given) writes the whole
+     * permissions file, so the bot can act the moment it exists instead of starting read-only
+     * with a tool gate that disagrees with its path scopes.
+     *
+     * Failures come back as a 4xx with `{error}`: the message is thrown so the form can show
+     * the daemon's own reason (an id already taken, a tier that does not exist).
+     */
+    suspend fun createBot(
+        id: String,
+        name: String,
+        tier: String? = null,
+        persona: String? = null,
+        description: String? = null,
+    ): JsonObject = withContext(Dispatchers.IO) {
+        val payload = buildJsonObject {
+            put("id", JsonPrimitive(id))
+            put("name", JsonPrimitive(name))
+            if (!tier.isNullOrBlank()) put("tier", JsonPrimitive(tier))
+            if (!persona.isNullOrBlank()) put("persona", JsonPrimitive(persona))
+            if (!description.isNullOrBlank()) put("description", JsonPrimitive(description))
+        }.toString()
+        val request = Request.Builder()
+            .url(url("/api/bots"))
+            .post(payload.toRequestBody(jsonMedia))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                val reason = runCatching {
+                    val parsed = json.parseToJsonElement(body) as JsonObject
+                    (parsed["error"] as? JsonPrimitive)?.contentOrNull
+                }.getOrNull()
+                throw MercuryException(reason ?: "Création refusée (${response.code})")
+            }
+            json.parseToJsonElement(body) as JsonObject
+        }
+    }
+
+    /**
+     * `POST /api/bots/:leadId/crew/adopt` — attach an existing bot to a fleet.
+     *
+     * `addBotCrew` only creates; this puts a bot that already exists under a lead, keeping its
+     * identity, its persona and its history.
+     */
+    suspend fun adoptBotCrew(leadId: String, memberId: String): JsonObject =
+        postJson(
+            "/api/bots/${encode(leadId)}/crew/adopt",
+            buildJsonObject { put("memberId", JsonPrimitive(memberId)) },
+            JsonObject.serializer(),
+        )
 
     /**
      * `PATCH /api/bots/:id` — the only route that rewrites a manifest. Accepted keys:

@@ -13,6 +13,7 @@ import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.RunRow
+import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.bots.BotMessage
 import io.github.tournierjc.mercury.bots.BotThread
@@ -24,6 +25,7 @@ import io.github.tournierjc.mercury.util.OutputActions
 import io.github.tournierjc.mercury.util.OutputPreviewState
 import io.github.tournierjc.mercury.util.SharedFile
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -200,7 +202,7 @@ class BotsViewModel(
             // conversation and cheap enough to load with the sheet.
             val last = records.orEmpty().takeLast(12)
             val turns = last.map { record ->
-                async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull() }
+                async { record.runId to transcript(id, record.runId) }
             }.awaitAll().toMap()
             val prompts = turns.mapValues { (_, transcript) -> transcript?.prompt.orEmpty() }
             val answers = turns.mapValues { (_, transcript) -> transcript?.output.orEmpty() }
@@ -240,13 +242,30 @@ class BotsViewModel(
      * Called when a turn stops streaming: the live tail is a 600-character window, so the
      * final answer has to come back from the journal once the run is over.
      */
+    /**
+     * One run's transcript, with a retry.
+     *
+     * At turn end the journal and the transcript are written a moment apart: a single fetch
+     * can miss the answer and leave the conversation showing the truncated summary — the
+     * answer the owner just watched being written then looks like it vanished.
+     */
+    private suspend fun transcript(id: String, runId: String): RunTranscriptDto? {
+        repeat(3) { attempt ->
+            runCatching { api.botRun(id, runId) }.getOrNull()?.let { transcript ->
+                if (transcript.output.isNotBlank()) return transcript
+            }
+            if (attempt < 2) delay(300L * (attempt + 1))
+        }
+        return runCatching { api.botRun(id, runId) }.getOrNull()
+    }
+
     fun reloadConversation(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch {
             runCatching {
                 val records = api.botRunJournal(id).takeLast(12)
                 val turns = records.map { record ->
-                    async { record.runId to runCatching { api.botRun(id, record.runId) }.getOrNull() }
+                    async { record.runId to transcript(id, record.runId) }
                 }.awaitAll().toMap()
                 Triple(
                     records,
@@ -360,13 +379,66 @@ class BotsViewModel(
     fun addCrew(leadId: String, id: String, name: String, description: String?, persona: String?, tier: String?) =
         act("Membre ajouté") { api.addBotCrew(leadId, id, name, description, persona, tier) }
 
+    /** An existing solo bot joins the fleet instead of a new one being created. */
+    fun adoptCrew(leadId: String, memberId: String) =
+        act("Équipier rattaché à la flotte") { api.adoptBotCrew(leadId, memberId) }
+
     fun start(id: String) = act("Équipier démarré") { api.startBot(id) }
 
     fun stop(id: String) = act("Équipier arrêté") { api.stopBot(id) }
 
     fun run(id: String) = act("Exécution demandée") { api.runBot(id) }
 
-    fun delete(id: String) = act("Équipier supprimé") { api.deleteBot(id) }
+    /**
+     * Deleting the open bot must also close its sheet: the manifest is gone, and a detail
+     * screen left pointing at it would fetch a 404 on every reload.
+     */
+    fun delete(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching { api.deleteBot(id) }
+                .onSuccess {
+                    if (_state.value.selectedId == id) {
+                        _state.value = BotsUiState() // the sheet closes; the roster is the screen
+                    }
+                    _state.update { s -> s.copy(busy = false, message = "Équipier supprimé") }
+                    refreshRoster()
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    /**
+     * `POST /api/bots` — a new teammate, opened straight away.
+     *
+     * The id is the slug the form proposed; the daemon refuses a duplicate or a malformed one
+     * and its message is what the owner sees, because it names the actual problem.
+     */
+    fun createBot(name: String, id: String, tier: String, persona: String) {
+        val cleanName = name.trim()
+        val cleanId = id.trim().ifBlank { BotSlug.from(cleanName) }
+        if (cleanName.isEmpty()) {
+            _state.update { it.copy(error = "Un nom est nécessaire") }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching {
+                api.createBot(
+                    id = cleanId,
+                    name = cleanName,
+                    tier = tier.ifBlank { null },
+                    persona = persona.trim().ifBlank { null },
+                )
+            }
+                .onSuccess {
+                    _state.update { s -> s.copy(busy = false, message = "Équipier « $cleanName » créé") }
+                    refreshRoster()
+                    select(cleanId)
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
 
     /**
      * `GET /api/bots/:id/bundle` — the shareable document. The screen hands it to the
