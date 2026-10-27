@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.tournierjc.mercury.markdown.MdBlock
+import io.github.tournierjc.mercury.diff.Diff
 import io.github.tournierjc.mercury.openui.OpenUi
 import io.github.tournierjc.mercury.markdown.MdSpan
 import io.github.tournierjc.mercury.markdown.MiniMarkdown
@@ -75,33 +76,38 @@ fun MarkdownText(
                     }
                 }
 
-                is MdBlock.Code -> if (block.language.trim().lowercase() == OpenUi.FENCE) {
+                is MdBlock.Code -> when (block.language.trim().lowercase()) {
                     // A rendered answer from the openui contract: components instead of source.
-                    Column(modifier = Modifier.padding(top = spacing)) {
+                    OpenUi.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
                         OpenUiBlock(spec = block.content, streaming = streaming)
                     }
-                } else Column(
-                    modifier = Modifier
-                        .padding(top = spacing)
-                        .fillMaxWidth()
-                        .background(colors.surface, RoundedCornerShape(14.dp))
-                        .padding(14.dp),
-                ) {
-                    if (block.language.isNotBlank()) {
-                        Text(
-                            text = block.language.lowercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
+                    // A patch: the same fence the dashboard's diff-view plugin claims.
+                    Diff.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
+                        DiffBlock(text = block.content)
                     }
-                    SelectionContainer {
-                        Text(
-                            text = block.content,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textPrimary,
-                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        )
+                    else -> Column(
+                        modifier = Modifier
+                            .padding(top = spacing)
+                            .fillMaxWidth()
+                            .background(colors.surface, RoundedCornerShape(14.dp))
+                            .padding(14.dp),
+                    ) {
+                        if (block.language.isNotBlank()) {
+                            Text(
+                                text = block.language.lowercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
+                        SelectionContainer {
+                            Text(
+                                text = block.content,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textPrimary,
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            )
+                        }
                     }
                 }
             }
