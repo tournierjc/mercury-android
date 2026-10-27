@@ -208,6 +208,9 @@ fun IconActionBar(
                 modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
+                // Four per line, always: a row of seven either overflows or crowds, and the
+                // break lands in the same place on every phone width.
+                maxItemsInEachRow = 4,
             ) { content() }
         }
     }

@@ -865,24 +865,6 @@ private fun BotDetail(
         onClear = viewModel::clearDlq,
     )
 
-    CollapsibleSection("Suppression") {
-        Text(
-            text = "Supprime l'équipier et son profil. Une flotte emporte ses membres.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-        IconActionBar(
-            listOf(
-                QuickAction(
-                    icon = Icons.Rounded.DeleteOutline,
-                    label = "Supprimer",
-                    tint = colors.danger,
-                    onClick = { confirmDelete = true },
-                ),
-            ),
-        )
-    }
-
     if (showAddCrew) {
         // Existing bots this lead can take: a solo bot has no parent and leads nothing. The
         // daemon refuses the rest, but a list of refusals is not a picker.
