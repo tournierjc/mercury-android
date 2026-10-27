@@ -22,6 +22,8 @@ object BoardJson {
     private val ID_KEYS = listOf("id", "cardId", "boardId")
     private val TITLE_KEYS = listOf("task", "title", "name", "label", "summary")
     private val STATUS_KEYS = listOf("status", "state", "column", "columnId", "lane")
+    private val IMAGE_SUFFIXES = listOf(".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")
+    private val TEXT_SUFFIXES = listOf(".md", ".markdown", ".txt", ".json", ".csv", ".log", ".yml", ".yaml")
 
     fun id(node: JsonObject?): String = firstString(node, ID_KEYS).orEmpty()
 
@@ -72,6 +74,65 @@ object BoardJson {
     fun attachments(root: JsonObject?): List<JsonObject> = array(root, "attachments")
     fun dependencies(root: JsonObject?): List<JsonObject> =
         array(root, "dependencies").ifEmpty { array(root, "dependsOn") }
+
+    /**
+     * A card attachment is `{id,name,path,type,size,addedBy,addedAt}`. `path` is the
+     * server's own file, meaningless on a phone: reading it goes through the two file
+     * routes, never through the stored path.
+     */
+    fun attachmentType(node: JsonObject?): String = firstString(node, listOf("type", "kind")).orEmpty()
+
+    fun attachmentSize(node: JsonObject?): Long? = longField(node, "size")
+
+    /** The daemon types attachments `markdown|document|image|presentation|other`. */
+    fun attachmentIsImage(node: JsonObject?): Boolean {
+        if (attachmentType(node) == "image") return true
+        val name = title(node).lowercase()
+        return IMAGE_SUFFIXES.any { name.endsWith(it) }
+    }
+
+    /**
+     * `/content` reads the file as UTF-8, so it only says something for a text deliverable.
+     * A `.pptx` or a `.pdf` comes back as noise: those go straight to the viewer.
+     */
+    fun attachmentIsText(node: JsonObject?): Boolean {
+        if (attachmentIsImage(node)) return false
+        val name = title(node).lowercase()
+        return attachmentType(node) == "markdown" || TEXT_SUFFIXES.any { name.endsWith(it) }
+    }
+
+    /**
+     * The type the `/download` route announces, as a fallback for the one it sends in
+     * `Content-Type` — same table as the handler, so a viewer gets the same type either way.
+     */
+    fun attachmentMimeType(node: JsonObject?): String {
+        val name = title(node).lowercase()
+        return when {
+            IMAGE_SUFFIXES.any { name.endsWith(it) } || attachmentType(node) == "image" -> when {
+                name.endsWith(".png") -> "image/png"
+                name.endsWith(".svg") -> "image/svg+xml"
+                name.endsWith(".webp") -> "image/webp"
+                name.endsWith(".gif") -> "image/gif"
+                else -> "image/jpeg"
+            }
+            attachmentType(node) == "markdown" || name.endsWith(".md") -> "text/markdown"
+            attachmentType(node) == "presentation" ->
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+            name.endsWith(".pdf") -> "application/pdf"
+            name.endsWith(".json") -> "application/json"
+            name.endsWith(".txt") -> "text/plain"
+            else -> "application/octet-stream"
+        }
+    }
+
+    /** `GET …/attachments/:id/content` answers `{ok,attachment,content,size}`, file read as UTF-8. */
+    fun attachmentContent(root: JsonObject?): String =
+        (root?.get("content") as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+    /** The question a `feedback-request` frame asks the owner. */
+    fun feedbackQuestion(node: JsonObject?): String = firstString(node, listOf("question", "prompt", "message")).orEmpty()
+
     /**
      * `GET /api/boards/:id/execution-plan` answers `{ok, batches}` where a batch is
      * either a list of card ids or a list of card objects — both are flattened to

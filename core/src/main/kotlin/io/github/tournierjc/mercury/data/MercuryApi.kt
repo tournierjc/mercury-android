@@ -288,6 +288,46 @@ class MercuryApi(
         awaitClose { job.cancel(); call.cancel() }
     }
 
+    /**
+     * Live board: `GET /api/boards/:id/events` pushes the whole normalised board on connect
+     * and after every change (the daemon debounces 800 ms), plus a `feedback-request` frame
+     * when a running card waits for a decision. Reconnection is the caller's job: the flow
+     * completes when the stream ends, and the caller keeps the board fresh another way.
+     */
+    fun boardEvents(boardId: String): Flow<BoardEvent> = callbackFlow {
+        val request = Request.Builder()
+            .url(url("/api/boards/${encode(boardId)}/events"))
+            .header("Accept", "text/event-stream")
+            .get()
+            .build()
+        val call = client.newCall(request)
+        val job = launch(Dispatchers.IO) {
+            try {
+                call.execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw if (response.code == 401 || response.code == 403) {
+                            AuthException("Session expirée")
+                        } else {
+                            MercuryException("Flux du plateau indisponible : HTTP ${response.code}")
+                        }
+                    }
+                    val source = response.body?.source() ?: run { close(); return@use }
+                    val parser = SseParser()
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: break
+                        for (raw in parser.feed(line + "\n")) {
+                            trySend(BoardEvent.parse(raw.type, raw.data))
+                        }
+                    }
+                }
+                close()
+            } catch (e: Exception) {
+                close(e)
+            }
+        }
+        awaitClose { job.cancel(); call.cancel() }
+    }
+
     // ---------------------------------------------------------------------
     // Terminal: one shell command in the workspace
     // ---------------------------------------------------------------------
@@ -468,6 +508,49 @@ class MercuryApi(
             "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/attachments/${encode(attachmentId)}",
             JsonObject.serializer(),
         )
+
+    /**
+     * `GET …/attachments/:attachmentId/content` — the daemon reads the file as UTF-8 and
+     * wraps it: `{ok,attachment,content,size}`. This is the readable form of a markdown or
+     * text deliverable; bytes for a viewer come from [cardAttachmentDownload].
+     */
+    suspend fun cardAttachmentContent(boardId: String, cardId: String, attachmentId: String): JsonObject =
+        getDecoded(
+            "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/attachments/${encode(attachmentId)}/content",
+            JsonObject.serializer(),
+        )
+
+    /**
+     * `GET …/attachments/:attachmentId/download` — the raw file, typed and named by the
+     * daemon (`Content-Type`, `Content-Disposition: attachment; filename="…"`). Binary, so
+     * the bytes never go through the JSON decoder.
+     */
+    suspend fun cardAttachmentDownload(
+        boardId: String,
+        cardId: String,
+        attachmentId: String,
+    ): DownloadedAttachment = withContext(Dispatchers.IO) {
+        val path = "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/attachments/" +
+            "${encode(attachmentId)}/download"
+        val request = Request.Builder().url(url(path)).get().build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body
+            when {
+                response.isSuccessful -> DownloadedAttachment(
+                    bytes = body?.bytes() ?: ByteArray(0),
+                    mimeType = body?.contentType()?.toString()?.substringBefore(';')?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: DownloadedAttachment.DEFAULT_MIME,
+                    fileName = DownloadedAttachment.fileNameFrom(response.header("Content-Disposition")),
+                )
+
+                response.code == 401 || response.code == 403 -> throw AuthException("Session expirée")
+                else -> throw MercuryException(
+                    apiError(body?.string().orEmpty()) ?: "HTTP ${response.code}",
+                )
+            }
+        }
+    }
 
     suspend fun addLabel(boardId: String, cardId: String, name: String, color: String): JsonObject = postJson(
         "/api/boards/${encode(boardId)}/cards/${encode(cardId)}/labels",
@@ -1123,13 +1206,15 @@ class MercuryApi(
         val body = response.body?.string().orEmpty()
         if (!response.isSuccessful) {
             if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
-            val message = runCatching { json.decodeFromString(ApiError.serializer(), body).message }
-                .getOrNull()
-                ?.takeIf { it.isNotBlank() }
-            throw MercuryException(message ?: "HTTP ${response.code}")
+            throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
         }
         body
     }
+
+    /** Mercury answers `{error:"…"}`; anything else keeps the status code as the message. */
+    private fun apiError(body: String): String? = runCatching {
+        json.decodeFromString(ApiError.serializer(), body).message
+    }.getOrNull()?.takeIf { it.isNotBlank() }
 
     private fun url(path: String): HttpUrl =
         urlWith(path) {}

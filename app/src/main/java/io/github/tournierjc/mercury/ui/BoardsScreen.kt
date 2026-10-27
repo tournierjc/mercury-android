@@ -1,5 +1,8 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +25,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,13 +34,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.data.BoardJson
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.util.AttachmentFiles
+import io.github.tournierjc.mercury.vm.AttachmentExport
+import io.github.tournierjc.mercury.vm.AttachmentPreview
 import io.github.tournierjc.mercury.vm.BoardsUiState
 import io.github.tournierjc.mercury.vm.BoardsViewModel
 import io.github.tournierjc.mercury.vm.CardDetail
@@ -60,6 +72,39 @@ fun BoardsScreen(onBack: () -> Unit) {
     var showPlan by remember { mutableStateOf(false) }
     var showContext by remember { mutableStateOf(false) }
 
+    // The board stream lives exactly as long as the board is on screen: opening a board
+    // subscribes, going back to the list — or leaving the screen — unsubscribes.
+    DisposableEffect(state.openBoardId) {
+        state.openBoardId?.let(viewModel::startLive)
+        onDispose { viewModel.stopLive() }
+    }
+
+    // Nothing on the phone writes into shared storage on its own: a download asks the owner
+    // where to put the file, and the bytes are handed over once the location is known.
+    var pendingSave by remember { mutableStateOf<AttachmentExport?>(null) }
+    val saveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { target ->
+        val export = pendingSave
+        pendingSave = null
+        if (target != null && export != null) {
+            if (!AttachmentFiles.save(context, target, export.file.bytes)) {
+                viewModel.report("Écriture impossible dans cet emplacement")
+            }
+        }
+    }
+
+    LaunchedEffect(state.export) {
+        val export = state.export ?: return@LaunchedEffect
+        if (export.download) {
+            pendingSave = export
+            saveLauncher.launch(export.file.name)
+        } else if (!AttachmentFiles.open(context, export.file)) {
+            viewModel.report("Aucune application ne peut ouvrir ${export.file.name}")
+        }
+        viewModel.consumeExport()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -71,7 +116,10 @@ fun BoardsScreen(onBack: () -> Unit) {
             subtitle = if (state.openBoardId == null) {
                 "${state.boards.size} plateaux"
             } else {
-                "${state.cards.size} cartes"
+                listOfNotNull(
+                    "${state.cards.size} cartes",
+                    if (state.live) "direct" else "actualisation auto",
+                ).joinToString(" · ")
             },
             onBack = { if (state.openBoardId == null) onBack() else viewModel.close() },
             onRefresh = viewModel::refresh,
@@ -194,6 +242,81 @@ fun BoardsScreen(onBack: () -> Unit) {
     state.cardDetail?.let { detail ->
         CardDetailDialog(state = state, detail = detail, viewModel = viewModel, onDismiss = viewModel::closeCard)
     }
+
+    state.attachment?.let { preview ->
+        AttachmentDialog(
+            preview = preview,
+            onOpen = { viewModel.exportAttachment(download = false) },
+            onDownload = { viewModel.exportAttachment(download = true) },
+            onDismiss = viewModel::closeAttachment,
+        )
+    }
+}
+
+/**
+ * Reads one card attachment in place: an image is drawn from its bytes, a text file from
+ * the `/content` route, and anything else is handed to the app that reads its type. The
+ * whole file — never the preview — is what "Télécharger" saves.
+ */
+@Composable
+private fun AttachmentDialog(
+    preview: AttachmentPreview,
+    onOpen: () -> Unit,
+    onDownload: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text(preview.name, color = colors.textPrimary) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                when {
+                    preview.loading -> Text("Lecture…", color = colors.textSecondary)
+                    preview.error != null -> Text(preview.error, color = colors.danger)
+                    preview.isImage -> {
+                        val bitmap = remember(preview.bytes) {
+                            preview.bytes?.let { AttachmentFiles.decode(it) }
+                        }
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = preview.name,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 320.dp),
+                            )
+                        } else {
+                            Text(
+                                "Image illisible ici — utilise « Ouvrir ».",
+                                color = colors.textSecondary,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                    else -> Text(
+                        text = preview.text?.ifBlank { "(fichier vide)" }
+                            ?: "Aperçu indisponible pour ce format — ouvre le fichier.",
+                        color = if (preview.text == null) colors.textSecondary else colors.textPrimary,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = if (preview.text != null) FontFamily.Monospace else FontFamily.Default,
+                    )
+                }
+                if (!preview.loading && preview.error == null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = onOpen) { Text("Ouvrir") }
+                        TextButton(onClick = onDownload) { Text("Télécharger") }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+    )
 }
 
 @Composable
@@ -401,13 +524,27 @@ private fun CardDetailDialog(
 
                 SectionTitle("Pièces jointes")
                 detail.attachments.forEach { attachment ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = BoardJson.title(attachment),
-                            color = colors.textPrimary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.openAttachment(attachment) },
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = BoardJson.title(attachment),
+                                color = colors.textPrimary,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                text = listOfNotNull(
+                                    BoardJson.attachmentType(attachment).takeIf { it.isNotBlank() },
+                                    BoardJson.attachmentSize(attachment)?.let(::formatSize),
+                                ).joinToString(" · ").ifBlank { "lire" },
+                                color = colors.textSecondary,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                         val attachmentId = BoardJson.id(attachment)
                         if (attachmentId.isNotBlank()) {
                             TextButton(onClick = { viewModel.deleteAttachment(attachmentId) }) {
@@ -533,6 +670,22 @@ private fun ContextDialog(state: BoardsUiState, viewModel: BoardsViewModel, onDi
 
 private fun stringOf(context: JsonObject?, key: String): String =
     (context?.get(key) as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+/** A file size a phone can read: `812 o`, `12 ko`, `1,4 Mo`. */
+private fun formatSize(bytes: Long): String {
+    val units = listOf("o", "ko", "Mo", "Go")
+    var value = bytes.toDouble()
+    var unit = 0
+    while (value >= 1024 && unit < units.lastIndex) {
+        value /= 1024
+        unit++
+    }
+    if (unit == 0) return "$bytes o"
+    val rounded = (value * 10).toLong()
+    val whole = rounded / 10
+    val tenth = rounded % 10
+    return if (tenth == 0L) "$whole ${units[unit]}" else "$whole,$tenth ${units[unit]}"
+}
 
 @Composable
 private fun PromptRow(

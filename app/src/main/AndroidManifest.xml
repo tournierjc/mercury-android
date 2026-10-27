@@ -71,7 +71,10 @@
             </intent-filter>
         </service>
 
-        <!-- Livrables téléchargés : un seul dossier du cache, partagé via une URI. -->
+        <!--
+          Fichiers qui sortent de l'app : un livrable partagé, une pièce jointe de carte
+          ouverte. Un seul fournisseur, deux dossiers de cache (voir res/xml/file_paths.xml).
+        -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

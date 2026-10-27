@@ -64,3 +64,43 @@ data class AvatarRequest(val data: String)
 
 @Serializable
 data class ApiError(@SerialName("error") val message: String = "")
+
+/**
+ * Bytes read from `GET /api/boards/:boardId/cards/:cardId/attachments/:id/download`.
+ *
+ * The daemon owns the type and the name of the file it serves (`Content-Type` and
+ * `Content-Disposition: attachment; filename="…"`), so the client repeats them instead of
+ * guessing from the extension — a deliverable is often a `.md` or a `.pptx`, and a viewer
+ * opened with the wrong type shows nothing. [fileName] is blank when the server sent no
+ * name: the caller falls back to the attachment's own name.
+ */
+data class DownloadedAttachment(
+    val bytes: ByteArray,
+    val mimeType: String,
+    val fileName: String,
+) {
+    companion object {
+        const val DEFAULT_MIME = "application/octet-stream"
+
+        private val EXTENDED_NAME = Regex("""filename\*\s*=\s*[^']*'[^']*'\s*([^;\s]+)""", RegexOption.IGNORE_CASE)
+        private val PLAIN_NAME = Regex("""filename\s*=\s*(?:"([^"]*)"|([^;]*))""", RegexOption.IGNORE_CASE)
+
+        /** `attachment; filename="rapport.md"` → `rapport.md`, RFC 5987 `filename*` first. */
+        fun fileNameFrom(contentDisposition: String?, fallback: String = ""): String {
+            if (contentDisposition.isNullOrBlank()) return fallback
+            EXTENDED_NAME.find(contentDisposition)?.groupValues?.get(1)?.let { encoded ->
+                val decoded = runCatching { java.net.URLDecoder.decode(encoded, "UTF-8") }.getOrNull()
+                if (!decoded.isNullOrBlank()) return safeName(decoded)
+            }
+            PLAIN_NAME.find(contentDisposition)?.let { match ->
+                val name = match.groupValues[1].ifBlank { match.groupValues[2] }
+                if (name.isNotBlank()) return safeName(name)
+            }
+            return fallback
+        }
+
+        /** A header is server data: never let it name a path. */
+        private fun safeName(raw: String): String =
+            raw.trim().substringAfterLast('/').substringAfterLast('\\')
+    }
+}
