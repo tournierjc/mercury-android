@@ -39,7 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ThreadDto
+import kotlinx.serialization.json.JsonObject
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
 @Composable
@@ -56,6 +58,11 @@ fun ThreadDrawer(
     onOpenBoards: () -> Unit,
     onOpenBots: () -> Unit,
     onOpenDeliverables: () -> Unit,
+    /** The fleet, listed at the top: talking to a teammate is one tap from anywhere. */
+    bots: List<JsonObject> = emptyList(),
+    avatars: Map<String, ByteArray> = emptyMap(),
+    activeBotId: String? = null,
+    onOpenBot: (String) -> Unit = {},
     onSignOut: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
@@ -66,6 +73,46 @@ fun ThreadDrawer(
         modifier = Modifier.fillMaxHeight(),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)) {
+            if (bots.isNotEmpty()) {
+                Text(
+                    text = "Équipiers",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.textPrimary,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                bots.forEach { bot ->
+                    val id = BotJson.id(bot)
+                    val selected = id == activeBotId
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onOpenBot(id) }
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                    ) {
+                        BotFace(bot, avatars[id], small = true)
+                        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                            Text(
+                                text = BotJson.name(bot),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (selected) colors.accent else colors.textPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = BotJson.stateLabel(BotJson.state(bot)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                        if (BotJson.needsYou(bot)) {
+                            Text("⚠", color = colors.danger, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 12.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Sessions",
