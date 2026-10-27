@@ -2,7 +2,9 @@ package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -11,9 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -69,7 +78,6 @@ fun ConsoleScreen(onBack: () -> Unit) {
     val colors = LocalMercuryColors.current
     var confirmRestart by remember { mutableStateOf(false) }
     var confirmShutdown by remember { mutableStateOf(false) }
-    var showCreateBot by remember { mutableStateOf(false) }
     var showAddCrew by remember { mutableStateOf(false) }
     val botDetail = state.botDetail
 
@@ -114,9 +122,11 @@ fun ConsoleScreen(onBack: () -> Unit) {
         ) {
             RuntimeSection(state)
             ProvidersSection(state, viewModel)
-            BrainSection(state)
+            // No Mémoire block: the memory screen owns it (souvenirs, croyances, quarantaine,
+            // runtime), and this summary contradicted it on the pause state.
             CodeSection(state, viewModel)
-            BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
+            // No Équipiers block here: the fleet has its own screen (roster, sheets, dispatch),
+            // and a second, read-only copy in the Console only ever disagreed with it.
             FleetSection(state, viewModel, onAddCrew = { showAddCrew = true })
             FleetDeliverablesSection(state, viewModel)
             CostSection(state)
@@ -163,17 +173,6 @@ fun ConsoleScreen(onBack: () -> Unit) {
                 modifier = Modifier.padding(bottom = 24.dp),
             )
         }
-    }
-
-    if (showCreateBot) {
-        CreateBotDialog(
-            tiers = state.tiers,
-            onDismiss = { showCreateBot = false },
-            onConfirm = { id, name, description, tier ->
-                showCreateBot = false
-                viewModel.createBot(id, name, description, tier)
-            },
-        )
     }
 
     if (showAddCrew) {
@@ -332,29 +331,63 @@ private fun ProvidersSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
             )
             return@CardBlock
         }
+        // One row per provider: name and model on the left, its two actions on the right. Two
+        // text buttons under a two-line block made six providers fill the screen.
         state.providers.forEach { provider ->
             val name = provider.name.ifBlank { "—" }
-            KeyValueRow(
-                label = if (provider.recommended) "$name ★" else name,
-                value = when {
-                    !provider.enabled -> "désactivé"
-                    !provider.hasKey -> "sans clé"
-                    provider.model.isNotBlank() -> provider.model
-                    else -> "prêt"
-                },
-                highlight = provider.enabled && provider.hasKey,
-            )
-            if (provider.baseUrl.isNotBlank()) {
-                Text(
-                    text = provider.baseUrl,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
-                    maxLines = 1,
+            val ready = provider.enabled && provider.hasKey
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            when {
+                                !provider.enabled -> colors.textSecondary.copy(alpha = 0.35f)
+                                provider.hasKey -> colors.accent
+                                else -> colors.danger.copy(alpha = 0.7f)
+                            },
+                            CircleShape,
+                        ),
                 )
-            }
-            ButtonRow {
-                TextButton(onClick = { editing = name }, enabled = !state.busy) { Text("Modifier") }
-                TextButton(onClick = { viewModel.testProvider(name) }, enabled = !state.busy) { Text("Tester") }
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                    Text(
+                        text = if (provider.recommended) "$name ★" else name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (ready) colors.textPrimary else colors.textSecondary,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = when {
+                            !provider.enabled -> "désactivé"
+                            !provider.hasKey -> "sans clé"
+                            provider.model.isNotBlank() -> provider.model
+                            else -> "prêt"
+                        } + provider.baseUrl.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(onClick = { editing = name }, enabled = !state.busy) {
+                    Icon(
+                        Icons.Rounded.Edit,
+                        contentDescription = "Modifier $name",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+                IconButton(onClick = { viewModel.testProvider(name) }, enabled = !state.busy) {
+                    Icon(
+                        Icons.Rounded.Bolt,
+                        contentDescription = "Tester $name",
+                        tint = colors.accent,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
             }
             if (state.providerTestFor == name) {
                 state.providerTest?.let { result -> ProviderTestLine(result) }
@@ -489,33 +522,6 @@ private fun ProviderEditDialog(
     )
 }
 
-@Composable
-private fun BrainSection(state: ConsoleUiState) {
-    val brain = state.brain ?: return
-    SectionTitle("Mémoire")
-    CardBlock {
-        KeyValueRow("Souvenirs", brain.total.toString())
-        KeyValueRow("Apprentissage", if (brain.learningPaused) "en pause" else "actif")
-        if (brain.byType.isNotEmpty()) {
-            Text(
-                text = brain.byType.entries.joinToString(" · ") { "${it.key} ${it.value}" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textSecondary,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-        if (brain.activeSummary.isNotBlank()) {
-            Text(
-                text = brain.activeSummary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textPrimary,
-                modifier = Modifier.padding(top = 10.dp),
-                maxLines = 6,
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
@@ -551,56 +557,6 @@ private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun BotsSection(
-    state: ConsoleUiState,
-    viewModel: ConsoleViewModel,
-    onCreate: () -> Unit,
-    onOpen: (String) -> Unit,
-) {
-    val colors = LocalMercuryColors.current
-    SectionTitle("Équipiers")
-    CardBlock {
-        KeyValueRow("File d'attente", "${state.queue.pending} en attente · ${state.queue.claimed} en cours")
-        if (state.queue.dlq > 0) KeyValueRow("Échecs", state.queue.dlq.toString(), highlight = true)
-        if (state.bots.isEmpty()) {
-            Text(
-                text = "Aucun bot configuré. Un équipier tourne en boucle : il réveille l'agent selon son planning, avec ses propres permissions.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-        state.bots.forEach { bot ->
-            val id = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
-            val enabled = (bot["enabled"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull
-            ActionRow(
-                title = bot.titleHint(),
-                subtitle = listOf(bot.detailHint(), if (enabled == "false") "désactivé" else null)
-                    .filterNotNull().joinToString(" · "),
-                trailing = "détails",
-                onClick = { if (id.isNotBlank()) onOpen(id) },
-            )
-            if (id.isNotBlank()) {
-                ButtonRow {
-                    TextButton(onClick = { viewModel.startBot(id) }) { Text("Démarrer") }
-                    TextButton(onClick = { viewModel.stopBot(id) }) { Text("Arrêter") }
-                    TextButton(onClick = { viewModel.runBot(id) }) { Text("Exécuter") }
-                    TextButton(onClick = { viewModel.setBotEnabled(id, enabled != "true") }) {
-                        Text(if (enabled == "true") "Désactiver" else "Activer")
-                    }
-                }
-            }
-        }
-        ButtonRow {
-            TextButton(onClick = onCreate) { Text("Nouvel équipier") }
-            if (state.bots.isNotEmpty()) {
-                TextButton(onClick = viewModel::startAllBots) { Text("Tout démarrer") }
-                TextButton(onClick = viewModel::stopAllBots) { Text("Tout arrêter") }
-            }
-        }
-    }
-}
-
 @Composable
 private fun TasksSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     SectionTitle("Tâches de fond")

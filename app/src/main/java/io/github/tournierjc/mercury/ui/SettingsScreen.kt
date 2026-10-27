@@ -362,12 +362,6 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
 
-            Text(
-                text = "Client Android Mercury · lecture directe de l'API du dashboard",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(vertical = 18.dp, horizontal = 4.dp),
-            )
         }
     }
 
