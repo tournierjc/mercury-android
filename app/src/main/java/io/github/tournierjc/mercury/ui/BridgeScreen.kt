@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,6 +34,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -219,34 +228,61 @@ fun BridgeScreen(onBack: () -> Unit) {
         }
 
         SectionTitle("À donner à Mercury")
-        KeyValue("URL", BridgeAddress.url(prefs.port))
-        KeyValue("Token", if (showToken) token else "•".repeat(24))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-            OutlinedButton(
-                onClick = { showToken = !showToken },
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            ) { Text(if (showToken) "Masquer" else "Afficher") }
-            OutlinedButton(
-                onClick = { clipboard.setText(AnnotatedString(token)) },
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            ) { Text("Copier") }
-            Button(
-                onClick = {
-                    token = prefs.rotateToken()
-                    if (enabled) {
-                        BridgeService.stop(context)
-                        BridgeService.start(context)
-                    }
-                },
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.surfaceMuted,
-                    contentColor = colors.textPrimary,
-                ),
-            ) { Text("Révoquer") }
-        }
+        // The value is the button: tapping the field copies it (the three-button row it replaces
+        // spent a third of the block on controls). The eye sits in the token's own field, where a
+        // password field keeps it, instead of doubling the row with « Afficher » / « Masquer ».
+        var copiedUrl by remember { mutableStateOf(false) }
+        var copiedToken by remember { mutableStateOf(false) }
+        val urlValue = BridgeAddress.url(prefs.port)
+
+        CopyableField(
+            label = "URL",
+            value = urlValue,
+            copied = copiedUrl,
+            onClick = {
+                clipboard.setText(AnnotatedString(urlValue))
+                copiedUrl = true
+            },
+            onCopiedShown = { copiedUrl = false },
+        )
+        CopyableField(
+            label = "Token",
+            value = if (showToken) token else "•".repeat(24),
+            copied = copiedToken,
+            onClick = {
+                clipboard.setText(AnnotatedString(token))
+                copiedToken = true
+            },
+            onCopiedShown = { copiedToken = false },
+            trailing = {
+                IconButton(onClick = { showToken = !showToken }, modifier = Modifier.size(34.dp)) {
+                    Icon(
+                        if (showToken) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                        contentDescription = if (showToken) "Masquer le token" else "Afficher le token",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+            },
+        )
+        Button(
+            onClick = {
+                token = prefs.rotateToken()
+                if (enabled) {
+                    BridgeService.stop(context)
+                    BridgeService.start(context)
+                }
+            },
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.danger.copy(alpha = 0.16f),
+                contentColor = colors.danger,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .height(52.dp),
+        ) { Text("Révoquer le token") }
 
         SectionTitle("Ce que l'agent peut lire")
         Text(
@@ -289,22 +325,49 @@ private fun SectionTitle(text: String) {
     )
 }
 
+/**
+ * A value you can copy by tapping it.
+ *
+ * It reads as a field — label above, monospace value inside a rounded box — and says « Copié »
+ * for a moment after the tap, because a copy with no feedback is indistinguishable from a tap
+ * that missed.
+ */
 @Composable
-private fun KeyValue(label: String, value: String) {
+private fun CopyableField(
+    label: String,
+    value: String,
+    copied: Boolean,
+    onClick: () -> Unit,
+    onCopiedShown: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     val colors = LocalMercuryColors.current
-    Column(
+    if (copied) {
+        LaunchedEffect(Unit) {
+            delay(1400)
+            onCopiedShown()
+        }
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .clickable(onClick = onClick)
+            .padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
     ) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-            color = colors.textPrimary,
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+            Text(
+                text = if (copied) "Copié" else value,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = if (copied) colors.accent else colors.textPrimary,
+                maxLines = 1,
+            )
+        }
+        trailing?.invoke()
     }
 }
+
