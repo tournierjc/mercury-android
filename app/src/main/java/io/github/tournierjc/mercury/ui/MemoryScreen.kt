@@ -204,41 +204,46 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
 @Composable
 private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
     val colors = LocalMercuryColors.current
-    Column(
+    // Même forme que les croyances : le texte respire à gauche, les verbes vivent en colonne à
+    // droite. Un bouton posé sous la dernière ligne se lisait comme une note de bas de carte.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
     ) {
-        Text(
-            text = memory.type.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.accent,
-        )
-        Text(
-            text = memory.summary,
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.textPrimary,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        memory.detail?.takeIf { it.isNotBlank() }?.let { detail ->
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = detail,
-                style = MaterialTheme.typography.bodyMedium,
+                text = memory.type.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.accent,
+            )
+            Text(
+                text = memory.summary,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            memory.detail?.takeIf { it.isNotBlank() }?.let { detail ->
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 4.dp),
+                    maxLines = 4,
+                )
+            }
+            Text(
+                text = "confiance ${(memory.confidence * 100).toInt()} % · importance ${(memory.importance * 100).toInt()} % · ${memory.scope}",
+                style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp),
-                maxLines = 4,
             )
         }
-        Text(
-            text = "confiance ${(memory.confidence * 100).toInt()} % · importance ${(memory.importance * 100).toInt()} % · ${memory.scope}",
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.textSecondary,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(onClick = onForget) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            IconButton(onClick = onForget, modifier = Modifier.size(38.dp)) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
                     contentDescription = "Oublier ce souvenir",
@@ -347,19 +352,48 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
             )
         }
         state.quarantined.forEach { memory ->
-            Column(modifier = Modifier.padding(top = 10.dp)) {
-                Text(
-                    text = memory.summary,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.textPrimary,
-                )
-                IconButton(onClick = { viewModel.restoreQuarantined(memory.id) }) {
-                    Icon(
-                        Icons.Rounded.Restore,
-                        contentDescription = "Réintégrer",
-                        tint = colors.accent,
-                        modifier = Modifier.size(20.dp),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
+                    .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = memory.type.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
                     )
+                    Text(
+                        text = memory.summary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textPrimary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    memory.detail?.takeIf { it.isNotBlank() }?.let { detail ->
+                        Text(
+                            text = detail,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 4.dp),
+                            maxLines = 3,
+                        )
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(
+                        onClick = { viewModel.restoreQuarantined(memory.id) },
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Icon(
+                            Icons.Rounded.Restore,
+                            contentDescription = "Réintégrer",
+                            tint = colors.accent,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
         }
