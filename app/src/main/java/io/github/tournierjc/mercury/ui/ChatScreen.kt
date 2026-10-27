@@ -114,6 +114,8 @@ fun ChatScreen(
     var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
     var botToOpen by remember { mutableStateOf<String?>(null) }
     var botChat by rememberSaveable { mutableStateOf<String?>(null) }
+    // Where the open conversation was entered from, so Back retraces one step.
+    var cameFromBots by rememberSaveable { mutableStateOf(false) }
 
     // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
     // bot id, and the app lands on that bot instead of the last conversation.
@@ -167,8 +169,12 @@ fun ChatScreen(
                 },
                 initialBotId = botToOpen,
                 onOpened = { botToOpen = null },
+                // The sheet hands over to the conversation, and back comes home to the sheet:
+                // a single step each way, instead of landing in Mercury's screen and having to
+                // find the teammate again.
                 onOpenChat = { id ->
                     botChat = id
+                    cameFromBots = true
                     screen = Screen.Chat
                 },
             )
@@ -195,7 +201,15 @@ fun ChatScreen(
     LaunchedEffect(botWatch.bots) { botsVm.loadAvatars(botWatch.bots) }
     LaunchedEffect(botChat) { botChat?.let { botsVm.select(it) } }
 
-    BackHandler(enabled = botChat != null) { botChat = null }
+    BackHandler(enabled = botChat != null) {
+        botChat = null
+        if (cameFromBots) {
+            // Opened from the roster: Back returns to it, with the same bot still selected.
+            cameFromBots = false
+            botToOpen = botsState.selectedId
+            screen = Screen.Bots
+        }
+    }
 
     var composerText by rememberSaveable { mutableStateOf("") }
     // The message being answered, if any: the composer shows it as a chip and the send prepends
@@ -306,6 +320,7 @@ fun ChatScreen(
                 activeBotId = botChat,
                 onOpenBot = { id ->
                     botChat = id
+                    cameFromBots = false
                     screen = Screen.Chat
                     scope.launch { drawerState.close() }
                 },
@@ -393,7 +408,13 @@ fun ChatScreen(
                     if (botMessages.isEmpty()) {
                         BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt, chat = true) }
                     } else {
-                        MessageList(botMessages, onReply = { replyTo = it })
+                        MessageList(
+                            botMessages,
+                            onReply = { replyTo = it },
+                            // A bot conversation is its own list: switching to it from the
+                            // roster must not animate through Mercury's messages.
+                            conversationKey = "bot:$botId",
+                        )
                     }
                 }
                 botsState.error?.let { message -> ErrorBar(message = message, onDismiss = { botsVm.clearBanner() }) }
@@ -458,7 +479,7 @@ fun ChatScreen(
                         },
                     )
                 } else {
-                    MessageList(state.messages, onReply = { replyTo = it })
+                    MessageList(state.messages, onReply = { replyTo = it }, conversationKey = "mercury")
                 }
             }
 
@@ -692,6 +713,15 @@ private fun Welcome(onPick: (String) -> Unit) {
 internal fun MessageList(
     messages: List<ChatMessage>,
     onReply: (ChatMessage) -> Unit = {},
+    /**
+     * Which conversation this list belongs to — `mercury`, or a bot id.
+     *
+     * Entering a conversation is not "the same list growing": it is a different list, and it must
+     * arrive already at the bottom. Animating there from the previous conversation's position is
+     * what made a bot's chat look like it went through the Mercury screen and scrolled the whole
+     * history on the way.
+     */
+    conversationKey: String = "mercury",
 ) {
     val listState = rememberLazyListState()
     val lastLength = messages.lastOrNull()?.text?.length ?: 0
@@ -701,9 +731,19 @@ internal fun MessageList(
     var menuFor by remember { mutableStateOf<String?>(null) }
     var selecting by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(messages.size, lastLength) {
-        if (messages.isNotEmpty()) {
+    // Empty until this list has been positioned for the current conversation.
+    val shownConversation = remember { mutableStateOf("") }
+    LaunchedEffect(conversationKey) { shownConversation.value = "" }
+    LaunchedEffect(conversationKey, messages.size, lastLength) {
+        if (messages.isEmpty()) return@LaunchedEffect
+        if (shownConversation.value == conversationKey) {
+            // Same conversation, a new message: the smooth scroll is the right gesture.
             listState.animateScrollToItem(messages.lastIndex)
+        } else {
+            // Entering (or returning to) a conversation: land at the end, instantly — animating
+            // there from the previous conversation's position scrolled the whole history.
+            listState.scrollToItem(messages.lastIndex)
+            shownConversation.value = conversationKey
         }
     }
 
