@@ -31,3 +31,22 @@ private fun oneDecimal(value: Double): String {
     val tenth = rounded % 10
     return if (tenth == 0L) "$whole" else "$whole,$tenth"
 }
+
+/**
+ * Disk sizes as the console prints them: `512 o`, `2,0 ko`, `5,0 Mo`, `1,5 Go`.
+ * 0 means "nothing measured" here — an empty folder reads better than `0 o`.
+ */
+fun formatBytes(bytes: Long): String {
+    if (bytes <= 0) return "—"
+    val units = listOf("o", "ko", "Mo", "Go", "To")
+    if (bytes < 1024) return "$bytes o"
+    var value = bytes.toDouble()
+    var index = 0
+    while (value >= 1024.0 && index < units.lastIndex) {
+        value /= 1024.0
+        index++
+    }
+    // Always one decimal for a scaled unit: `2,0 ko` reads as a size, `2 ko` as a count.
+    val tenths = (value * 10).toLong()
+    return "${tenths / 10},${tenths % 10} ${units[index]}"
+}

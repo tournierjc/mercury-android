@@ -54,6 +54,7 @@ import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.util.OutputSharing
+import io.github.tournierjc.mercury.util.ShareText
 import io.github.tournierjc.mercury.vm.BotsUiState
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import kotlinx.serialization.json.JsonObject
@@ -279,6 +280,15 @@ private fun BotDetail(
     var budgetText by remember(id) { mutableStateOf("") }
     var avatarError by remember(id) { mutableStateOf<String?>(null) }
 
+    // The bundle is a document, not a screen: it goes to the share sheet as soon as it lands.
+    val bundle = state.bundle
+    LaunchedEffect(bundle) {
+        if (bundle != null) {
+            ShareText.bundle(context, "${state.bundleFor}-bundle.json", bundle)
+            viewModel.clearBundle()
+        }
+    }
+
     // 512 px is plenty for a face in a roster, and the bytes leave the phone encoded.
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -329,6 +339,18 @@ private fun BotDetail(
                 Text(if (BotJson.enabled(bot)) "Désactiver" else "Activer")
             }
         }
+        ButtonRow {
+            TextButton(onClick = { viewModel.exportBundle(id) }, enabled = !state.busy) {
+                Text("Exporter le bundle")
+            }
+        }
+        Text(
+            text = "Le bundle contient l'identité, le persona, les permissions et les skills — jamais les secrets " +
+                "ni le journal. Un chef de flotte exporte toute son équipe.",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 
     SectionTitle("Lancer en arrière-plan")

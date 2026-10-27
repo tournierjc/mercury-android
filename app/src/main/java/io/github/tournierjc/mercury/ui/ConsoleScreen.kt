@@ -32,12 +32,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.data.dto.ProviderTestResult
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.OutputSharing
+import io.github.tournierjc.mercury.util.ShareText
+import io.github.tournierjc.mercury.util.formatBytes
 import io.github.tournierjc.mercury.util.isDestructiveCommand
 import kotlinx.serialization.json.JsonObject
 import io.github.tournierjc.mercury.util.formatTokens
@@ -59,9 +65,19 @@ fun ConsoleScreen(onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val colors = LocalMercuryColors.current
     var confirmRestart by remember { mutableStateOf(false) }
+    var confirmShutdown by remember { mutableStateOf(false) }
     var showCreateBot by remember { mutableStateOf(false) }
     var showAddCrew by remember { mutableStateOf(false) }
     val botDetail = state.botDetail
+
+    // The bundle is a document, not a screen: hand it to the share sheet as soon as it lands.
+    val bundle = state.bundle
+    LaunchedEffect(bundle) {
+        if (bundle != null) {
+            ShareText.bundle(context, "${state.bundleFor}-bundle.json", bundle)
+            viewModel.clearBundle()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -94,18 +110,22 @@ fun ConsoleScreen(onBack: () -> Unit) {
                 .padding(horizontal = 14.dp),
         ) {
             RuntimeSection(state)
+            ProvidersSection(state, viewModel)
             BrainSection(state)
             CodeSection(state, viewModel)
             BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
             FleetSection(state, viewModel, onAddCrew = { showAddCrew = true })
             FleetInboxSection(state, viewModel)
+            CostSection(state)
+            StorageSection(state)
             TerminalSection(state, viewModel)
             TasksSection(state, viewModel)
             SchedulesSection(state, viewModel)
             AgentsSection(state, viewModel)
             SkillsSection(state, viewModel)
             PluginsSection(state)
-            WorkspaceSection(state)
+            McpSection(state)
+            WorkspaceSection(state, viewModel)
 
             SectionTitle("Système")
             CardBlock {
@@ -119,6 +139,18 @@ fun ConsoleScreen(onBack: () -> Unit) {
                     enabled = !state.busy,
                     modifier = Modifier.padding(top = 6.dp),
                 ) { Text("Redémarrer Mercury", color = colors.danger) }
+                Text(
+                    text = "Arrêter le démon libère les canaux, consolide la mémoire et relâche ses fichiers. " +
+                        "Mercury ne l'accepte que depuis la machine qui l'héberge.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                TextButton(
+                    onClick = { confirmShutdown = true },
+                    enabled = !state.busy,
+                    modifier = Modifier.padding(top = 6.dp),
+                ) { Text("Arrêter Mercury", color = colors.danger) }
             }
             Text(
                 text = " ",
@@ -187,7 +219,39 @@ fun ConsoleScreen(onBack: () -> Unit) {
                     if (id.isNotBlank()) viewModel.runBot(id)
                 }) { Text("Exécuter") }
             },
-            dismissButton = { TextButton(onClick = viewModel::closeBot) { Text("Fermer") } },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        val id = botDetail.bot?.get("id")
+                            ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
+                            .orEmpty()
+                        if (id.isNotBlank()) viewModel.exportBundle(id)
+                    }) { Text("Exporter") }
+                    TextButton(onClick = viewModel::closeBot) { Text("Fermer") }
+                }
+            },
+        )
+    }
+
+    if (confirmShutdown) {
+        AlertDialog(
+            onDismissRequest = { confirmShutdown = false },
+            containerColor = colors.surface,
+            title = { Text("Arrêter le démon ?", color = colors.danger) },
+            text = {
+                Text(
+                    "L'agent s'arrête proprement : les tours en cours sont interrompus et plus rien ne répond " +
+                        "avant un redémarrage. Depuis le téléphone, Mercury peut refuser l'ordre (hôte et jeton local requis).",
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmShutdown = false
+                    viewModel.shutdown()
+                }) { Text("Arrêter", color = colors.danger) }
+            },
+            dismissButton = { TextButton(onClick = { confirmShutdown = false }) { Text("Annuler") } },
         )
     }
 
@@ -274,6 +338,177 @@ private fun RuntimeSection(state: ConsoleUiState) {
             if (health.plugins.safeMode) KeyValueRow("Mode sûr", "activé", highlight = true)
         }
     }
+}
+
+@Composable
+private fun ProvidersSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val colors = LocalMercuryColors.current
+    var editing by remember { mutableStateOf<String?>(null) }
+    SectionTitle("Fournisseurs")
+    CardBlock {
+        if (state.providers.isEmpty()) {
+            Text(
+                text = "Aucun fournisseur configuré sur ce runtime.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        state.providers.forEach { provider ->
+            val name = provider.name.ifBlank { "—" }
+            KeyValueRow(
+                label = if (provider.recommended) "$name ★" else name,
+                value = when {
+                    !provider.enabled -> "désactivé"
+                    !provider.hasKey -> "sans clé"
+                    provider.model.isNotBlank() -> provider.model
+                    else -> "prêt"
+                },
+                highlight = provider.enabled && provider.hasKey,
+            )
+            if (provider.baseUrl.isNotBlank()) {
+                Text(
+                    text = provider.baseUrl,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                )
+            }
+            ButtonRow {
+                TextButton(onClick = { editing = name }, enabled = !state.busy) { Text("Modifier") }
+                TextButton(onClick = { viewModel.testProvider(name) }, enabled = !state.busy) { Text("Tester") }
+            }
+            if (state.providerTestFor == name) {
+                state.providerTest?.let { result -> ProviderTestLine(result) }
+            }
+        }
+        Text(
+            text = "Une clé ou un modèle enregistré n'agit qu'au prochain démarrage du runtime.",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+
+    editing?.let { id ->
+        ProviderEditDialog(
+            id = id,
+            onDismiss = { editing = null },
+            onConfirm = { apiKey, baseUrl, model, enabled ->
+                editing = null
+                viewModel.saveProvider(id, apiKey, baseUrl, model, enabled)
+            },
+        )
+    }
+}
+
+/** The probe answers in place: success with its catalogue, or the daemon's own refusal. */
+@Composable
+private fun ProviderTestLine(result: ProviderTestResult) {
+    val colors = LocalMercuryColors.current
+    if (result.success) {
+        val catalogue = result.models.take(4).joinToString(", ")
+        Text(
+            text = "Connecté · ${result.models.size} modèle(s)" +
+                (if (catalogue.isNotBlank()) " : $catalogue" else "") +
+                (if (result.recommendedModel.isNotBlank()) " · conseillé ${result.recommendedModel}" else ""),
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.accent,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    } else {
+        Text(
+            text = "Échec · " + result.error.ifBlank { "connexion refusée" },
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.danger,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/**
+ * `POST /api/providers/:id` takes `apiKey`, `baseUrl`, `model` and `enabled`, each optional:
+ * an empty field is not sent, so the stored value survives.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProviderEditDialog(
+    id: String,
+    onDismiss: () -> Unit,
+    onConfirm: (apiKey: String?, baseUrl: String?, model: String?, enabled: Boolean?) -> Unit,
+) {
+    var apiKey by remember { mutableStateOf("") }
+    var baseUrl by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
+    var enabled by remember { mutableStateOf<Boolean?>(null) }
+    val colors = LocalMercuryColors.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text("Fournisseur $id", color = colors.textPrimary) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    "Seuls les champs remplis sont envoyés : les autres gardent leur valeur enregistrée.",
+                    color = colors.textSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    label = { Text("Clé API") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    label = { Text("URL de base") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    label = { Text("Modèle par défaut") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(
+                        selected = enabled == true,
+                        onClick = { enabled = if (enabled == true) null else true },
+                        label = { Text("Activer") },
+                    )
+                    FilterChip(
+                        selected = enabled == false,
+                        onClick = { enabled = if (enabled == false) null else false },
+                        label = { Text("Désactiver") },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        apiKey.trim().ifBlank { null },
+                        baseUrl.trim().ifBlank { null },
+                        model.trim().ifBlank { null },
+                        enabled,
+                    )
+                },
+                enabled = apiKey.isNotBlank() || baseUrl.isNotBlank() || model.isNotBlank() || enabled != null,
+            ) { Text("Enregistrer") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+    )
 }
 
 @Composable
@@ -451,8 +686,14 @@ private fun AgentsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val colors = LocalMercuryColors.current
+    var installUrl by remember { mutableStateOf(false) }
+    var installRegistry by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
+
     SectionTitle("Skills")
     CardBlock {
         state.skills.forEach { skill ->
@@ -461,7 +702,7 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                     Text(
                         text = skill.name,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = LocalMercuryColors.current.textPrimary,
+                        color = colors.textPrimary,
                     )
                     Text(
                         text = listOfNotNull(
@@ -469,9 +710,12 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                             skill.allowedTools.joinToString(", ").takeIf { it.isNotBlank() },
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = LocalMercuryColors.current.textSecondary,
+                        color = colors.textSecondary,
                         maxLines = 2,
                     )
+                }
+                TextButton(onClick = { pendingDelete = skill.name }, enabled = !state.busy) {
+                    Text("✕", color = colors.danger)
                 }
                 Switch(
                     checked = skill.active,
@@ -484,9 +728,116 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             Text(
                 text = "Aucun skill installé.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textSecondary,
+                color = colors.textSecondary,
             )
         }
+        ButtonRow {
+            TextButton(onClick = { installUrl = true }, enabled = !state.busy) { Text("Installer (URL)") }
+            TextButton(onClick = { installRegistry = true }, enabled = !state.busy) { Text("Registre") }
+        }
+    }
+
+    if (installUrl) {
+        var url by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { installUrl = false },
+            containerColor = colors.surface,
+            title = { Text("Installer un skill", color = colors.textPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Mercury télécharge le paquet depuis une URL http(s). Un dossier local du serveur " +
+                            "n'est pas accepté par cette route.",
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        label = { Text("URL du paquet") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = url.trim()
+                        installUrl = false
+                        viewModel.installSkill(target)
+                    },
+                    enabled = url.isNotBlank(),
+                ) { Text("Installer") }
+            },
+            dismissButton = { TextButton(onClick = { installUrl = false }) { Text("Annuler") } },
+        )
+    }
+
+    if (installRegistry) {
+        var id by remember { mutableStateOf("") }
+        var force by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { installRegistry = false },
+            containerColor = colors.surface,
+            title = { Text("Installer depuis le registre", color = colors.textPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Identifiant au format catégorie/nom, par exemple research/arxiv.",
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    OutlinedTextField(
+                        value = id,
+                        onValueChange = { id = it },
+                        label = { Text("Identifiant") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    FilterChip(
+                        selected = force,
+                        onClick = { force = !force },
+                        label = { Text("Forcer (réinstaller)") },
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = id.trim()
+                        installRegistry = false
+                        viewModel.installSkillFromRegistry(target, force)
+                    },
+                    enabled = id.isNotBlank(),
+                ) { Text("Installer") }
+            },
+            dismissButton = { TextButton(onClick = { installRegistry = false }) { Text("Annuler") } },
+        )
+    }
+
+    val victim = pendingDelete
+    if (victim != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            containerColor = colors.surface,
+            title = { Text("Supprimer le skill ?", color = colors.danger) },
+            text = {
+                Text(
+                    "Le dossier de « $victim » est retiré du serveur, références et scripts compris. " +
+                        "Cette action ne peut pas être annulée.",
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDelete = null
+                    viewModel.deleteSkill(victim)
+                }) { Text("Supprimer", color = colors.danger) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Annuler") } },
+        )
     }
 }
 
@@ -506,13 +857,219 @@ private fun PluginsSection(state: ConsoleUiState) {
 }
 
 @Composable
-private fun WorkspaceSection(state: ConsoleUiState) {
+private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     val workspace = state.workspace ?: return
+    val colors = LocalMercuryColors.current
+    var changing by remember { mutableStateOf(false) }
     SectionTitle("Espace de travail")
     CardBlock {
         KeyValueRow("Dossier", workspace.cwd.ifBlank { "—" })
         KeyValueRow("Projet", workspace.projectName.ifBlank { "—" })
         KeyValueRow("Git", if (workspace.isGit) workspace.branch.ifBlank { "dépôt" } else "aucun")
+        ButtonRow {
+            TextButton(onClick = { changing = true }, enabled = !state.busy) { Text("Changer la racine") }
+        }
+    }
+
+    if (changing) {
+        var path by remember { mutableStateOf(workspace.cwd) }
+        AlertDialog(
+            onDismissRequest = { changing = false },
+            containerColor = colors.surface,
+            title = { Text("Changer la racine du workspace", color = colors.textPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Le dossier doit déjà exister sur la machine de Mercury : le chemin est celui du serveur, " +
+                            "pas celui du téléphone.",
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    OutlinedTextField(
+                        value = path,
+                        onValueChange = { path = it },
+                        label = { Text("Chemin absolu") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = path.trim()
+                        changing = false
+                        viewModel.setWorkspaceRoot(target)
+                    },
+                    enabled = path.isNotBlank(),
+                ) { Text("Déplacer") }
+            },
+            dismissButton = { TextButton(onClick = { changing = false }) { Text("Annuler") } },
+        )
+    }
+}
+
+/** Where the tokens went: the fleet total and the bots that spend the most. */
+@Composable
+private fun CostSection(state: ConsoleUiState) {
+    val colors = LocalMercuryColors.current
+    SectionTitle("Coût")
+    CardBlock {
+        val cost = state.cost
+        if (cost == null) {
+            Text(
+                text = "Dépense indisponible sur ce runtime.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        KeyValueRow("Fenêtre", "${cost.days} jours")
+        KeyValueRow("Tokens consommés", formatTokens(cost.windowTokens))
+        KeyValueRow(
+            label = "Plafond du jour",
+            value = if (cost.fleetCap <= 0) "illimité" else "${formatTokens(cost.fleetToday)} / ${formatTokens(cost.fleetCap)}",
+            highlight = cost.fleetPaused,
+        )
+        if (cost.fleetPaused) {
+            KeyValueRow("Flotte", "en pause — plafond atteint", highlight = true)
+        }
+        val top = cost.topByTokens()
+        if (top.isEmpty()) {
+            Text(
+                text = "Aucune dépense sur la période.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+        } else {
+            top.forEach { row ->
+                ActionRow(
+                    title = row.name.ifBlank { row.id },
+                    subtitle = listOfNotNull(
+                        "${formatTokens(row.window.tokens)} tokens",
+                        "${row.window.runs} passage(s)",
+                        row.window.failed.takeIf { it > 0 }?.let { "$it échec(s)" },
+                        row.cap.takeIf { it > 0 }?.let { "plafond ${formatTokens(it)}/j" },
+                    ).joinToString(" · "),
+                    trailing = if (row.paused) "en pause" else "",
+                )
+            }
+        }
+    }
+}
+
+/** What the fleet occupies on disk, journal included. */
+@Composable
+private fun StorageSection(state: ConsoleUiState) {
+    val colors = LocalMercuryColors.current
+    SectionTitle("Stockage")
+    CardBlock {
+        val storage = state.storage
+        if (storage == null) {
+            Text(
+                text = "Occupation disque indisponible sur ce runtime.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        KeyValueRow("Total", formatBytes(storage.totalBytes))
+        KeyValueRow(
+            label = "File",
+            value = "${storage.queue.pending} en attente · ${storage.queue.claimed} en cours" +
+                if (storage.queue.dlq > 0) " · ${storage.queue.dlq} en échec" else "",
+        )
+        val top = storage.topBySize()
+        if (top.isEmpty()) {
+            Text(
+                text = "Aucun dossier d'équipier à mesurer.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+        } else {
+            top.forEach { row ->
+                ActionRow(
+                    title = row.id,
+                    subtitle = "${formatBytes(row.bytes)} dont journal ${formatBytes(row.journalBytes)}",
+                    trailing = formatBytes(row.profileBytes),
+                )
+            }
+        }
+    }
+}
+
+private fun mcpStateLabel(state: String): String = when (state) {
+    "connected" -> "connecté"
+    "connecting" -> "connexion…"
+    "reconnecting" -> "reconnexion…"
+    "failed" -> "échec"
+    "disabled" -> "désactivé"
+    else -> state.ifBlank { "inconnu" }
+}
+
+/** `GET /api/mcp` — read-only: which servers the runtime knows and what they expose. */
+@Composable
+private fun McpSection(state: ConsoleUiState) {
+    val colors = LocalMercuryColors.current
+    SectionTitle("Serveurs MCP")
+    CardBlock {
+        val mcp = state.mcp
+        if (mcp == null) {
+            Text(
+                text = "État MCP indisponible.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        if (!mcp.available) {
+            Text(
+                text = "Ce runtime n'expose pas de gestion MCP.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        if (mcp.servers.isEmpty()) {
+            Text(
+                text = "Aucun serveur MCP configuré.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@CardBlock
+        }
+        mcp.servers.forEach { server ->
+            KeyValueRow(
+                label = server.id.ifBlank { "serveur" },
+                value = mcpStateLabel(server.state),
+                highlight = server.state == "connected",
+            )
+            KeyValueRow(
+                label = "Transport",
+                value = listOf(server.transport, server.target).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "—" },
+            )
+            KeyValueRow("Outils", "${server.toolCount} exposé(s)")
+            server.error?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(message, style = MaterialTheme.typography.labelSmall, color = colors.danger)
+            }
+            if (server.tools.isNotEmpty()) {
+                Text(
+                    text = server.tools.joinToString("\n") { tool ->
+                        val name = tool.exposedName.ifBlank { tool.name }
+                        val flag = when {
+                            !tool.allowed -> "bloqué"
+                            tool.autoApprove -> "auto"
+                            else -> ""
+                        }
+                        if (flag.isBlank()) "· $name" else "· $name ($flag)"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
     }
 }
 
@@ -588,19 +1145,58 @@ private fun CreateBotDialog(
 @Composable
 private fun FleetSection(state: ConsoleUiState, viewModel: ConsoleViewModel, onAddCrew: () -> Unit) {
     val colors = LocalMercuryColors.current
+    val context = LocalContext.current
     var selectedId by remember { mutableStateOf("") }
+    var overwrite by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
     val crew = state.crew
+
+    // A bundle is a .json file; the picker reports some of them as plain text or octet-stream.
+    val bundlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull()
+        if (text.isNullOrBlank()) {
+            importError = "Fichier illisible"
+        } else {
+            importError = null
+            viewModel.importBundle(text, overwrite)
+        }
+    }
 
     SectionTitle("Flotte")
     CardBlock {
         if (state.bots.isEmpty()) {
             Text(
-                text = "Aucun équipier : créez-en un pour former une flotte.",
+                text = "Aucun équipier : créez-en un, ou importez un bundle partagé pour repartir d'une flotte entière.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
         }
+        ButtonRow {
+            TextButton(
+                onClick = {
+                    bundlePicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                },
+                enabled = !state.busy,
+            ) { Text("Importer un bundle") }
+            FilterChip(
+                selected = overwrite,
+                onClick = { overwrite = !overwrite },
+                label = { Text("Écraser") },
+            )
+        }
+        importError?.let { message ->
+            Text(message, style = MaterialTheme.typography.labelSmall, color = colors.danger)
+        }
+        Text(
+            text = "Un bundle importé arrive désactivé : la flotte ne dépense rien avant que vous l'activiez.",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.textSecondary,
+        )
+
+        if (state.bots.isEmpty()) return@CardBlock
         Text(
             text = "Un chef de flotte peut engendrer ses propres spécialistes. Sélectionnez un équipier :",
             style = MaterialTheme.typography.bodyMedium,

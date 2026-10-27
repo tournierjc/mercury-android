@@ -56,6 +56,9 @@ data class BotsUiState(
     val error: String? = null,
     val dispatchFeedback: String? = null,
     val detailLoading: Boolean = false,
+    /** Filled by the bundle download, consumed by the share sheet, then cleared. */
+    val bundle: String? = null,
+    val bundleFor: String = "",
 )
 
 /**
@@ -267,6 +270,21 @@ class BotsViewModel(
     fun run(id: String) = act("Exécution demandée") { api.runBot(id) }
 
     fun delete(id: String) = act("Équipier supprimé") { api.deleteBot(id) }
+
+    /**
+     * `GET /api/bots/:id/bundle` — the shareable document. The screen hands it to the
+     * share sheet as soon as it arrives, then clears it.
+     */
+    fun exportBundle(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            runCatching { api.botBundle(id) }
+                .onSuccess { text -> _state.update { it.copy(busy = false, bundle = text, bundleFor = id) } }
+                .onFailure { e -> _state.update { it.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    fun clearBundle() = _state.update { it.copy(bundle = null, bundleFor = "") }
 
     fun clearBanner() = _state.update { it.copy(message = null, error = null, dispatchFeedback = null) }
 
