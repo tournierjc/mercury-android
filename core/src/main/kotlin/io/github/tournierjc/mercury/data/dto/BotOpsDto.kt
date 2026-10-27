@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.data.dto
 
+import io.github.tournierjc.mercury.data.MillisSerializer
 import kotlinx.serialization.Serializable
 
 /**
@@ -22,6 +23,7 @@ data class DeliverableDto(
     val botId: String = "",
     val name: String = "",
     val bytes: Long = 0,
+    @Serializable(with = MillisSerializer::class)
     val mtimeMs: Long = 0,
     val path: String = "",
     val final: Boolean = false,
@@ -39,6 +41,7 @@ data class OutputPreviewDto(
 @Serializable
 data class RunSummaryDto(
     val runId: String = "",
+    @Serializable(with = MillisSerializer::class)
     val mtimeMs: Long = 0,
 )
 
@@ -49,7 +52,9 @@ data class BotRunDto(
     val botId: String = "",
     val trigger: String = "",
     val state: String = "",
+    @Serializable(with = MillisSerializer::class)
     val startedAt: Long = 0,
+    @Serializable(with = MillisSerializer::class)
     val durationMs: Long = 0,
     val tokensIn: Long = 0,
     val tokensOut: Long = 0,
@@ -57,6 +62,7 @@ data class BotRunDto(
     val error: String = "",
     val reasonCode: String = "",
     val needsYou: Boolean = false,
+    @Serializable(with = MillisSerializer::class)
     val turnStartedAt: Long = 0,
     val steps: Int = 0,
     val toolCalls: Int = 0,

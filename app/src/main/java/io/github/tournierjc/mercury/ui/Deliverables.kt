@@ -23,6 +23,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.vm.ConsoleUiState
+import io.github.tournierjc.mercury.vm.ConsoleViewModel
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.data.BotOps
@@ -193,5 +196,41 @@ fun OutputPreviewDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
         dismissButton = { TextButton(onClick = onShare) { Text("Partager") } },
+    )
+}
+
+
+/**
+ * The fleet inbox, wired: same rows as the per-bot section, with the producing bot named.
+ * One composable, two hosts — the Console section and the dedicated Livrables screen — so
+ * the two never drift apart.
+ */
+@Composable
+fun FleetDeliverablesSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val names = state.bots.associate { BotJson.id(it) to BotJson.name(it) }
+    DeliverablesSection(
+        title = "Livrables",
+        outputs = state.outputs,
+        botNames = names,
+        showOrigin = true,
+        busy = state.busy,
+        emptyText = "Aucun livrable dans la flotte pour l'instant.",
+        onPreview = viewModel::previewOutput,
+        onShare = viewModel::shareOutput,
+        onDelete = viewModel::deleteOutput,
+    )
+}
+
+/** The preview dialog, hosted once per screen that can open a deliverable. */
+@Composable
+fun OutputPreviewHost(state: ConsoleUiState, viewModel: ConsoleViewModel) {
+    val preview = state.outputPreview ?: return
+    OutputPreviewDialog(
+        state = preview,
+        onDismiss = viewModel::dismissPreview,
+        onShare = {
+            viewModel.dismissPreview()
+            viewModel.shareOutput(preview.output)
+        },
     )
 }

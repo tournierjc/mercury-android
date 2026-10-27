@@ -20,6 +20,8 @@ import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import io.github.tournierjc.mercury.util.OutputActions
 import io.github.tournierjc.mercury.util.OutputPreviewState
 import io.github.tournierjc.mercury.util.SharedFile
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +46,11 @@ data class BotsUiState(
     val outputs: List<DeliverableDto> = emptyList(),
     /** Runs, journal lines joined with the transcripts the daemon still keeps. */
     val runs: List<RunRow> = emptyList(),
+    /**
+     * The bot's work read as a conversation — what the owner asked, what the bot answered.
+     * Built from the journal (the answer) and the run transcript (the question), oldest first.
+     */
+    val discussion: List<Exchange> = emptyList(),
     val dlq: List<DlqJobDto> = emptyList(),
     val runDetail: RunTranscriptDto? = null,
     val runDetailLoading: Boolean = false,
@@ -59,6 +66,19 @@ data class BotsUiState(
     /** Filled by the bundle download, consumed by the share sheet, then cleared. */
     val bundle: String? = null,
     val bundleFor: String = "",
+)
+
+/**
+ * One turn of a bot's conversation: the task the owner dispatched and the answer the run
+ * left in the journal. Jobs, not a chat stream — the bot works in the background, so the
+ * reply appears when the run ends.
+ */
+data class Exchange(
+    val prompt: String,
+    val reply: String,
+    val state: String,
+    val at: Long,
+    val runId: String = "",
 )
 
 /**
@@ -175,6 +195,21 @@ class BotsViewModel(
             val transcripts = runCatching { api.botRuns(id) }.getOrNull()
             val records = runCatching { api.botRunJournal(id) }.getOrNull()
             val dlq = runCatching { api.botDlq(id) }.getOrNull()
+            // The journal carries the answer, not the question: the prompt lives in the run
+            // transcript. Twelve of them, fetched side by side, are enough to read a
+            // conversation and cheap enough to load with the sheet.
+            val discussion = records.orEmpty().takeLast(12).map { record ->
+                async {
+                    val prompt = runCatching { api.botRun(id, record.runId) }.getOrNull()?.prompt.orEmpty()
+                    Exchange(
+                        prompt = prompt,
+                        reply = record.summary.ifBlank { record.error },
+                        state = record.state,
+                        at = record.startedAt,
+                        runId = record.runId,
+                    )
+                }
+            }.awaitAll().sortedBy { it.at }
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -188,6 +223,7 @@ class BotsViewModel(
                     journal = detail?.journal ?: emptyList(),
                     outputs = outputs?.outputs.orEmpty(),
                     runs = BotOps.mergeRuns(transcripts?.runs.orEmpty(), records.orEmpty()),
+                    discussion = discussion,
                     dlq = dlq?.dlq.orEmpty(),
                     detailLoading = false,
                 )
@@ -221,6 +257,19 @@ class BotsViewModel(
                     _state.update {
                         it.copy(
                             busy = false,
+                            // The turn appears at once, as the owner wrote it; the answer
+                            // replaces the empty bubble when the run lands in the journal.
+                            discussion = if (result.accepted) {
+                                it.discussion + Exchange(
+                                    prompt = message.trim(),
+                                    reply = "",
+                                    state = "queued",
+                                    at = System.currentTimeMillis(),
+                                    runId = result.jobId,
+                                )
+                            } else {
+                                it.discussion
+                            },
                             dispatchFeedback = if (result.accepted) {
                                 "Mis en file (job ${result.jobId.take(12)}) — le fil principal continue."
                             } else {

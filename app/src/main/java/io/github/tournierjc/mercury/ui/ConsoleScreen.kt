@@ -118,7 +118,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             CodeSection(state, viewModel)
             BotsSection(state, viewModel, onCreate = { showCreateBot = true }, onOpen = { id -> viewModel.openBot(id) })
             FleetSection(state, viewModel, onAddCrew = { showAddCrew = true })
-            FleetInboxSection(state, viewModel)
+            FleetDeliverablesSection(state, viewModel)
             CostSection(state)
             StorageSection(state)
             TerminalSection(state, viewModel)
@@ -281,37 +281,10 @@ fun ConsoleScreen(onBack: () -> Unit) {
         )
     }
 
-    state.outputPreview?.let { preview ->
-        OutputPreviewDialog(
-            state = preview,
-            onDismiss = viewModel::dismissPreview,
-            onShare = {
-                viewModel.dismissPreview()
-                viewModel.shareOutput(preview.output)
-            },
-        )
-    }
+    OutputPreviewHost(state, viewModel)
 }
 
-/**
- * Fleet inbox: everything the bots delivered, across the whole fleet — the same rows
- * and the same three actions as the per-bot section, with the producing bot named.
- */
-@Composable
-private fun FleetInboxSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    val names = state.bots.associate { BotJson.id(it) to BotJson.name(it) }
-    DeliverablesSection(
-        title = "Livrables",
-        outputs = state.outputs,
-        botNames = names,
-        showOrigin = true,
-        busy = state.busy,
-        emptyText = "Aucun livrable dans la flotte pour l'instant.",
-        onPreview = viewModel::previewOutput,
-        onShare = viewModel::shareOutput,
-        onDelete = viewModel::deleteOutput,
-    )
-}
+
 
 @Composable
 private fun RuntimeSection(state: ConsoleUiState) {

@@ -133,12 +133,18 @@ class ChatViewModel(
                     _attachments.value = emptyList()
                     _state.update { it.copy(sessionId = sessionId) }
                     ensureEvents(sessionId)
+                    // The drawer used to stay empty until the next launch: a send that created
+                    // a session is exactly when the list changes.
+                    refreshThreads()
                 }
             } catch (e: AuthException) {
                 _signedIn.value = false
                 _state.update { ChatReducer.setError(it, e.message) }
             } catch (e: Exception) {
-                _state.update { ChatReducer.setError(it, e.message ?: "Envoi impossible") }
+                // "Envoi impossible" alone told the owner nothing and hid a null message.
+                // Name the failure instead of guessing: the class, and the message if any.
+                val reason = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName ?: "erreur"
+                _state.update { ChatReducer.setError(it, "Envoi impossible — $reason") }
             }
         }
     }
