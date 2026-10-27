@@ -89,8 +89,6 @@ data class ConsoleUiState(
     val mcp: McpServersResponse? = null,
     val cost: BotsCostReport? = null,
     val storage: BotsStorageReport? = null,
-    val providerTest: ProviderTestResult? = null,
-    val providerTestFor: String = "",
     val bundle: String? = null,
     val bundleFor: String = "",
     val terminal: TerminalResult? = null,
@@ -312,38 +310,6 @@ class ConsoleViewModel(
     // -------------------------------------------------------------------
 
     /** Absent fields keep their stored value; a saved key only takes effect at the next boot. */
-    fun saveProvider(
-        id: String,
-        apiKey: String? = null,
-        baseUrl: String? = null,
-        model: String? = null,
-        enabled: Boolean? = null,
-    ) = action("Fournisseur $id enregistré — redémarrage requis") {
-        api.saveProvider(
-            id,
-            ProviderUpdateRequest(
-                apiKey = apiKey?.trim()?.ifBlank { null },
-                baseUrl = baseUrl?.trim()?.ifBlank { null },
-                model = model?.trim()?.ifBlank { null },
-                enabled = enabled,
-            ),
-        )
-    }
-
-    /** The probe's answer, success or refusal, stays on screen next to the provider. */
-    fun testProvider(id: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(providerTest = null, providerTestFor = id, error = null) }
-            runCatching { api.testProvider(id) }
-                .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
-                .onFailure { e ->
-                    _state.update {
-                        it.copy(providerTest = ProviderTestResult(success = false, error = e.readable()), providerTestFor = id)
-                    }
-                }
-        }
-    }
-
     // -------------------------------------------------------------------
     // Bundles: export one bot, import a shared document
     // -------------------------------------------------------------------

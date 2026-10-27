@@ -74,6 +74,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var dialog by remember { mutableStateOf<AccountDialog?>(null) }
 
     var showModelPicker by remember { mutableStateOf(false) }
+    var editingProvider by remember { mutableStateOf<String?>(null) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -327,24 +328,33 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             SectionTitle("Fournisseurs")
             CardBlock {
-                state.providers.forEach { provider ->
-                    ActionRow(
-                        title = provider.name,
-                        subtitle = listOf(provider.model, provider.baseUrl.takeIf { it.isNotBlank() })
-                            .filterNotNull().joinToString(" · "),
-                        trailing = when {
-                            provider.hasKey -> if (provider.enabled) "clé ok" else "désactivé"
-                            else -> "sans clé"
-                        },
-                    )
-                }
+                // The only place a provider is described: Console used to carry a second copy with
+                // the actions, and Réglages a read-only list of the same six rows.
                 if (state.providers.isEmpty()) {
                     Text(
-                        text = "Aucun fournisseur configuré.",
+                        text = if (state.loading) "Chargement…" else "Aucun fournisseur configuré.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
                 }
+                state.providers.forEach { provider ->
+                    val name = provider.name.ifBlank { "—" }
+                    ProviderRow(
+                        provider = provider,
+                        busy = state.busy,
+                        onEdit = { editingProvider = name },
+                        onTest = { viewModel.testProvider(name) },
+                    )
+                    if (state.providerTestFor == name) {
+                        state.providerTest?.let { ProviderTestLine(it) }
+                    }
+                }
+                Text(
+                    text = "Une clé ou un modèle enregistré n'agit qu'au prochain démarrage du runtime.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
 
             SectionTitle("Compte")
@@ -367,6 +377,17 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
 
         }
+    }
+
+    editingProvider?.let { id ->
+        ProviderEditDialog(
+            id = id,
+            onDismiss = { editingProvider = null },
+            onConfirm = { apiKey, baseUrl, model, enabled ->
+                editingProvider = null
+                viewModel.saveProvider(id, apiKey, baseUrl, model, enabled)
+            },
+        )
     }
 
     if (showModelPicker) {
