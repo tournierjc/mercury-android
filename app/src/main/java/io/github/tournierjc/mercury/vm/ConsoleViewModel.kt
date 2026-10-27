@@ -11,11 +11,17 @@ import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.dto.BotDetailDto
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.data.dto.BotTierDto
+import io.github.tournierjc.mercury.data.dto.BotsCostReport
+import io.github.tournierjc.mercury.data.dto.BotsStorageReport
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.HealthDto
+import io.github.tournierjc.mercury.data.dto.McpServersResponse
 import io.github.tournierjc.mercury.data.dto.PluginDto
+import io.github.tournierjc.mercury.data.dto.ProviderDto
+import io.github.tournierjc.mercury.data.dto.ProviderTestResult
+import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
 import io.github.tournierjc.mercury.data.dto.QueueCounts
 import io.github.tournierjc.mercury.data.dto.SkillDto
 import io.github.tournierjc.mercury.data.dto.StatusDto
@@ -48,6 +54,14 @@ data class ConsoleUiState(
     val botDetail: BotDetailDto? = null,
     val crew: BotCrewResponse? = null,
     val permissions: JsonObject? = null,
+    val providers: List<ProviderDto> = emptyList(),
+    val mcp: McpServersResponse? = null,
+    val cost: BotsCostReport? = null,
+    val storage: BotsStorageReport? = null,
+    val providerTest: ProviderTestResult? = null,
+    val providerTestFor: String = "",
+    val bundle: String? = null,
+    val bundleFor: String = "",
     val terminal: TerminalResult? = null,
     val terminalBusy: Boolean = false,
     val queue: QueueCounts = QueueCounts(),
@@ -97,6 +111,10 @@ class ConsoleViewModel(
                 val bots = runCatching { api.bots() }.getOrNull()
                 val tiers = runCatching { api.botTiers() }.getOrDefault(emptyList())
                 val outputs = runCatching { api.fleetOutputs() }.getOrNull()
+                val providers = runCatching { api.providers() }.getOrDefault(emptyList())
+                val mcp = runCatching { api.mcpServers() }.getOrNull()
+                val cost = runCatching { api.botsCost() }.getOrNull()
+                val storage = runCatching { api.botsStorage() }.getOrNull()
                 _state.update {
                     it.copy(
                         loading = false,
@@ -112,7 +130,11 @@ class ConsoleViewModel(
                         schedules = schedules,
                         bots = bots?.bots.orEmpty(),
                         tiers = tiers,
-                        queue = bots?.queue ?: QueueCounts(),
+                        providers = providers,
+                        mcp = mcp,
+                        cost = cost,
+                        storage = storage,
+                        queue = bots?.queue ?: storage?.queue ?: QueueCounts(),
                         outputs = outputs?.outputs.orEmpty(),
                     )
                 }
@@ -135,6 +157,17 @@ class ConsoleViewModel(
     fun toggleSkill(name: String, active: Boolean) = action(
         if (active) "Skill $name activé" else "Skill $name désactivé",
     ) { api.setSkillActive(name, active) }
+
+    /** `POST /api/skills/install` — the daemon takes a URL, not a local folder. */
+    fun installSkill(url: String) = action("Skill installé depuis $url") { api.installSkill(url) }
+
+    /** `POST /api/skills/install-from-registry` — `id` is `<category>/<slug>`. */
+    fun installSkillFromRegistry(id: String, force: Boolean) = action("Skill $id installé depuis le registre") {
+        api.installSkillFromRegistry(id, force)
+    }
+
+    /** `DELETE /api/skills/:name` — confirmed by the caller: the folder leaves the host. */
+    fun deleteSkill(name: String) = action("Skill $name supprimé") { api.deleteSkill(name) }
 
     fun startBot(id: String) = action("Bot démarré") { api.startBot(id) }
 
@@ -173,6 +206,118 @@ class ConsoleViewModel(
 
     /** Restarts the daemon: the HTTP call returns before the socket actually drops. */
     fun restart() = action("Redémarrage accepté — le runtime revient dans quelques secondes") { api.restart() }
+
+    /**
+     * Stops the daemon. The follow-up refresh would hit a socket that is going away, so this
+     * one reports the acknowledgement instead of reloading the console.
+     */
+    fun shutdown() {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching { api.shutdown() }
+                .onSuccess { result ->
+                    if (result.ok) {
+                        _state.update { s ->
+                            s.copy(busy = false, message = "Arrêt accepté (pid ${result.pid}) — le démon s'arrête")
+                        }
+                    } else {
+                        _state.update { s ->
+                            s.copy(busy = false, error = result.error.ifBlank { "Arrêt refusé par le démon" })
+                        }
+                    }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    /** `PUT /api/workspace/root` — the daemon refuses a path that does not exist. */
+    fun setWorkspaceRoot(path: String) = action("Espace de travail : $path") { api.setWorkspaceRoot(path) }
+
+    // -------------------------------------------------------------------
+    // Providers: write a key, probe the endpoint
+    // -------------------------------------------------------------------
+
+    /** Absent fields keep their stored value; a saved key only takes effect at the next boot. */
+    fun saveProvider(
+        id: String,
+        apiKey: String? = null,
+        baseUrl: String? = null,
+        model: String? = null,
+        enabled: Boolean? = null,
+    ) = action("Fournisseur $id enregistré — redémarrage requis") {
+        api.saveProvider(
+            id,
+            ProviderUpdateRequest(
+                apiKey = apiKey?.trim()?.ifBlank { null },
+                baseUrl = baseUrl?.trim()?.ifBlank { null },
+                model = model?.trim()?.ifBlank { null },
+                enabled = enabled,
+            ),
+        )
+    }
+
+    /** The probe's answer, success or refusal, stays on screen next to the provider. */
+    fun testProvider(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(providerTest = null, providerTestFor = id, error = null) }
+            runCatching { api.testProvider(id) }
+                .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(providerTest = ProviderTestResult(success = false, error = e.readable()), providerTestFor = id)
+                    }
+                }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Bundles: export one bot, import a shared document
+    // -------------------------------------------------------------------
+
+    /** Fetches the bundle document; the screen hands it to the Android share sheet. */
+    fun exportBundle(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            runCatching { api.botBundle(id) }
+                .onSuccess { text -> _state.update { it.copy(busy = false, bundle = text, bundleFor = id) } }
+                .onFailure { e -> _state.update { it.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    fun clearBundle() {
+        _state.update { it.copy(bundle = null, bundleFor = "") }
+    }
+
+    /** Imported bots start disabled on purpose: a shared bundle must never begin spending. */
+    fun importBundle(bundleJson: String, overwrite: Boolean = false) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching { api.importBotBundle(bundleJson, overwrite) }
+                .onSuccess { response ->
+                    val report = response.report
+                    when {
+                        response.error.isNotBlank() ->
+                            _state.update { s -> s.copy(busy = false, error = response.error) }
+
+                        report.created.isEmpty() -> _state.update { s ->
+                            s.copy(busy = false, message = "Rien d'importé — ${report.skipped.size} équipier(s) déjà présent(s)")
+                        }
+
+                        else -> {
+                            _state.update { s ->
+                                s.copy(
+                                    busy = false,
+                                    message = "${report.created.size} équipier(s) importé(s), désactivé(s) : " +
+                                        report.created.joinToString(", "),
+                                )
+                            }
+                            refresh()
+                        }
+                    }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
 
     fun clearBanner() {
         _state.update { it.copy(message = null, error = null) }

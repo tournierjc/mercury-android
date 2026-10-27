@@ -22,7 +22,10 @@ import io.github.tournierjc.mercury.data.dto.BotOutputsPage
 import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.BotRunsPage
 import io.github.tournierjc.mercury.data.dto.BotTiersPage
+import io.github.tournierjc.mercury.data.dto.BotsCostReport
 import io.github.tournierjc.mercury.data.dto.BotsResponse
+import io.github.tournierjc.mercury.data.dto.BotsStorageReport
+import io.github.tournierjc.mercury.data.dto.BundleImportResponse
 import io.github.tournierjc.mercury.data.dto.DlqPage
 import io.github.tournierjc.mercury.data.dto.DlqReplay
 import io.github.tournierjc.mercury.data.dto.OutputPreviewDto
@@ -39,6 +42,7 @@ import io.github.tournierjc.mercury.data.dto.DeleteThreadRequest
 import io.github.tournierjc.mercury.data.dto.HealthDto
 import io.github.tournierjc.mercury.data.dto.MemoriesPage
 import io.github.tournierjc.mercury.data.dto.MemoriesResponse
+import io.github.tournierjc.mercury.data.dto.McpServersResponse
 import io.github.tournierjc.mercury.data.dto.MemoryDto
 import io.github.tournierjc.mercury.data.dto.ModelPrefsRequest
 import io.github.tournierjc.mercury.data.dto.ModelsResponse
@@ -49,9 +53,17 @@ import io.github.tournierjc.mercury.data.dto.PluginDto
 import io.github.tournierjc.mercury.data.dto.PluginHealthDto
 import io.github.tournierjc.mercury.data.dto.PluginsResponse
 import io.github.tournierjc.mercury.data.dto.ProviderDto
+import io.github.tournierjc.mercury.data.dto.ProviderSaveResult
+import io.github.tournierjc.mercury.data.dto.ProviderTestResult
+import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
+import io.github.tournierjc.mercury.data.dto.RegistrySkillInstallRequest
+import io.github.tournierjc.mercury.data.dto.RegistrySkillInstallResult
 import io.github.tournierjc.mercury.data.dto.SchedulesResponse
+import io.github.tournierjc.mercury.data.dto.ShutdownResult
 import io.github.tournierjc.mercury.data.dto.SimpleResponse
 import io.github.tournierjc.mercury.data.dto.SkillDto
+import io.github.tournierjc.mercury.data.dto.SkillInstallRequest
+import io.github.tournierjc.mercury.data.dto.SkillInstallResult
 import io.github.tournierjc.mercury.data.dto.SkillsResponse
 import io.github.tournierjc.mercury.data.dto.StatusDto
 import io.github.tournierjc.mercury.data.dto.SwitchModelRequest
@@ -60,6 +72,8 @@ import io.github.tournierjc.mercury.data.dto.UsageDto
 import io.github.tournierjc.mercury.data.dto.UsernameChangeRequest
 import io.github.tournierjc.mercury.data.dto.WorkspaceFileDto
 import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
+import io.github.tournierjc.mercury.data.dto.WorkspaceRootRequest
+import io.github.tournierjc.mercury.data.dto.WorkspaceRootResult
 import io.github.tournierjc.mercury.data.dto.WorkspaceTreeDto
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -717,6 +731,25 @@ class MercuryApi(
     /** Restarts the Mercury daemon. The HTTP call is accepted before the restart. */
     suspend fun restart(): SimpleResponse = postJson("/api/restart", JsonObject(emptyMap()), SimpleResponse.serializer())
 
+    /**
+     * `POST /api/shutdown` — graceful stop of the daemon: channels are notified, memory is
+     * consolidated and the pid file is released. Accepted from the host only (loopback plus
+     * the attach token), so a refusal is a 403 whose message belongs in the UI — only a 401
+     * means the session is gone.
+     */
+    suspend fun shutdown(): ShutdownResult = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url("/api/shutdown"))
+            .post("{}".toRequestBody(jsonMedia))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw AuthException("Session expirée")
+            runCatching { json.decodeFromString(ShutdownResult.serializer(), body) }.getOrNull()
+                ?: ShutdownResult(ok = false, error = body.take(160).ifBlank { "HTTP ${response.code}" })
+        }
+    }
+
     // ---------------------------------------------------------------------
     // Capabilities
     // ---------------------------------------------------------------------
@@ -732,12 +765,64 @@ class MercuryApi(
         SimpleResponse.serializer(),
     )
 
+    /**
+     * `POST /api/skills/install` — installs from a URL. The daemon refuses anything that is
+     * not `http(s)://`, so a local folder path cannot travel through this route.
+     */
+    suspend fun installSkill(url: String): SkillInstallResult =
+        postJson("/api/skills/install", SkillInstallRequest(url.trim()), SkillInstallResult.serializer())
+
+    /** `POST /api/skills/install-from-registry` — `id` is `<category>/<slug>`. */
+    suspend fun installSkillFromRegistry(id: String, force: Boolean = false): RegistrySkillInstallResult =
+        postJson(
+            "/api/skills/install-from-registry",
+            RegistrySkillInstallRequest(id.trim(), force.takeIf { it }),
+            RegistrySkillInstallResult.serializer(),
+        )
+
+    /** `DELETE /api/skills/:name` — removes the folder; the daemon answers `{success:true}`. */
+    suspend fun deleteSkill(name: String): SimpleResponse =
+        deleteJson("/api/skills/${encode(name)}", SimpleResponse.serializer())
+
     suspend fun plugins(): List<PluginDto> = getDecoded("/api/plugins", PluginsResponse.serializer()).items
 
     suspend fun pluginHealth(): PluginHealthDto = getDecoded("/api/plugins/health", PluginHealthDto.serializer())
 
     suspend fun providers(): List<ProviderDto> =
         getDecoded("/api/providers", kotlinx.serialization.builtins.ListSerializer(ProviderDto.serializer()))
+
+    /**
+     * `POST /api/providers/:id` — writes a key, a base URL, a model or the enabled flag.
+     * Absent fields keep their stored value; the change only takes effect at the next boot,
+     * which is why the answer carries `restartRequired`.
+     */
+    suspend fun saveProvider(id: String, update: ProviderUpdateRequest): ProviderSaveResult =
+        postJson("/api/providers/${encode(id)}", update, ProviderSaveResult.serializer())
+
+    /**
+     * `POST /api/providers/:id/test` — probes the provider. A missing key or an unreachable
+     * endpoint answers 400 `{success:false, error}`, which is an answer to show in place,
+     * not an exception to swallow.
+     */
+    suspend fun testProvider(id: String): ProviderTestResult = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url("/api/providers/${encode(id)}/test"))
+            .post("{}".toRequestBody(jsonMedia))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+            runCatching { json.decodeFromString(ProviderTestResult.serializer(), body) }.getOrNull()
+                ?: ProviderTestResult(
+                    success = false,
+                    error = body.take(160).ifBlank { "HTTP ${response.code}" },
+                )
+        }
+    }
+
+    /** `GET /api/mcp` — configured MCP servers and their live state, read-only. */
+    suspend fun mcpServers(): McpServersResponse =
+        getDecoded("/api/mcp", McpServersResponse.serializer())
 
     suspend fun codeStatus(): CodeStatusDto = getDecoded("/api/code/status", CodeStatusDto.serializer())
 
@@ -894,6 +979,52 @@ class MercuryApi(
     suspend fun stopAllBots(): SimpleResponse =
         postJson("/api/bots-stop-all", JsonObject(emptyMap()), SimpleResponse.serializer())
 
+    // ---------------------------------------------------------------------
+    // Fleet money, disk and bundles
+    // ---------------------------------------------------------------------
+
+    /** `GET /api/bots-cost?days=N` — per-bot and per-fleet token spend (ADR-022). */
+    suspend fun botsCost(days: Int = 7): BotsCostReport = getDecoded(
+        "/api/bots-cost",
+        BotsCostReport.serializer(),
+        mapOf("days" to days.coerceIn(1, 90).toString()),
+    )
+
+    /** `GET /api/bots-storage` — per-bot folder size and the queue counters. */
+    suspend fun botsStorage(): BotsStorageReport =
+        getDecoded("/api/bots-storage", BotsStorageReport.serializer())
+
+    /**
+     * `GET /api/bots/:id/bundle` — the shareable bundle, verbatim. The daemon serves it as an
+     * attachment (`Content-Disposition: <id>-bundle.json`), not as an envelope, so it is
+     * returned as text and shared as-is.
+     */
+    suspend fun botBundle(id: String): String = withContext(Dispatchers.IO) {
+        execute(Request.Builder().url(url("/api/bots/${encode(id)}/bundle")).get().build())
+    }
+
+    /**
+     * `POST /api/bots/import` — the bundle document is the request body itself. Imported bots
+     * start disabled and an existing id is skipped unless [overwrite] refreshes it.
+     */
+    suspend fun importBotBundle(bundleJson: String, overwrite: Boolean = false): BundleImportResponse =
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url(
+                    urlWith("/api/bots/import") {
+                        if (overwrite) addQueryParameter("overwrite", "1")
+                    },
+                )
+                .post(bundleJson.toRequestBody(jsonMedia))
+                .build()
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+                runCatching { json.decodeFromString(BundleImportResponse.serializer(), body) }.getOrNull()
+                    ?: BundleImportResponse(error = body.take(160).ifBlank { "HTTP ${response.code}" })
+            }
+        }
+
     suspend fun backgroundTasks(): BgResponse = getDecoded("/api/bg", BgResponse.serializer())
 
     suspend fun cancelTask(id: String): SimpleResponse =
@@ -1023,6 +1154,13 @@ class MercuryApi(
     )
 
     suspend fun workspaceInfo(): WorkspaceInfoDto = getDecoded("/api/workspace/info", WorkspaceInfoDto.serializer())
+
+    /**
+     * `PUT /api/workspace/root` — moves the workspace root. The daemon resolves the path and
+     * refuses one that does not exist (404) or is not a directory (400).
+     */
+    suspend fun setWorkspaceRoot(path: String): WorkspaceRootResult =
+        putJson("/api/workspace/root", WorkspaceRootRequest(path.trim()), WorkspaceRootResult.serializer())
 
     suspend fun workspaceTree(path: String? = null): WorkspaceTreeDto = getDecoded(
         "/api/workspace/tree",
