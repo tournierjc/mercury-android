@@ -11,6 +11,9 @@ import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.RunRow
 import io.github.tournierjc.mercury.data.BotSlug
@@ -72,8 +75,9 @@ data class BotsUiState(
     val pendingShare: SharedFile? = null,
     val busy: Boolean = false,
     val message: String? = null,
-    val error: String? = null,
-    val dispatchFeedback: String? = null,
+    val error: Notice? = null,
+    /** What the last dispatch answered: queued, or the reason it was refused. */
+    val dispatchFeedback: Notice? = null,
     val detailLoading: Boolean = false,
     /** Models the daemon offers: the provider dropdown of the bot's model section. */
     val models: List<io.github.tournierjc.mercury.data.dto.ModelRef> = emptyList(),
@@ -314,7 +318,7 @@ class BotsViewModel(
         if (message.isBlank() && files.isEmpty()) return
         val problem = Attachments.problemWith(files)
         if (problem != null) {
-            _state.update { it.copy(error = problem) }
+            _state.update { it.copy(error = Notice(NoticeKey.REQUEST_REFUSED).withDetail(problem)) }
             return
         }
         viewModelScope.launch {
@@ -336,7 +340,7 @@ class BotsViewModel(
                                 it.pending + BotMessage(
                                     key = "${result.jobId}-me",
                                     fromBot = false,
-                                    text = message.trim().ifBlank { "(pièce jointe)" },
+                                    text = message.trim().ifBlank { files.joinToString(" · ") { it.name } },
                                     at = System.currentTimeMillis(),
                                     state = "queued",
                                 )
@@ -344,9 +348,11 @@ class BotsViewModel(
                                 it.pending
                             },
                             dispatchFeedback = if (result.accepted) {
-                                "Mis en file (job ${result.jobId.take(12)}) — le fil principal continue."
+                                Notice(NoticeKey.DISPATCH_QUEUED, args = listOf(result.jobId.take(12))).asInfo()
                             } else {
-                                "Refusé : ${result.reasonCode.ifBlank { "file saturée ou bot en pause" }}"
+                                // `reasonCode` is the server's own code (queue_full, paused…) and
+                                // travels as the detail: it says more than a house sentence would.
+                                Notice(NoticeKey.DISPATCH_REFUSED).withDetail(result.reasonCode)
                             },
                         )
                     }
@@ -519,7 +525,7 @@ class BotsViewModel(
         val cleanName = name.trim()
         val cleanId = id.trim().ifBlank { BotSlug.from(cleanName) }
         if (cleanName.isEmpty()) {
-            _state.update { it.copy(error = "Un nom est nécessaire") }
+            _state.update { it.copy(error = Notice(NoticeKey.NAME_REQUIRED)) }
             return
         }
         viewModelScope.launch {
@@ -559,7 +565,8 @@ class BotsViewModel(
     fun clearBanner() = _state.update { it.copy(message = null, error = null, dispatchFeedback = null) }
 
     /** Surfaces a screen-side failure (share sheet, missing file) in the same banner. */
-    fun showError(message: String) = _state.update { it.copy(error = message) }
+    fun showError(message: String) =
+        _state.update { it.copy(error = Notice(NoticeKey.REQUEST_REFUSED).withDetail(message)) }
 
     // -------------------------------------------------------------------
     // Deliverables: list, preview, share, remove (the fleet inbox reuses
@@ -647,7 +654,9 @@ class BotsViewModel(
                         if (result.accepted) {
                             it.copy(busy = false, message = "Job relancé (${result.jobId.take(12)})")
                         } else {
-                            it.copy(busy = false, error = "Relance refusée : ${BotOps.reasonLabel(result.reasonCode)}")
+                            // The code is language-neutral; the label table still lives in
+                            // BotOps and travels as the detail until it moves to resources.
+                            it.copy(busy = false, error = Notice(NoticeKey.RESTART_REFUSED).withDetail(result.reasonCode))
                         }
                     }
                     reloadIncidents()
@@ -716,10 +725,8 @@ class BotsViewModel(
     private fun escape(text: String): String =
         text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 
-    private fun Throwable.readable(): String = when (this) {
-        is AuthException -> "Session expirée — reconnecte-toi"
-        else -> message ?: "Requête refusée"
-    }
+    /** One mapping for the whole file (and the same one the other screens use): see `toNotice`. */
+    private fun Throwable.readable(): Notice = toNotice()
 
     companion object {
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {

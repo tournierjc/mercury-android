@@ -91,6 +91,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.bots.BotWatchState
+import io.github.tournierjc.mercury.data.NoticeSeverity
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.BotSlug
@@ -189,7 +190,9 @@ fun BotsScreen(
             )
         }
         state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
-        state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
+        state.error?.let { notice ->
+            InlineBanner(noticeText(notice), isError = notice.severity == NoticeSeverity.Error, onDismiss = viewModel::clearBanner)
+        }
 
         // A downloaded deliverable is handed to the share sheet from the screen: the
         // view model has no Context, and the slot is cleared so it fires exactly once.
@@ -698,11 +701,12 @@ private fun BotDetail(
         dispatchFileError?.let { message ->
             Text(message, color = colors.danger, style = MaterialTheme.typography.labelSmall)
         }
-        state.dispatchFeedback?.let { feedback ->
+        state.dispatchFeedback?.let { notice ->
             Text(
-                text = feedback,
+                text = noticeText(notice),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (feedback.startsWith("Refusé")) colors.danger else colors.accent,
+                // Queued or refused: the severity says which, the wording no longer has to.
+                color = noticeTint(notice.severity),
                 modifier = Modifier.padding(top = 4.dp),
             )
         }

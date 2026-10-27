@@ -40,7 +40,7 @@ fun ConnectScreen(
     initialUrl: String,
     initialUsername: String,
     busy: Boolean,
-    error: String?,
+    error: io.github.tournierjc.mercury.data.Notice?,
     onSubmit: (url: String, username: String, password: String) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
@@ -93,7 +93,7 @@ fun ConnectScreen(
 
         if (error != null) {
             Text(
-                text = error,
+                text = noticeText(error),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.danger,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
