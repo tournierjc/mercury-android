@@ -12,6 +12,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.vm.BotsUiState
+import io.github.tournierjc.mercury.vm.BotsViewModel
 import io.github.tournierjc.mercury.vm.ConsoleUiState
 import io.github.tournierjc.mercury.vm.ConsoleViewModel
 import androidx.compose.ui.text.font.FontFamily
@@ -221,6 +226,20 @@ fun FleetDeliverablesSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
     )
 }
 
+/** The same dialog, for the per-bot view model the conversation screen holds. */
+@Composable
+fun BotOutputPreviewHost(state: BotsUiState, viewModel: BotsViewModel) {
+    val preview = state.outputPreview ?: return
+    OutputPreviewDialog(
+        state = preview,
+        onDismiss = viewModel::dismissPreview,
+        onShare = {
+            viewModel.dismissPreview()
+            viewModel.shareOutput(preview.output)
+        },
+    )
+}
+
 /** The preview dialog, hosted once per screen that can open a deliverable. */
 @Composable
 fun OutputPreviewHost(state: ConsoleUiState, viewModel: ConsoleViewModel) {
@@ -233,4 +252,71 @@ fun OutputPreviewHost(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             viewModel.shareOutput(preview.output)
         },
     )
+}
+
+
+/**
+ * The bot's deliverable folder, opened from its conversation.
+ *
+ * The list is the same `DeliverablesSection` the console and the Livrables screen render —
+ * what changes is where it comes from: here, only this bot's files, one tap from the
+ * conversation that produced them. It is loaded when the sheet opens, so a bot that wrote
+ * something a minute ago shows it without leaving the discussion.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BotDeliverablesSheet(
+    botId: String,
+    botName: String,
+    outputs: List<DeliverableDto>,
+    busy: Boolean,
+    onPreview: (DeliverableDto) -> Unit,
+    onShare: (DeliverableDto) -> Unit,
+    onDelete: (DeliverableDto) -> Unit,
+    onReload: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colors.canvas,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 28.dp),
+        ) {
+            Text(
+                text = "Livrables de $botName",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
+            )
+            Text(
+                text = when (outputs.size) {
+                    0 -> "Rien encore : demandez-lui un fichier dans la conversation."
+                    1 -> "1 fichier · aperçu, partage, suppression."
+                    else -> "${outputs.size} fichiers · aperçu, partage, suppression."
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
+            DeliverablesSection(
+                title = "Fichiers",
+                outputs = outputs,
+                botNames = mapOf(botId to botName),
+                showOrigin = false,
+                busy = busy,
+                emptyText = "Aucun livrable pour cet équipier.",
+                onPreview = onPreview,
+                onShare = onShare,
+                onDelete = onDelete,
+            )
+            ButtonRow {
+                TextButton(onClick = onReload) { Text("Rafraîchir") }
+            }
+        }
+    }
 }

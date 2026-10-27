@@ -64,7 +64,7 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots }
+private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots, BotChat }
 
 private val suggestions = listOf(
     "Que sais-tu de ce Spark ?",
@@ -94,13 +94,15 @@ fun ChatScreen(
     val colors = LocalMercuryColors.current
     var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
     var botToOpen by remember { mutableStateOf<String?>(null) }
+    var botChat by rememberSaveable { mutableStateOf<String?>(null) }
 
     // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
     // bot id, and the app lands on that bot instead of the last conversation.
     LaunchedEffect(openBotId) {
         if (openBotId != null) {
-            botToOpen = openBotId
-            screen = Screen.Bots
+            // Straight into the conversation: that is where the work it announced lives.
+            botChat = openBotId
+            screen = Screen.BotChat
             onOpenBotConsumed()
         }
     }
@@ -146,7 +148,28 @@ fun ChatScreen(
                 },
                 initialBotId = botToOpen,
                 onOpened = { botToOpen = null },
+                onOpenChat = { id ->
+                    botChat = id
+                    screen = Screen.BotChat
+                },
             )
+            return
+        }
+
+        Screen.BotChat -> {
+            val id = botChat
+            if (id == null) {
+                screen = Screen.Bots
+            } else {
+                BotChatScreen(
+                    botId = id,
+                    onBack = { screen = Screen.Bots },
+                    onOpenAdmin = { adminId ->
+                        botToOpen = adminId
+                        screen = Screen.Bots
+                    },
+                )
+            }
             return
         }
 
