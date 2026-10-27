@@ -45,8 +45,12 @@ class BotNotifier(private val context: Context) {
         if (!canNotify()) return
         ensureChannel()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        // SINGLE_TOP, not a fresh task: without it the tap recreated the activity, which rebuilt
+        // the whole screen graph and showed the Mercury conversation before the bot's own.
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_BOT_ID, attention.botId)
         }
         val pending = PendingIntent.getActivity(

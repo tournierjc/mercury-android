@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les équipiers : la flotte, la fiche d'un bot, le dialogue de création, la carte d'interaction. -->
+<resources>
+    <!-- BotsScreen : en-tête -->
+    <string name="bots_title_roster">Équipiers et Flotte</string>
+    <string name="bots_header_subtitle">%1$d équipiers · %2$d en file</string>
+    <string name="bots_header_offline">" · hors ligne"</string>
+    <string name="bots_cd_new_bot">Nouvel équipier</string>
+    <string name="bots_cd_conversation">Conversation</string>
+    <string name="bots_cd_conversation_with">Conversation avec %1$s</string>
+    <string name="bots_error_share_failed">Partage impossible</string>
+    <string name="bots_error_unreadable_file">Fichier illisible</string>
+    <string name="bots_error_unreadable_photo">Photo illisible</string>
+
+    <!-- BotsScreen : activité récente -->
+    <string name="bots_section_recent_activity">Activité récente</string>
+
+    <!-- BotsScreen : flotte -->
+    <string name="bots_section_fleet">Flotte</string>
+    <string name="bots_action_import">Importer</string>
+    <string name="bots_action_overwrite">Écraser</string>
+    <string name="bots_action_overwrite_on">Écraser : oui</string>
+    <string name="bots_fleet_import_hint">Un bundle importé arrive désactivé : la flotte ne dépense rien avant que tu l\'actives.</string>
+    <string name="bots_fleet_no_lead">Aucun chef de flotte. Un chef engendre ses spécialistes depuis sa fiche.</string>
+    <string name="bots_role_fleet_lead">chef de flotte</string>
+    <string name="bots_crew_running">%1$d en cours</string>
+
+    <!-- BotsScreen : liste des équipiers -->
+    <string name="bots_section_waiting">En attente de vous · %1$d</string>
+    <string name="bots_waiting_default_activity">Il attend une réponse avant de continuer.</string>
+    <string name="bots_action_open_lower">ouvrir</string>
+    <string name="bots_section_teammates">Équipiers</string>
+    <string name="bots_empty_roster">Aucun équipier. Le + en haut à droite en crée un.</string>
+    <string name="bots_lead_badge">"  chef"</string>
+    <string name="bots_lead_crew_count">" · %1$d en cours"</string>
+    <string name="bots_crew_of">crew de %1$s</string>
+
+    <!-- BotsScreen : fiche d'un bot -->
+    <string name="bots_section_preview">Aperçu</string>
+    <string name="bots_role_solo">solo</string>
+    <string name="bots_state_enabled">activé</string>
+    <string name="bots_state_disabled">désactivé</string>
+    <string name="bots_label_activity">Activité</string>
+    <string name="bots_label_last_run">Dernier passage</string>
+    <string name="bots_label_role">Rôle</string>
+    <string name="bots_label_model">Modèle</string>
+    <string name="bots_value_default">défaut</string>
+    <string name="bots_action_photo">Photo</string>
+    <string name="bots_action_start">Démarrer</string>
+    <string name="bots_action_stop">Arrêter</string>
+    <string name="bots_action_run">Exécuter</string>
+    <string name="bots_action_enable">Activer</string>
+    <string name="bots_action_disable">Désactiver</string>
+    <string name="bots_action_share">Partager</string>
+    <string name="bots_action_delete">Supprimer</string>
+    <string name="bots_action_remove_photo">Sans photo</string>
+    <string name="bots_bundle_hint">Le bundle contient l\'identité, le persona, les permissions et les skills — jamais les secrets ni le journal. Un chef de flotte exporte toute son équipe.</string>
+
+    <!-- BotsScreen : lui écrire -->
+    <string name="bots_section_write">Lui écrire</string>
+    <string name="bots_write_hint">La conversation est un écran à part : ce panneau ne sert qu\'à le régler. Un message part en tâche de fond, la réponse s\'écrit dans la conversation.</string>
+    <string name="bots_dispatch_hint">Tâche rapide à confier</string>
+    <string name="bots_cd_attach_file">Joindre un fichier</string>
+    <string name="bots_cd_send_task">Envoyer la tâche</string>
+    <string name="bots_cd_remove_attachment">Retirer %1$s</string>
+
+    <!-- BotsScreen : persona -->
+    <string name="bots_section_persona">Persona</string>
+    <string name="bots_persona_hint">Qui il est et comment il travaille — c\'est ce que Mercury relit à chaque réveil.</string>
+    <string name="bots_label_persona">Persona</string>
+    <string name="bots_action_save">Enregistrer</string>
+    <string name="bots_action_revert">Rétablir</string>
+
+    <!-- BotsScreen : permissions -->
+    <string name="bots_section_permissions">Permissions</string>
+    <string name="bots_tier_read_only">Lecture</string>
+    <string name="bots_tier_read_only_verb">lire</string>
+    <string name="bots_tier_write">Écriture</string>
+    <string name="bots_tier_write_verb">écrire</string>
+    <string name="bots_tier_operator">Opérateur</string>
+    <string name="bots_tier_operator_verb">exécuter</string>
+    <string name="bots_tier_full">Complet</string>
+    <string name="bots_tier_full_verb">tout</string>
+
+    <!-- BotsScreen : modèle et budget -->
+    <string name="bots_section_model_budget">Modèle et budget</string>
+    <string name="bots_label_daily_budget">Budget quotidien (tokens)</string>
+    <string name="bots_budget_unlimited">0 = illimité</string>
+    <string name="bots_cd_apply_budget">Appliquer le budget</string>
+    <string name="bots_model_dialog_title">Modèle de l\'équipier</string>
+    <string name="bots_model_instance_default">Défaut de l\'instance</string>
+    <string name="bots_cd_selected">Sélectionné</string>
+    <string name="bots_empty_models">Aucun modèle : ajoute une clé dans Réglages → Fournisseurs.</string>
+    <string name="bots_model_no_key">clé absente</string>
+    <string name="bots_action_close">Fermer</string>
+
+    <!-- BotsScreen : flotte d'un chef -->
+    <string name="bots_label_members">Membres</string>
+    <string name="bots_members_count">%1$d / %2$d</string>
+    <string name="bots_cd_remove_from_fleet">Retirer %1$s de la flotte</string>
+    <string name="bots_member_of_fleet">Membre de la flotte de %1$s.</string>
+    <string name="bots_action_leave">Quitter</string>
+    <string name="bots_action_promote">Promouvoir</string>
+    <string name="bots_action_auto">Auto</string>
+    <string name="bots_action_member">Membre</string>
+
+    <!-- BotsScreen : tâches, boîte aux lettres, livrables -->
+    <string name="bots_section_delegated_tasks">Tâches déléguées</string>
+    <string name="bots_section_mailbox">Boîte aux lettres</string>
+    <string name="bots_label_message">message</string>
+    <string name="bots_section_deliverables">Livrables</string>
+    <string name="bots_empty_deliverables">Aucun livrable : l\'équipier n\'a rien déposé dans son dossier.</string>
+    <string name="bots_empty_runs">Aucun run enregistré pour cet équipier.</string>
+    <string name="bots_cd_photo_of">Photo de %1$s</string>
+
+    <!-- BotsScreen : ajouter un membre à une flotte -->
+    <string name="bots_add_member_title">Ajouter un membre</string>
+    <string name="bots_add_member_hint">Un équipier libre rejoint la flotte en un tap.</string>
+    <string name="bots_add_member_empty">Aucun équipier libre : tous sont déjà en flotte, ou il n\'y en a pas encore.</string>
+    <string name="bots_cd_add_bot">Ajouter %1$s</string>
+    <string name="bots_action_create_bot">Créer un bot</string>
+
+    <!-- BotsScreen : nouveau membre -->
+    <string name="bots_new_member_title">Nouveau membre</string>
+    <string name="bots_action_add">Ajouter</string>
+
+    <!-- NewBotDialog -->
+    <string name="newbot_title">Nouvel équipier</string>
+    <string name="newbot_submit">Créer</string>
+    <string name="newbot_label_name">Nom</string>
+    <string name="newbot_placeholder_name">Veille, Rédacteur, Atelier…</string>
+    <string name="newbot_label_id">Identifiant</string>
+    <string name="newbot_supporting_id">Minuscules, chiffres et tirets. Sert de nom de dossier.</string>
+    <string name="newbot_label_tier">Ce qu\'il a le droit de faire</string>
+    <string name="newbot_tier_read_only">Lecture</string>
+    <string name="newbot_tier_write">Écriture</string>
+    <string name="newbot_tier_operator">Opérateur</string>
+    <string name="newbot_tier_full">Complet</string>
+    <string name="newbot_label_persona">Persona (optionnel)</string>
+    <string name="newbot_placeholder_persona">Tu es…</string>
+    <string name="newbot_action_cancel">Annuler</string>
+    <string name="newbot_confirm_delete_title">Supprimer « %1$s » ?</string>
+    <string name="newbot_confirm_delete_body">Son profil, son historique et ses fichiers de travail seront effacés. Ses équipiers, s\'il en a, partent avec lui. C\'est définitif.</string>
+    <string name="newbot_action_delete">Supprimer</string>
+
+    <!-- PermissionCard -->
+    <string name="perm_title_permission">AUTORISATION DEMANDÉE</string>
+    <string name="perm_title_continue">LE RUNTIME DEMANDE À CONTINUER</string>
+    <string name="perm_title_choice">CHOIX DEMANDÉ</string>
+    <string name="perm_title_mode">MODE D\'APPROBATION</string>
+    <string name="perm_footnote_permission">Le runtime attend ta réponse pour continuer.</string>
+    <string name="perm_footnote_continue">Une boucle a été détectée : continue ou arrête ici.</string>
+    <string name="perm_footnote_choice">Réponds pour débloquer l\'agent.</string>
+    <string name="perm_footnote_mode">Tu peux changer d\'avis à tout moment dans les réglages.</string>
+    <string name="perm_action_allow">Autoriser</string>
+    <string name="perm_action_always">Toujours</string>
+    <string name="perm_action_deny">Refuser</string>
+    <string name="perm_action_keep_asking">Rester en demande</string>
+    <string name="perm_action_allow_all">Tout autoriser</string>
+</resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common.kt -->
+    <string name="common_back">Retour</string>
+    <string name="common_refresh">Rafraîchir</string>
+    <string name="common_collapse_section">Réduire %1$s</string>
+    <string name="common_expand_section">Déplier %1$s</string>
+    <string name="common_ok">OK</string>
+
+    <!-- Composer.kt -->
+    <string name="composer_hint_default">Demande à Mercury…</string>
+    <string name="composer_attach">Joindre une photo ou un PDF</string>
+    <string name="composer_dictate">Dicter</string>
+    <string name="composer_send">Envoyer</string>
+
+    <!-- ConnectScreen.kt -->
+    <string name="connect_brand">Mercury</string>
+    <string name="connect_tagline">Ton agent, dans ta poche.</string>
+    <string name="connect_label_server">Serveur</string>
+    <string name="connect_label_username">Identifiant</string>
+    <string name="connect_label_password">Mot de passe</string>
+    <string name="connect_sign_in">Se connecter</string>
+    <string name="connect_reachability_hint">Le dashboard Mercury doit être joignable depuis le téléphone (Tailscale + `tailscale serve`, ou tunnel SSH).</string>
+</resources>

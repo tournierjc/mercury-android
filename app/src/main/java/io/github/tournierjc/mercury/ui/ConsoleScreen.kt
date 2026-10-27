@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -59,6 +60,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.GitJson
 import io.github.tournierjc.mercury.data.SpotifyJson
@@ -109,7 +111,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             .safeDrawingPadding(),
     ) {
         ScreenHeader(
-            title = "Console",
+            title = stringResource(R.string.console_title),
             subtitle = state.status?.let { "${it.state.ifBlank { "?" }} · ${formatUptime(it.uptime)}" },
             onBack = onBack,
             onRefresh = viewModel::refresh,
@@ -154,10 +156,10 @@ fun ConsoleScreen(onBack: () -> Unit) {
             WorkspaceSection(state, viewModel)
             MusicSection(state, viewModel)
 
-            SectionTitle("Système")
+            SectionTitle(stringResource(R.string.console_section_system))
             CardBlock {
                 Text(
-                    text = "Redémarrer le runtime réinitialise les sessions en cours. Le pont appareil n'est pas affecté.",
+                    text = stringResource(R.string.console_restart_required_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
@@ -165,10 +167,9 @@ fun ConsoleScreen(onBack: () -> Unit) {
                     onClick = { confirmRestart = true },
                     enabled = !state.busy,
                     modifier = Modifier.padding(top = 6.dp),
-                ) { Text("Redémarrer Mercury", color = colors.danger) }
+                ) { Text(stringResource(R.string.console_restart_mercury), color = colors.danger) }
                 Text(
-                    text = "Arrêter le démon libère les canaux, consolide la mémoire et relâche ses fichiers. " +
-                        "Mercury ne l'accepte que depuis la machine qui l'héberge.",
+                    text = stringResource(R.string.console_shutdown_note),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                     modifier = Modifier.padding(top = 12.dp),
@@ -177,7 +178,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
                     onClick = { confirmShutdown = true },
                     enabled = !state.busy,
                     modifier = Modifier.padding(top = 6.dp),
-                ) { Text("Arrêter Mercury", color = colors.danger) }
+                ) { Text(stringResource(R.string.console_shutdown_mercury), color = colors.danger) }
             }
             Text(
                 text = " ",
@@ -192,11 +193,10 @@ fun ConsoleScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmShutdown = false },
             containerColor = colors.surface,
-            title = { Text("Arrêter le démon ?", color = colors.danger) },
+            title = { Text(stringResource(R.string.console_shutdown_dialog_title), color = colors.danger) },
             text = {
                 Text(
-                    "L'agent s'arrête proprement : les tours en cours sont interrompus et plus rien ne répond " +
-                        "avant un redémarrage. Depuis le téléphone, Mercury peut refuser l'ordre (hôte et jeton local requis).",
+                    stringResource(R.string.console_shutdown_dialog_body),
                     color = colors.textSecondary,
                 )
             },
@@ -204,9 +204,9 @@ fun ConsoleScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     confirmShutdown = false
                     viewModel.shutdown()
-                }) { Text("Arrêter", color = colors.danger) }
+                }) { Text(stringResource(R.string.console_stop), color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { confirmShutdown = false }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { confirmShutdown = false }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 
@@ -214,10 +214,10 @@ fun ConsoleScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmRestart = false },
             containerColor = colors.surface,
-            title = { Text("Redémarrer le runtime ?", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.console_restart_dialog_title), color = colors.textPrimary) },
             text = {
                 Text(
-                    "Les tours en cours sont interrompus, le conteneur revient en quelques secondes.",
+                    stringResource(R.string.console_restart_dialog_body),
                     color = colors.textSecondary,
                 )
             },
@@ -225,9 +225,9 @@ fun ConsoleScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     confirmRestart = false
                     viewModel.restart()
-                }) { Text("Redémarrer", color = colors.danger) }
+                }) { Text(stringResource(R.string.console_restart), color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { confirmRestart = false }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { confirmRestart = false }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 
@@ -238,22 +238,22 @@ fun ConsoleScreen(onBack: () -> Unit) {
 
 @Composable
 private fun RuntimeSection(state: ConsoleUiState) {
-    SectionTitle("Runtime")
+    SectionTitle(stringResource(R.string.console_section_runtime))
     CardBlock {
         val status = state.status
         val health = state.health
         if (status == null) {
-            Text("État indisponible.", style = MaterialTheme.typography.bodyMedium, color = LocalMercuryColors.current.textSecondary)
+            Text(stringResource(R.string.console_status_unavailable), style = MaterialTheme.typography.bodyMedium, color = LocalMercuryColors.current.textSecondary)
             return@CardBlock
         }
-        KeyValueRow("État", status.state.ifBlank { if (status.running) "actif" else "arrêté" }, highlight = status.running)
-        KeyValueRow("Uptime", formatUptime(status.uptime))
-        KeyValueRow("Tokens du jour", "${formatTokens(status.tokens.dailyUsed)} / ${formatTokens(status.tokens.dailyBudget)}")
+        KeyValueRow(stringResource(R.string.console_label_state), status.state.ifBlank { if (status.running) stringResource(R.string.console_active) else stringResource(R.string.console_stopped) }, highlight = status.running)
+        KeyValueRow(stringResource(R.string.console_label_uptime), formatUptime(status.uptime))
+        KeyValueRow(stringResource(R.string.console_label_daily_tokens), "${formatTokens(status.tokens.dailyUsed)} / ${formatTokens(status.tokens.dailyBudget)}")
         if (health != null) {
             KeyValueRow("PID", health.pid.toString())
-            KeyValueRow("Boucle (p99)", "${health.loopLag.p99Ms} ms")
-            KeyValueRow("Plugins", "${health.plugins.running} actifs · ${health.plugins.tools} outils")
-            if (health.plugins.safeMode) KeyValueRow("Mode sûr", "activé", highlight = true)
+            KeyValueRow(stringResource(R.string.console_label_loop_lag), "${health.loopLag.p99Ms} ms")
+            KeyValueRow(stringResource(R.string.console_label_plugins), stringResource(R.string.console_plugins_summary, health.plugins.running, health.plugins.tools))
+            if (health.plugins.safeMode) KeyValueRow(stringResource(R.string.console_label_safe_mode), stringResource(R.string.console_safe_mode_on), highlight = true)
         }
     }
 }
@@ -262,7 +262,7 @@ private fun RuntimeSection(state: ConsoleUiState) {
 @Composable
 private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     val code = state.code ?: return
-    SectionTitle("Mode programmation")
+    SectionTitle(stringResource(R.string.console_section_programming_mode))
     CardBlock {
         Text(
             text = code.statusText.ifBlank { code.state },
@@ -284,7 +284,7 @@ private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             }
         } else {
             Text(
-                text = "Indisponible sur ce runtime.",
+                text = stringResource(R.string.console_unavailable_on_runtime),
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalMercuryColors.current.textSecondary,
             )
@@ -295,45 +295,45 @@ private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TasksSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    SectionTitle("Tâches de fond")
+    SectionTitle(stringResource(R.string.console_section_background_tasks))
     CardBlock {
         state.tasks.forEach { task ->
             val id = (task["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
             ActionRow(
                 title = task.titleHint(),
                 subtitle = task.detailHint(),
-                trailing = "annuler",
+                trailing = stringResource(R.string.console_trailing_cancel),
                 onClick = { if (id.isNotBlank()) viewModel.cancelTask(id) },
             )
         }
         if (state.tasks.isEmpty()) {
             Text(
-                text = "Aucune tâche en cours.",
+                text = stringResource(R.string.console_no_tasks),
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalMercuryColors.current.textSecondary,
             )
         } else {
-            TextButton(onClick = viewModel::clearFinishedTasks) { Text("Effacer les tâches terminées") }
+            TextButton(onClick = viewModel::clearFinishedTasks) { Text(stringResource(R.string.console_clear_finished_tasks)) }
         }
     }
 }
 
 @Composable
 private fun SchedulesSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    SectionTitle("Automatisations")
+    SectionTitle(stringResource(R.string.console_section_schedules))
     CardBlock {
         state.schedules.forEach { schedule ->
             val id = (schedule["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
             ActionRow(
                 title = schedule.titleHint(),
                 subtitle = schedule.detailHint(),
-                trailing = "supprimer",
+                trailing = stringResource(R.string.console_trailing_delete),
                 onClick = { if (id.isNotBlank()) viewModel.deleteSchedule(id) },
             )
         }
         if (state.schedules.isEmpty()) {
             Text(
-                text = "Aucune automatisation programmée.",
+                text = stringResource(R.string.console_no_schedules),
                 style = MaterialTheme.typography.bodyMedium,
                 color = LocalMercuryColors.current.textSecondary,
             )
@@ -344,14 +344,14 @@ private fun SchedulesSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
 @Composable
 private fun AgentsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     if (state.agents.isEmpty()) return
-    SectionTitle("Agents")
+    SectionTitle(stringResource(R.string.console_section_agents))
     CardBlock {
         state.agents.forEach { agent ->
             ActionRow(title = agent.titleHint(), subtitle = agent.detailHint())
         }
         ButtonRow {
-            TextButton(onClick = viewModel::haltAgents) { Text("Pause") }
-            TextButton(onClick = viewModel::stopAgents) { Text("Arrêter") }
+            TextButton(onClick = viewModel::haltAgents) { Text(stringResource(R.string.console_pause)) }
+            TextButton(onClick = viewModel::stopAgents) { Text(stringResource(R.string.console_stop)) }
         }
     }
 }
@@ -364,7 +364,7 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     var installRegistry by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle("Skills")
+    SectionTitle(stringResource(R.string.console_section_skills))
     CardBlock {
         state.skills.forEach { skill ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -396,14 +396,14 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
         if (state.skills.isEmpty()) {
             Text(
-                text = "Aucun skill installé.",
+                text = stringResource(R.string.console_no_skills),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
         }
         ButtonRow {
-            TextButton(onClick = { installUrl = true }, enabled = !state.busy) { Text("Installer (URL)") }
-            TextButton(onClick = { installRegistry = true }, enabled = !state.busy) { Text("Registre") }
+            TextButton(onClick = { installUrl = true }, enabled = !state.busy) { Text(stringResource(R.string.console_install_url)) }
+            TextButton(onClick = { installRegistry = true }, enabled = !state.busy) { Text(stringResource(R.string.console_registry)) }
         }
     }
 
@@ -412,19 +412,18 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         AlertDialog(
             onDismissRequest = { installUrl = false },
             containerColor = colors.surface,
-            title = { Text("Installer un skill", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.console_install_skill_title), color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Mercury télécharge le paquet depuis une URL http(s). Un dossier local du serveur " +
-                            "n'est pas accepté par cette route.",
+                        stringResource(R.string.console_install_url_body),
                         color = colors.textSecondary,
                         style = MaterialTheme.typography.labelSmall,
                     )
                     OutlinedTextField(
                         value = url,
                         onValueChange = { url = it },
-                        label = { Text("URL du paquet") },
+                        label = { Text(stringResource(R.string.console_package_url_label)) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         modifier = Modifier.fillMaxWidth(),
@@ -439,9 +438,9 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                         viewModel.installSkill(target)
                     },
                     enabled = url.isNotBlank(),
-                ) { Text("Installer") }
+                ) { Text(stringResource(R.string.console_install)) }
             },
-            dismissButton = { TextButton(onClick = { installUrl = false }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { installUrl = false }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 
@@ -451,25 +450,25 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         AlertDialog(
             onDismissRequest = { installRegistry = false },
             containerColor = colors.surface,
-            title = { Text("Installer depuis le registre", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.console_install_from_registry_title), color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Identifiant au format catégorie/nom, par exemple research/arxiv.",
+                        stringResource(R.string.console_registry_id_body),
                         color = colors.textSecondary,
                         style = MaterialTheme.typography.labelSmall,
                     )
                     OutlinedTextField(
                         value = id,
                         onValueChange = { id = it },
-                        label = { Text("Identifiant") },
+                        label = { Text(stringResource(R.string.console_identifier)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     FilterChip(
                         selected = force,
                         onClick = { force = !force },
-                        label = { Text("Forcer (réinstaller)") },
+                        label = { Text(stringResource(R.string.console_force_reinstall)) },
                     )
                 }
             },
@@ -481,9 +480,9 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                         viewModel.installSkillFromRegistry(target, force)
                     },
                     enabled = id.isNotBlank(),
-                ) { Text("Installer") }
+                ) { Text(stringResource(R.string.console_install)) }
             },
-            dismissButton = { TextButton(onClick = { installRegistry = false }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { installRegistry = false }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 
@@ -492,11 +491,10 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             containerColor = colors.surface,
-            title = { Text("Supprimer le skill ?", color = colors.danger) },
+            title = { Text(stringResource(R.string.console_delete_skill_title), color = colors.danger) },
             text = {
                 Text(
-                    "Le dossier de « $victim » est retiré du serveur, références et scripts compris. " +
-                        "Cette action ne peut pas être annulée.",
+                    stringResource(R.string.console_delete_skill_body, victim),
                     color = colors.textSecondary,
                 )
             },
@@ -504,9 +502,9 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 TextButton(onClick = {
                     pendingDelete = null
                     viewModel.deleteSkill(victim)
-                }) { Text("Supprimer", color = colors.danger) }
+                }) { Text(stringResource(R.string.console_delete), color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 }
@@ -514,7 +512,7 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 @Composable
 private fun PluginsSection(state: ConsoleUiState) {
     if (state.plugins.isEmpty()) return
-    SectionTitle("Plugins")
+    SectionTitle(stringResource(R.string.console_section_plugins))
     CardBlock {
         state.plugins.forEach { plugin ->
             ActionRow(
@@ -531,13 +529,13 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
     val workspace = state.workspace ?: return
     val colors = LocalMercuryColors.current
     var changing by remember { mutableStateOf(false) }
-    SectionTitle("Espace de travail")
+    SectionTitle(stringResource(R.string.console_section_workspace))
     CardBlock {
-        KeyValueRow("Dossier", workspace.cwd.ifBlank { "—" })
-        KeyValueRow("Projet", workspace.projectName.ifBlank { "—" })
-        KeyValueRow("Git", if (workspace.isGit) workspace.branch.ifBlank { "dépôt" } else "aucun")
+        KeyValueRow(stringResource(R.string.console_label_folder), workspace.cwd.ifBlank { "—" })
+        KeyValueRow(stringResource(R.string.console_label_project), workspace.projectName.ifBlank { "—" })
+        KeyValueRow("Git", if (workspace.isGit) workspace.branch.ifBlank { stringResource(R.string.console_repository) } else stringResource(R.string.console_none))
         ButtonRow {
-            TextButton(onClick = { changing = true }, enabled = !state.busy) { Text("Changer la racine") }
+            TextButton(onClick = { changing = true }, enabled = !state.busy) { Text(stringResource(R.string.console_change_root)) }
         }
     }
 
@@ -546,19 +544,18 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
         AlertDialog(
             onDismissRequest = { changing = false },
             containerColor = colors.surface,
-            title = { Text("Changer la racine du workspace", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.console_change_root_title), color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Le dossier doit déjà exister sur la machine de Mercury : le chemin est celui du serveur, " +
-                            "pas celui du téléphone.",
+                        stringResource(R.string.console_change_root_body),
                         color = colors.textSecondary,
                         style = MaterialTheme.typography.labelSmall,
                     )
                     OutlinedTextField(
                         value = path,
                         onValueChange = { path = it },
-                        label = { Text("Chemin absolu") },
+                        label = { Text(stringResource(R.string.console_absolute_path)) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         modifier = Modifier.fillMaxWidth(),
@@ -573,9 +570,9 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
                         viewModel.setWorkspaceRoot(target)
                     },
                     enabled = path.isNotBlank(),
-                ) { Text("Déplacer") }
+                ) { Text(stringResource(R.string.console_move)) }
             },
-            dismissButton = { TextButton(onClick = { changing = false }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { changing = false }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 }
@@ -584,31 +581,31 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
 @Composable
 private fun CostSection(state: ConsoleUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Coût")
+    SectionTitle(stringResource(R.string.console_section_cost))
     CardBlock {
         val cost = state.cost
         if (cost == null) {
             Text(
-                text = "Dépense indisponible sur ce runtime.",
+                text = stringResource(R.string.console_cost_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
             return@CardBlock
         }
-        KeyValueRow("Fenêtre", "${cost.days} jours")
-        KeyValueRow("Tokens consommés", formatTokens(cost.windowTokens))
+        KeyValueRow(stringResource(R.string.console_label_window), stringResource(R.string.console_window_days, cost.days))
+        KeyValueRow(stringResource(R.string.console_label_tokens_used), formatTokens(cost.windowTokens))
         KeyValueRow(
-            label = "Plafond du jour",
-            value = if (cost.fleetCap <= 0) "illimité" else "${formatTokens(cost.fleetToday)} / ${formatTokens(cost.fleetCap)}",
+            label = stringResource(R.string.console_label_daily_cap),
+            value = if (cost.fleetCap <= 0) stringResource(R.string.console_unlimited) else "${formatTokens(cost.fleetToday)} / ${formatTokens(cost.fleetCap)}",
             highlight = cost.fleetPaused,
         )
         if (cost.fleetPaused) {
-            KeyValueRow("Flotte", "en pause — plafond atteint", highlight = true)
+            KeyValueRow(stringResource(R.string.console_label_fleet), stringResource(R.string.console_fleet_paused_cap_reached), highlight = true)
         }
         val top = cost.topByTokens()
         if (top.isEmpty()) {
             Text(
-                text = "Aucune dépense sur la période.",
+                text = stringResource(R.string.console_no_spend),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -618,11 +615,11 @@ private fun CostSection(state: ConsoleUiState) {
                     title = row.name.ifBlank { row.id },
                     subtitle = listOfNotNull(
                         "${formatTokens(row.window.tokens)} tokens",
-                        "${row.window.runs} passage(s)",
-                        row.window.failed.takeIf { it > 0 }?.let { "$it échec(s)" },
-                        row.cap.takeIf { it > 0 }?.let { "plafond ${formatTokens(it)}/j" },
+                        stringResource(R.string.console_runs_count, row.window.runs),
+                        row.window.failed.takeIf { it > 0 }?.let { stringResource(R.string.console_failures_count, it) },
+                        row.cap.takeIf { it > 0 }?.let { stringResource(R.string.console_bot_cap, formatTokens(it)) },
                     ).joinToString(" · "),
-                    trailing = if (row.paused) "en pause" else "",
+                    trailing = if (row.paused) stringResource(R.string.console_paused) else "",
                 )
             }
         }
@@ -633,27 +630,28 @@ private fun CostSection(state: ConsoleUiState) {
 @Composable
 private fun StorageSection(state: ConsoleUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Stockage")
+    SectionTitle(stringResource(R.string.console_section_storage))
     CardBlock {
         val storage = state.storage
         if (storage == null) {
             Text(
-                text = "Occupation disque indisponible sur ce runtime.",
+                text = stringResource(R.string.console_storage_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
             return@CardBlock
         }
-        KeyValueRow("Total", formatBytes(storage.totalBytes))
+        KeyValueRow(stringResource(R.string.console_label_total), formatBytes(storage.totalBytes))
         KeyValueRow(
-            label = "File",
-            value = "${storage.queue.pending} en attente · ${storage.queue.claimed} en cours" +
-                if (storage.queue.dlq > 0) " · ${storage.queue.dlq} en échec" else "",
+            label = stringResource(R.string.console_label_queue),
+            value = stringResource(R.string.console_queue_pending, storage.queue.pending) + " · " +
+                stringResource(R.string.console_queue_in_progress, storage.queue.claimed) +
+                if (storage.queue.dlq > 0) " · " + stringResource(R.string.console_queue_failed, storage.queue.dlq) else "",
         )
         val top = storage.topBySize()
         if (top.isEmpty()) {
             Text(
-                text = "Aucun dossier d'équipier à mesurer.",
+                text = stringResource(R.string.console_no_teammate_dirs),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -661,7 +659,7 @@ private fun StorageSection(state: ConsoleUiState) {
             top.forEach { row ->
                 ActionRow(
                     title = row.id,
-                    subtitle = "${formatBytes(row.bytes)} dont journal ${formatBytes(row.journalBytes)}",
+                    subtitle = stringResource(R.string.console_size_with_journal, formatBytes(row.bytes), formatBytes(row.journalBytes)),
                     trailing = formatBytes(row.profileBytes),
                 )
             }
@@ -669,25 +667,26 @@ private fun StorageSection(state: ConsoleUiState) {
     }
 }
 
+@Composable
 private fun mcpStateLabel(state: String): String = when (state) {
-    "connected" -> "connecté"
-    "connecting" -> "connexion…"
-    "reconnecting" -> "reconnexion…"
-    "failed" -> "échec"
-    "disabled" -> "désactivé"
-    else -> state.ifBlank { "inconnu" }
+    "connected" -> stringResource(R.string.console_mcp_state_connected)
+    "connecting" -> stringResource(R.string.console_mcp_state_connecting)
+    "reconnecting" -> stringResource(R.string.console_mcp_state_reconnecting)
+    "failed" -> stringResource(R.string.console_mcp_state_failed)
+    "disabled" -> stringResource(R.string.console_mcp_state_disabled)
+    else -> state.ifBlank { stringResource(R.string.console_mcp_state_unknown) }
 }
 
 /** `GET /api/mcp` — read-only: which servers the runtime knows and what they expose. */
 @Composable
 private fun McpSection(state: ConsoleUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Serveurs MCP")
+    SectionTitle(stringResource(R.string.console_section_mcp))
     CardBlock {
         val mcp = state.mcp
         if (mcp == null) {
             Text(
-                text = "État MCP indisponible.",
+                text = stringResource(R.string.console_mcp_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -695,7 +694,7 @@ private fun McpSection(state: ConsoleUiState) {
         }
         if (!mcp.available) {
             Text(
-                text = "Ce runtime n'expose pas de gestion MCP.",
+                text = stringResource(R.string.console_mcp_not_exposed),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -703,7 +702,7 @@ private fun McpSection(state: ConsoleUiState) {
         }
         if (mcp.servers.isEmpty()) {
             Text(
-                text = "Aucun serveur MCP configuré.",
+                text = stringResource(R.string.console_no_mcp_servers),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -711,24 +710,26 @@ private fun McpSection(state: ConsoleUiState) {
         }
         mcp.servers.forEach { server ->
             KeyValueRow(
-                label = server.id.ifBlank { "serveur" },
+                label = server.id.ifBlank { stringResource(R.string.console_server) },
                 value = mcpStateLabel(server.state),
                 highlight = server.state == "connected",
             )
             KeyValueRow(
-                label = "Transport",
+                label = stringResource(R.string.console_label_transport),
                 value = listOf(server.transport, server.target).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "—" },
             )
-            KeyValueRow("Outils", "${server.toolCount} exposé(s)")
+            KeyValueRow(stringResource(R.string.console_label_tools), stringResource(R.string.console_tools_exposed, server.toolCount))
             server.error?.takeIf { it.isNotBlank() }?.let { message ->
                 Text(message, style = MaterialTheme.typography.labelSmall, color = colors.danger)
             }
             if (server.tools.isNotEmpty()) {
+                // Resolved here: joinToString's lambda is not a composable context.
+                val blockedLabel = stringResource(R.string.console_blocked)
                 Text(
                     text = server.tools.joinToString("\n") { tool ->
                         val name = tool.exposedName.ifBlank { tool.name }
                         val flag = when {
-                            !tool.allowed -> "bloqué"
+                            !tool.allowed -> blockedLabel
                             tool.autoApprove -> "auto"
                             else -> ""
                         }
@@ -760,27 +761,27 @@ private fun CreateBotDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Nouvel équipier", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.console_new_bot_title), color = colors.textPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = id,
                     onValueChange = { id = it.filter { c -> c.isLetterOrDigit() || c == '-' || c == '_' } },
-                    label = { Text("Identifiant") },
+                    label = { Text(stringResource(R.string.console_identifier)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
+                    label = { Text(stringResource(R.string.console_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Rôle (optionnel)") },
+                    label = { Text(stringResource(R.string.console_role_optional)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -801,9 +802,9 @@ private fun CreateBotDialog(
             TextButton(
                 onClick = { onConfirm(id.trim(), name.trim(), description, tier) },
                 enabled = id.isNotBlank() && name.isNotBlank(),
-            ) { Text("Créer") }
+            ) { Text(stringResource(R.string.console_create)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.console_cancel)) } },
     )
 }
 
@@ -858,7 +859,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
         historyIndex = -1
     }
 
-    CollapsibleSection("Terminal") {
+    CollapsibleSection(stringResource(R.string.console_section_terminal)) {
         // The screen itself: monospace on a sunken panel, prompt and transcript together.
         Column(
             modifier = Modifier
@@ -867,7 +868,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             Text(
-                text = "hôte · espace de travail Mercury · 30 s max",
+                text = stringResource(R.string.console_terminal_hint),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
             )
@@ -880,7 +881,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
             ) {
                 if (log.isEmpty() && !state.terminalBusy) {
                     Text(
-                        text = "Session vide. Une commande tourne sur l'hôte, pas sur le téléphone.",
+                        text = stringResource(R.string.console_terminal_empty),
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                         color = colors.textSecondary,
                     )
@@ -946,7 +947,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
                 ) {
                     Icon(
                         Icons.Rounded.PlayArrow,
-                        contentDescription = "Exécuter",
+                        contentDescription = stringResource(R.string.console_run),
                         tint = if (line.isNotBlank() && !state.terminalBusy) colors.accent else colors.textSecondary,
                         modifier = Modifier.size(18.dp),
                     )
@@ -957,7 +958,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
             listOf(
                 QuickAction(
                     icon = Icons.Rounded.History,
-                    label = "Précédente",
+                    label = stringResource(R.string.console_previous_command),
                     enabled = log.isNotEmpty(),
                     onClick = {
                         // Walk back through the session, newest first, without leaving the field.
@@ -968,14 +969,14 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
                 ),
                 QuickAction(
                     icon = Icons.Rounded.DeleteSweep,
-                    label = "Effacer",
+                    label = stringResource(R.string.console_clear),
                     tint = colors.danger,
                     enabled = log.isNotEmpty(),
                     onClick = viewModel::clearTerminal,
                 ),
                 QuickAction(
                     icon = Icons.Rounded.FolderOpen,
-                    label = "Dossier",
+                    label = stringResource(R.string.console_label_folder),
                     onClick = { viewModel.setTerminalCwd("") },
                     enabled = state.terminalCwd.isNotBlank(),
                 ),
@@ -987,11 +988,11 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
         AlertDialog(
             onDismissRequest = { pending = null },
             containerColor = colors.surface,
-            title = { Text("Commande destructive", color = colors.danger) },
+            title = { Text(stringResource(R.string.console_destructive_command_title), color = colors.danger) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        "Cette commande peut supprimer des données ou arrêter un service :",
+                        stringResource(R.string.console_destructive_command_body),
                         color = colors.textSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -1007,9 +1008,9 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
                     val cmd = pending
                     pending = null
                     if (cmd != null) viewModel.runCommand(cmd, state.terminalCwd)
-                }) { Text("Exécuter quand même", color = colors.danger) }
+                }) { Text(stringResource(R.string.console_run_anyway), color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 }
@@ -1048,17 +1049,17 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     CardBlock {
         if (git == null) {
             Text(
-                text = "Aucun dépôt git accessible dans l'espace de travail.",
+                text = stringResource(R.string.console_no_repository),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            TextButton(onClick = viewModel::refreshGit) { Text("Vérifier à nouveau") }
+            TextButton(onClick = viewModel::refreshGit) { Text(stringResource(R.string.console_check_again)) }
             return@CardBlock
         }
 
-        KeyValueRow("Branche", git.branch.ifBlank { "—" }, highlight = true)
-        KeyValueRow("Amont", git.upstream.ifBlank { "aucun" })
-        KeyValueRow("Synchronisation", GitJson.syncLabel(git.ahead, git.behind))
+        KeyValueRow(stringResource(R.string.console_label_branch), git.branch.ifBlank { "—" }, highlight = true)
+        KeyValueRow(stringResource(R.string.console_label_upstream), git.upstream.ifBlank { stringResource(R.string.console_none) })
+        KeyValueRow(stringResource(R.string.console_label_sync), GitJson.syncLabel(git.ahead, git.behind))
         Text(
             text = GitJson.summaryLabel(git),
             style = MaterialTheme.typography.bodyMedium,
@@ -1071,7 +1072,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         if (stagedFiles.isNotEmpty()) {
             Text(
-                text = "Indexé",
+                text = stringResource(R.string.console_staged),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 10.dp),
@@ -1080,7 +1081,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 ActionRow(
                     title = file.path,
                     subtitle = GitJson.changeLabel(file),
-                    trailing = "désindexer",
+                    trailing = stringResource(R.string.console_unstage),
                     enabled = !state.gitBusy,
                     onClick = { viewModel.unstage(listOf(file.path)) },
                 )
@@ -1088,7 +1089,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
         if (unstagedFiles.isNotEmpty()) {
             Text(
-                text = "Modifié",
+                text = stringResource(R.string.console_modified),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 10.dp),
@@ -1097,7 +1098,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 ActionRow(
                     title = file.path,
                     subtitle = GitJson.changeLabel(file),
-                    trailing = "indexer",
+                    trailing = stringResource(R.string.console_stage),
                     enabled = !state.gitBusy,
                     onClick = { viewModel.stage(listOf(file.path)) },
                 )
@@ -1105,7 +1106,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
         if (stagedFiles.isEmpty() && unstagedFiles.isEmpty()) {
             Text(
-                text = "Arbre propre : rien à indexer.",
+                text = stringResource(R.string.console_clean_tree),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 6.dp),
@@ -1116,76 +1117,84 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             TextButton(
                 onClick = viewModel::stageAll,
                 enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
-            ) { Text("Tout indexer") }
+            ) { Text(stringResource(R.string.console_stage_all)) }
             TextButton(
                 onClick = viewModel::unstageAll,
                 enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
-            ) { Text("Tout désindexer") }
+            ) { Text(stringResource(R.string.console_unstage_all)) }
         }
         ButtonRow {
             TextButton(
                 onClick = { viewModel.showDiff(null, false) },
                 enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
-            ) { Text("Diff non indexé") }
+            ) { Text(stringResource(R.string.console_diff_unstaged)) }
             TextButton(
                 onClick = { viewModel.showDiff(null, true) },
                 enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
-            ) { Text("Diff indexé") }
+            ) { Text(stringResource(R.string.console_diff_staged)) }
         }
 
         OutlinedTextField(
             value = state.commitDraft,
             onValueChange = viewModel::setCommitDraft,
-            label = { Text("Message de commit") },
+            label = { Text(stringResource(R.string.console_commit_message)) },
             minLines = 2,
             textStyle = MaterialTheme.typography.bodyMedium,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 10.dp),
         )
+        // Resolved in the composable scope: the onClick lambdas below are not composable.
+        val commitTitle = stringResource(R.string.console_create_commit_title)
+        val commitBody = stringResource(R.string.console_create_commit_body)
+        val commitConfirm = stringResource(R.string.console_commit)
         ButtonRow {
             TextButton(
                 onClick = viewModel::generateCommitMessage,
                 enabled = !state.gitBusy,
-            ) { Text(if (state.gitBusy) "…" else "Générer") }
+            ) { Text(if (state.gitBusy) "…" else stringResource(R.string.console_generate)) }
             TextButton(
                 onClick = { confirm = GitConfirm(
-                    title = "Créer le commit ?",
-                    body = "Le message part tel quel. Mercury ajoute lui-même la ligne " +
-                        "« Co-authored-by » et ne commite que ce qui est indexé.",
-                    confirm = "Committer",
+                    title = commitTitle,
+                    body = commitBody,
+                    confirm = commitConfirm,
                     action = viewModel::commit,
                 ) },
                 enabled = !state.gitBusy && state.commitDraft.isNotBlank(),
-            ) { Text("Committer") }
+            ) { Text(stringResource(R.string.console_commit)) }
         }
+        val pushTitle = stringResource(R.string.console_push_branch_title)
+        val pushBody = stringResource(R.string.console_push_body)
+        val pushConfirm = stringResource(R.string.console_push)
+        val pullTitle = stringResource(R.string.console_pull_title)
+        val pullBody = stringResource(R.string.console_pull_body)
+        val pullConfirm = stringResource(R.string.console_pull)
         ButtonRow {
             TextButton(
                 onClick = { confirm = GitConfirm(
-                    title = "Pousser la branche ?",
-                    body = "Les commits partent sur origin. Rien n'est réécrit, rien n'est forcé.",
-                    confirm = "Pousser",
+                    title = pushTitle,
+                    body = pushBody,
+                    confirm = pushConfirm,
                     action = viewModel::push,
                 ) },
                 enabled = !state.gitBusy,
-            ) { Text("Pousser") }
+            ) { Text(stringResource(R.string.console_push)) }
             TextButton(
                 onClick = { confirm = GitConfirm(
-                    title = "Tirer les changements ?",
-                    body = "git pull sur la branche courante : le répertoire de travail peut " +
-                        "recevoir des commits distants.",
-                    confirm = "Tirer",
+                    title = pullTitle,
+                    body = pullBody,
+                    confirm = pullConfirm,
                     action = viewModel::pull,
                 ) },
                 enabled = !state.gitBusy,
-            ) { Text("Tirer") }
-            TextButton(onClick = viewModel::refreshGit, enabled = !state.gitBusy) { Text("Rafraîchir") }
+            ) { Text(stringResource(R.string.console_pull)) }
+            TextButton(onClick = viewModel::refreshGit, enabled = !state.gitBusy) { Text(stringResource(R.string.console_refresh)) }
         }
 
         val branches = state.gitBranches.filter { it.name.isNotBlank() }
         if (branches.isNotEmpty()) {
             Text(
-                text = "Branches",
+                text = stringResource(R.string.console_label_branches),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 12.dp),
@@ -1196,14 +1205,16 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             ) {
                 branches.forEach { branch ->
                     val current = branch.isCurrent || branch.name == git.branch
+                    val switchTitle = stringResource(R.string.console_switch_branch_title)
+                    val switchBody = stringResource(R.string.console_switch_branch_body, branch.name)
+                    val switchConfirm = stringResource(R.string.console_switch)
                     FilterChip(
                         selected = current,
                         enabled = !state.gitBusy && !current,
                         onClick = { confirm = GitConfirm(
-                            title = "Changer de branche ?",
-                            body = "Le répertoire de travail passe sur « ${branch.name} ». " +
-                                "Un arbre modifié peut faire échouer le changement.",
-                            confirm = "Changer",
+                            title = switchTitle,
+                            body = switchBody,
+                            confirm = switchConfirm,
                             action = { viewModel.checkout(branch.name) },
                         ) },
                         label = { Text(branch.name) },
@@ -1214,7 +1225,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         if (state.gitLog.isNotEmpty()) {
             Text(
-                text = "Derniers commits",
+                text = stringResource(R.string.console_recent_commits),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 12.dp),
@@ -1249,7 +1260,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                     pending.action()
                 }) { Text(pending.confirm, color = if (pending.danger) colors.danger else colors.textPrimary) }
             },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Annuler") } },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text(stringResource(R.string.console_cancel)) } },
         )
     }
 
@@ -1275,7 +1286,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                 )
             },
-            confirmButton = { TextButton(onClick = viewModel::dismissDiff) { Text("Fermer") } },
+            confirmButton = { TextButton(onClick = viewModel::dismissDiff) { Text(stringResource(R.string.console_close)) } },
         )
     }
 }
@@ -1297,11 +1308,11 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     }
     var shuffle by remember { mutableStateOf(false) }
 
-    SectionTitle("Musique")
+    SectionTitle(stringResource(R.string.console_section_music))
     CardBlock {
         if (music == null || !music.available) {
             Text(
-                text = "Spotify n'est pas configuré sur ce runtime.",
+                text = stringResource(R.string.console_spotify_not_configured),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -1309,8 +1320,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
         if (!music.connected) {
             Text(
-                text = "Compte Spotify non connecté. Lance « /spotify auth » sur le runtime, " +
-                    "puis rafraîchis cette carte.",
+                text = stringResource(R.string.console_spotify_not_connected),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -1318,7 +1328,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
 
         KeyValueRow(
-            "Compte",
+            stringResource(R.string.console_label_account),
             listOf(music.accountName?.ifBlank { "—" } ?: "—", SpotifyJson.productLabel(music.product))
                 .joinToString(" · "),
         )
@@ -1326,7 +1336,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         val track = state.nowPlaying
         if (track == null) {
             Text(
-                text = "Rien en lecture.",
+                text = stringResource(R.string.console_nothing_playing),
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.textPrimary,
                 modifier = Modifier.padding(top = 6.dp),
@@ -1355,10 +1365,10 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
 
         ButtonRow {
-            TextButton(onClick = viewModel::previous, enabled = !state.musicBusy) { Text("Précédent") }
-            TextButton(onClick = viewModel::play, enabled = !state.musicBusy) { Text("Lecture") }
-            TextButton(onClick = viewModel::pause, enabled = !state.musicBusy) { Text("Pause") }
-            TextButton(onClick = viewModel::next, enabled = !state.musicBusy) { Text("Suivant") }
+            TextButton(onClick = viewModel::previous, enabled = !state.musicBusy) { Text(stringResource(R.string.console_previous_track)) }
+            TextButton(onClick = viewModel::play, enabled = !state.musicBusy) { Text(stringResource(R.string.console_play)) }
+            TextButton(onClick = viewModel::pause, enabled = !state.musicBusy) { Text(stringResource(R.string.console_pause)) }
+            TextButton(onClick = viewModel::next, enabled = !state.musicBusy) { Text(stringResource(R.string.console_next_track)) }
         }
 
         Row(
@@ -1368,7 +1378,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 .padding(top = 8.dp),
         ) {
             Text(
-                text = "Volume",
+                text = stringResource(R.string.console_label_volume),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
                 modifier = Modifier.weight(1f),
@@ -1391,7 +1401,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Aléatoire",
+                text = stringResource(R.string.console_shuffle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
                 modifier = Modifier.weight(1f),
@@ -1408,10 +1418,10 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         val devices = state.devices
         if (devices.size == 1) {
-            KeyValueRow("Appareil", devices[0].name.ifBlank { devices[0].label })
+            KeyValueRow(stringResource(R.string.console_label_device), devices[0].name.ifBlank { devices[0].label })
         } else if (devices.size > 1) {
             Text(
-                text = "Appareils",
+                text = stringResource(R.string.console_label_devices),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 10.dp),
@@ -1420,13 +1430,12 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 ActionRow(
                     title = device.name.ifBlank { device.id },
                     subtitle = device.label,
-                    trailing = if (device.active) "actif" else null,
+                    trailing = if (device.active) stringResource(R.string.console_active) else null,
                     selected = device.active,
                 )
             }
             Text(
-                text = "Le runtime joue sur l'appareil qu'il a choisi (« /spotify device ») : " +
-                    "cette liste le montre, elle ne le déplace pas.",
+                text = stringResource(R.string.console_devices_note),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp),
@@ -1434,7 +1443,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         }
 
         ButtonRow {
-            TextButton(onClick = viewModel::refreshMusic, enabled = !state.musicBusy) { Text("Rafraîchir") }
+            TextButton(onClick = viewModel::refreshMusic, enabled = !state.musicBusy) { Text(stringResource(R.string.console_refresh)) }
         }
     }
 }
@@ -1458,13 +1467,13 @@ private fun AddCrewDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Ajouter à une flotte", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.console_add_to_fleet_title), color = colors.textPrimary) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Chef de flotte", color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.console_fleet_lead), color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     leads.forEach { bot ->
                         val botId = (bot["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
@@ -1477,12 +1486,12 @@ private fun AddCrewDialog(
                         }
                     }
                 }
-                OutlinedTextField(value = id, onValueChange = { id = it }, label = { Text("Identifiant") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nom") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Spécialité") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = persona, onValueChange = { persona = it }, label = { Text("Persona (optionnel)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = id, onValueChange = { id = it }, label = { Text(stringResource(R.string.console_identifier)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.console_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text(stringResource(R.string.console_specialty)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = persona, onValueChange = { persona = it }, label = { Text(stringResource(R.string.console_persona_optional)) }, minLines = 2, modifier = Modifier.fillMaxWidth())
                 if (tiers.isNotEmpty()) {
-                    Text("Palier de permissions", color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.console_permission_tier), color = colors.textSecondary, style = MaterialTheme.typography.labelSmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         tiers.forEach { candidate ->
                             FilterChip(
@@ -1508,8 +1517,8 @@ private fun AddCrewDialog(
                     )
                 },
                 enabled = leadId.isNotBlank() && id.isNotBlank() && name.isNotBlank(),
-            ) { Text("Ajouter") }
+            ) { Text(stringResource(R.string.console_add)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.console_cancel)) } },
     )
 }

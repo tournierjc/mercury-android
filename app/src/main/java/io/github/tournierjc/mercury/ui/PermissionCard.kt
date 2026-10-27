@@ -15,7 +15,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.Interaction
 import io.github.tournierjc.mercury.data.InteractionKind
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -82,26 +84,29 @@ fun InteractionCard(
     }
 }
 
+@Composable
 private fun title(kind: InteractionKind): String = when (kind) {
-    InteractionKind.Permission -> "AUTORISATION DEMANDÉE"
-    InteractionKind.Continue -> "LE RUNTIME DEMANDE À CONTINUER"
-    InteractionKind.Choice -> "CHOIX DEMANDÉ"
-    InteractionKind.Mode -> "MODE D'APPROBATION"
+    InteractionKind.Permission -> stringResource(R.string.perm_title_permission)
+    InteractionKind.Continue -> stringResource(R.string.perm_title_continue)
+    InteractionKind.Choice -> stringResource(R.string.perm_title_choice)
+    InteractionKind.Mode -> stringResource(R.string.perm_title_mode)
 }
 
+@Composable
 private fun footnote(kind: InteractionKind): String = when (kind) {
-    InteractionKind.Permission -> "Le runtime attend ta réponse pour continuer."
-    InteractionKind.Continue -> "Une boucle a été détectée : continue ou arrête ici."
-    InteractionKind.Choice -> "Réponds pour débloquer l'agent."
-    InteractionKind.Mode -> "Tu peux changer d'avis à tout moment dans les réglages."
+    InteractionKind.Permission -> stringResource(R.string.perm_footnote_permission)
+    InteractionKind.Continue -> stringResource(R.string.perm_footnote_continue)
+    InteractionKind.Choice -> stringResource(R.string.perm_footnote_choice)
+    InteractionKind.Mode -> stringResource(R.string.perm_footnote_mode)
 }
 
+@Composable
 private fun label(action: String): String = when (action) {
-    "yes", "confirm", "ok" -> "Autoriser"
-    "always" -> "Toujours"
-    "no", "cancel", "stop" -> "Refuser"
-    "ask-me" -> "Rester en demande"
-    "allow-all" -> "Tout autoriser"
+    "yes", "confirm", "ok" -> stringResource(R.string.perm_action_allow)
+    "always" -> stringResource(R.string.perm_action_always)
+    "no", "cancel", "stop" -> stringResource(R.string.perm_action_deny)
+    "ask-me" -> stringResource(R.string.perm_action_keep_asking)
+    "allow-all" -> stringResource(R.string.perm_action_allow_all)
     else -> action.replaceFirstChar { it.uppercase() }
 }
 

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Teammates: the fleet, a bot's sheet, the creation dialog, the interaction card. -->
+<resources>
+    <!-- BotsScreen: header -->
+    <string name="bots_title_roster">Teammates and fleet</string>
+    <string name="bots_header_subtitle">%1$d teammates · %2$d queued</string>
+    <string name="bots_header_offline">" · offline"</string>
+    <string name="bots_cd_new_bot">New teammate</string>
+    <string name="bots_cd_conversation">Conversation</string>
+    <string name="bots_cd_conversation_with">Conversation with %1$s</string>
+    <string name="bots_error_share_failed">Could not share</string>
+    <string name="bots_error_unreadable_file">Unreadable file</string>
+    <string name="bots_error_unreadable_photo">Unreadable photo</string>
+
+    <!-- BotsScreen: recent activity -->
+    <string name="bots_section_recent_activity">Recent activity</string>
+
+    <!-- BotsScreen: fleet -->
+    <string name="bots_section_fleet">Fleet</string>
+    <string name="bots_action_import">Import</string>
+    <string name="bots_action_overwrite">Overwrite</string>
+    <string name="bots_action_overwrite_on">Overwrite: yes</string>
+    <string name="bots_fleet_import_hint">An imported bundle starts disabled: the fleet spends nothing until you turn it on.</string>
+    <string name="bots_fleet_no_lead">No fleet lead. A lead spawns its specialists from its own sheet.</string>
+    <string name="bots_role_fleet_lead">fleet lead</string>
+    <string name="bots_crew_running">%1$d running</string>
+
+    <!-- BotsScreen: roster -->
+    <string name="bots_section_waiting">Waiting on you · %1$d</string>
+    <string name="bots_waiting_default_activity">It is waiting for an answer before continuing.</string>
+    <string name="bots_action_open_lower">open</string>
+    <string name="bots_section_teammates">Teammates</string>
+    <string name="bots_empty_roster">No teammates. The + at the top right creates one.</string>
+    <string name="bots_lead_badge">"  lead"</string>
+    <string name="bots_lead_crew_count">" · %1$d running"</string>
+    <string name="bots_crew_of">crew of %1$s</string>
+
+    <!-- BotsScreen: bot sheet -->
+    <string name="bots_section_preview">Overview</string>
+    <string name="bots_role_solo">solo</string>
+    <string name="bots_state_enabled">enabled</string>
+    <string name="bots_state_disabled">disabled</string>
+    <string name="bots_label_activity">Activity</string>
+    <string name="bots_label_last_run">Last run</string>
+    <string name="bots_label_role">Role</string>
+    <string name="bots_label_model">Model</string>
+    <string name="bots_value_default">default</string>
+    <string name="bots_action_photo">Photo</string>
+    <string name="bots_action_start">Start</string>
+    <string name="bots_action_stop">Stop</string>
+    <string name="bots_action_run">Run</string>
+    <string name="bots_action_enable">Enable</string>
+    <string name="bots_action_disable">Disable</string>
+    <string name="bots_action_share">Share</string>
+    <string name="bots_action_delete">Delete</string>
+    <string name="bots_action_remove_photo">No photo</string>
+    <string name="bots_bundle_hint">The bundle carries identity, persona, permissions and skills — never secrets or the journal. A fleet lead exports its whole crew.</string>
+
+    <!-- BotsScreen: write to a bot -->
+    <string name="bots_section_write">Write to it</string>
+    <string name="bots_write_hint">The conversation is its own screen: this panel only configures it. A message leaves in the background, the answer is written in the conversation.</string>
+    <string name="bots_dispatch_hint">Quick task to hand off</string>
+    <string name="bots_cd_attach_file">Attach a file</string>
+    <string name="bots_cd_send_task">Send the task</string>
+    <string name="bots_cd_remove_attachment">Remove %1$s</string>
+
+    <!-- BotsScreen: persona -->
+    <string name="bots_section_persona">Persona</string>
+    <string name="bots_persona_hint">Who it is and how it works — this is what Mercury re-reads on every wake-up.</string>
+    <string name="bots_label_persona">Persona</string>
+    <string name="bots_action_save">Save</string>
+    <string name="bots_action_revert">Revert</string>
+
+    <!-- BotsScreen: permissions -->
+    <string name="bots_section_permissions">Permissions</string>
+    <string name="bots_tier_read_only">Read</string>
+    <string name="bots_tier_read_only_verb">read</string>
+    <string name="bots_tier_write">Write</string>
+    <string name="bots_tier_write_verb">write</string>
+    <string name="bots_tier_operator">Operator</string>
+    <string name="bots_tier_operator_verb">execute</string>
+    <string name="bots_tier_full">Full</string>
+    <string name="bots_tier_full_verb">everything</string>
+
+    <!-- BotsScreen: model and budget -->
+    <string name="bots_section_model_budget">Model and budget</string>
+    <string name="bots_label_daily_budget">Daily budget (tokens)</string>
+    <string name="bots_budget_unlimited">0 = unlimited</string>
+    <string name="bots_cd_apply_budget">Apply the budget</string>
+    <string name="bots_model_dialog_title">Teammate model</string>
+    <string name="bots_model_instance_default">Instance default</string>
+    <string name="bots_cd_selected">Selected</string>
+    <string name="bots_empty_models">No models: add a key in Settings → Providers.</string>
+    <string name="bots_model_no_key">key missing</string>
+    <string name="bots_action_close">Close</string>
+
+    <!-- BotsScreen: a lead's fleet -->
+    <string name="bots_label_members">Members</string>
+    <string name="bots_members_count">%1$d / %2$d</string>
+    <string name="bots_cd_remove_from_fleet">Remove %1$s from the fleet</string>
+    <string name="bots_member_of_fleet">Member of %1$s’s fleet.</string>
+    <string name="bots_action_leave">Leave</string>
+    <string name="bots_action_promote">Promote</string>
+    <string name="bots_action_auto">Auto</string>
+    <string name="bots_action_member">Member</string>
+
+    <!-- BotsScreen: tasks, mailbox, deliverables -->
+    <string name="bots_section_delegated_tasks">Delegated tasks</string>
+    <string name="bots_section_mailbox">Mailbox</string>
+    <string name="bots_label_message">message</string>
+    <string name="bots_section_deliverables">Deliverables</string>
+    <string name="bots_empty_deliverables">No deliverables: this teammate has dropped nothing in its folder.</string>
+    <string name="bots_empty_runs">No runs recorded for this teammate.</string>
+    <string name="bots_cd_photo_of">Photo of %1$s</string>
+
+    <!-- BotsScreen: add a member to a fleet -->
+    <string name="bots_add_member_title">Add a member</string>
+    <string name="bots_add_member_hint">A free teammate joins the fleet in one tap.</string>
+    <string name="bots_add_member_empty">No free teammates: they are all already in a fleet, or there are none yet.</string>
+    <string name="bots_cd_add_bot">Add %1$s</string>
+    <string name="bots_action_create_bot">Create a bot</string>
+
+    <!-- BotsScreen: new member -->
+    <string name="bots_new_member_title">New member</string>
+    <string name="bots_action_add">Add</string>
+
+    <!-- NewBotDialog -->
+    <string name="newbot_title">New teammate</string>
+    <string name="newbot_submit">Create</string>
+    <string name="newbot_label_name">Name</string>
+    <string name="newbot_placeholder_name">Watch, Writer, Workshop…</string>
+    <string name="newbot_label_id">Identifier</string>
+    <string name="newbot_supporting_id">Lowercase letters, digits and hyphens. Used as the folder name.</string>
+    <string name="newbot_label_tier">What it is allowed to do</string>
+    <string name="newbot_tier_read_only">Read</string>
+    <string name="newbot_tier_write">Write</string>
+    <string name="newbot_tier_operator">Operator</string>
+    <string name="newbot_tier_full">Full</string>
+    <string name="newbot_label_persona">Persona (optional)</string>
+    <string name="newbot_placeholder_persona">You are…</string>
+    <string name="newbot_action_cancel">Cancel</string>
+    <string name="newbot_confirm_delete_title">Delete “%1$s”?</string>
+    <string name="newbot_confirm_delete_body">Its profile, history and working files will be erased. Its own teammates, if any, go with it. This is final.</string>
+    <string name="newbot_action_delete">Delete</string>
+
+    <!-- PermissionCard -->
+    <string name="perm_title_permission">PERMISSION REQUESTED</string>
+    <string name="perm_title_continue">THE RUNTIME ASKS TO CONTINUE</string>
+    <string name="perm_title_choice">CHOICE REQUESTED</string>
+    <string name="perm_title_mode">APPROVAL MODE</string>
+    <string name="perm_footnote_permission">The runtime is waiting for your answer to continue.</string>
+    <string name="perm_footnote_continue">A loop was detected: keep going or stop here.</string>
+    <string name="perm_footnote_choice">Answer to unblock the agent.</string>
+    <string name="perm_footnote_mode">You can change your mind at any time in settings.</string>
+    <string name="perm_action_allow">Allow</string>
+    <string name="perm_action_always">Always</string>
+    <string name="perm_action_deny">Deny</string>
+    <string name="perm_action_keep_asking">Keep asking</string>
+    <string name="perm_action_allow_all">Allow all</string>
+</resources>

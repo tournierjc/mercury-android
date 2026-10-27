@@ -11,6 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.device.LocaleStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,7 +85,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             .safeDrawingPadding(),
     ) {
         ScreenHeader(
-            title = "Réglages",
+            title = stringResource(R.string.settings_title),
             subtitle = state.models?.current?.displayLabel ?: "Mercury",
             onBack = onBack,
             onRefresh = viewModel::refresh,
@@ -96,7 +99,36 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp),
         ) {
-            SectionTitle("Modèle")
+            SectionTitle(stringResource(R.string.settings_language_title))
+            CardBlock {
+                // The label of each choice is its own name, never translated: an English speaker
+                // looking for French has to recognise « Français » in any UI language.
+                val current = LocaleStore.tag(context)
+                Text(
+                    text = stringResource(R.string.settings_language_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                LocaleStore.choices.forEach { choice ->
+                    val label = if (choice.tag.isBlank()) {
+                        stringResource(R.string.settings_language_system)
+                    } else {
+                        choice.label
+                    }
+                    ActionRow(
+                        title = label,
+                        trailing = if (choice.tag == current) stringResource(R.string.settings_active) else null,
+                        selected = choice.tag == current,
+                        onClick = {
+                            LocaleStore.set(context, choice.tag)
+                            (context as? android.app.Activity)?.recreate()
+                        },
+                    )
+                }
+            }
+
+            SectionTitle(stringResource(R.string.settings_model_title))
             CardBlock {
                 val current = state.models?.current
                 // The four rows were the runtime's whole catalogue printed on top of the two places
@@ -105,24 +137,24 @@ fun SettingsScreen(onBack: () -> Unit) {
                 ActionRow(
                     title = current?.displayLabel ?: "Mercury",
                     subtitle = current?.let { "${it.group.ifBlank { it.name }} · ${it.model}" }
-                        ?: if (state.loading) "Chargement…" else "Aucun modèle exposé par le runtime.",
-                    trailing = "changer",
+                        ?: if (state.loading) stringResource(R.string.settings_loading) else stringResource(R.string.settings_no_model),
+                    trailing = stringResource(R.string.settings_change),
                     enabled = !state.models?.providers.isNullOrEmpty(),
                     onClick = { showModelPicker = true },
                 )
             }
 
-            SectionTitle("Approbation des outils")
+            SectionTitle(stringResource(R.string.settings_tools_title))
             CardBlock {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Tout autoriser sans confirmation",
+                            text = stringResource(R.string.settings_approve_all),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Mode actuel : ${state.settings?.permissionMode ?: "—"}",
+                            text = stringResource(R.string.settings_mode_current, state.settings?.permissionMode ?: "—"),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -139,12 +171,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Restreindre l'utilisateur",
+                            text = stringResource(R.string.settings_restrict_user),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Limite les actions demandées par le chat",
+                            text = stringResource(R.string.settings_restrict_hint),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -157,7 +189,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
-            SectionTitle("Arrière-plan")
+            SectionTitle(stringResource(R.string.settings_background_title))
             CardBlock {
                 // Réglage purement local (aucune route Mercury) : la vérification de fond
                 // interroge le roster toutes les N minutes quand l'app est fermée.
@@ -171,15 +203,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Veille en temps réel",
+                            text = stringResource(R.string.settings_watch),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.textPrimary,
                         )
                         Text(
                             text = if (watchOn) {
-                                "La connexion reste ouverte : l'alerte arrive en quelques secondes. Une notification permanente l'indique."
+                                stringResource(R.string.settings_watch_on)
                             } else {
-                                "Sans elle, l'app ne prévient qu'en ouvrant, ou à la passe périodique ci-dessous."
+                                stringResource(R.string.settings_watch_off)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
@@ -216,7 +248,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
                 if (watchOn) {
                     Text(
-                        text = "Android peut arrêter la veille pour économiser la batterie : autorisez Mercury à ignorer l'optimisation.",
+                        text = stringResource(R.string.settings_battery_hint),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
                     )
@@ -227,7 +259,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                             )
                         }
                     }) {
-                        Text("Réglages de batterie", color = colors.accent)
+                        Text(stringResource(R.string.settings_battery_settings), color = colors.accent)
                     }
                 }
                 // Une ligne pour séparer les deux réglages : collés, ils se lisaient comme un
@@ -242,15 +274,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Alerter quand l'app est fermée",
+                            text = stringResource(R.string.settings_alert_closed),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.textPrimary,
                         )
                         Text(
                             text = if (attentionOn) {
-                                "Un équipier qui attend une réponse vous notifie, vérifié toutes les $interval minutes."
+                                stringResource(R.string.settings_interval_hint, interval)
                             } else {
-                                "Sans ça, les notifications n'arrivent que si l'app est ouverte."
+                                stringResource(R.string.settings_no_notif_hint)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
@@ -272,7 +304,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         modifier = Modifier.padding(top = 8.dp),
                     ) {
                         Text(
-                            text = "Intervalle",
+                            text = stringResource(R.string.settings_interval),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                             modifier = Modifier.weight(1f),
@@ -284,38 +316,38 @@ fun SettingsScreen(onBack: () -> Unit) {
                                 AttentionSchedule.apply(context)
                             }) {
                                 Text(
-                                    text = "$minutes min",
+                                    text = stringResource(R.string.settings_minutes, minutes),
                                     color = if (minutes == interval) colors.accent else colors.textSecondary,
                                 )
                             }
                         }
                     }
                     Text(
-                        text = "Android ne descend pas sous 15 minutes, et peut décaler la passe pour économiser la batterie.",
+                        text = stringResource(R.string.settings_min_interval),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
                     )
                 }
             }
 
-            SectionTitle("Budget du jour")
+            SectionTitle(stringResource(R.string.settings_budget_title))
             CardBlock {
                 val usage = state.usage
                 if (usage == null) {
                     Text(
-                        text = "Compteur indisponible.",
+                        text = stringResource(R.string.settings_usage_unavailable),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
                 } else {
                     Text(
-                        text = "${formatTokens(usage.dailyUsed)} / ${formatTokens(usage.dailyBudget)} tokens",
+                        text = stringResource(R.string.settings_usage, formatTokens(usage.dailyUsed), formatTokens(usage.dailyBudget)),
                         style = MaterialTheme.typography.bodyLarge,
                         color = colors.textPrimary,
                     )
                     ProgressLine(usage.ratio)
                     Text(
-                        text = "Reste ${formatTokens(usage.remaining)} · reset ${usage.lastResetDate.ifBlank { "quotidien" }}",
+                        text = stringResource(R.string.settings_usage_remaining, formatTokens(usage.remaining), usage.lastResetDate.ifBlank { "quotidien" }),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                         modifier = Modifier.padding(top = 6.dp),
@@ -326,13 +358,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
-            SectionTitle("Fournisseurs")
+            SectionTitle(stringResource(R.string.settings_providers_title))
             CardBlock {
                 // The only place a provider is described: Console used to carry a second copy with
                 // the actions, and Réglages a read-only list of the same six rows.
                 if (state.providers.isEmpty()) {
                     Text(
-                        text = if (state.loading) "Chargement…" else "Aucun fournisseur configuré.",
+                        text = if (state.loading) stringResource(R.string.settings_loading) else stringResource(R.string.settings_providers_none),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
@@ -350,28 +382,28 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
                 Text(
-                    text = "Une clé ou un modèle enregistré n'agit qu'au prochain démarrage du runtime.",
+                    text = stringResource(R.string.settings_providers_restart),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.textSecondary,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
 
-            SectionTitle("Compte")
+            SectionTitle(stringResource(R.string.settings_account_title))
             CardBlock {
                 ActionRow(
-                    title = "Changer l'identifiant",
+                    title = stringResource(R.string.settings_account_username),
                     subtitle = container.lastUsername.ifBlank { "—" },
                     onClick = { dialog = AccountDialog.Username },
                 )
                 ActionRow(
-                    title = "Changer le mot de passe",
-                    subtitle = "Le mot de passe actuel est demandé",
+                    title = stringResource(R.string.settings_account_password),
+                    subtitle = stringResource(R.string.settings_account_password_hint),
                     onClick = { dialog = AccountDialog.Password },
                 )
                 ActionRow(
-                    title = "Révoquer la session serveur",
-                    subtitle = "Déconnecte aussi les autres onglets",
+                    title = stringResource(R.string.settings_account_revoke),
+                    subtitle = stringResource(R.string.settings_account_revoke_hint),
                     onClick = { viewModel.logoutServer() },
                 )
             }
@@ -395,7 +427,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showModelPicker = false },
             containerColor = colors.surface,
-            title = { Text("Modèle de la conversation", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.settings_chat_model), color = colors.textPrimary) },
             text = {
                 Column(
                     modifier = Modifier
@@ -429,7 +461,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                             if (model.isCurrent) {
                                 Icon(
                                     Icons.Rounded.Check,
-                                    contentDescription = "Actif",
+                                    contentDescription = stringResource(R.string.settings_current_marker),
                                     tint = colors.accent,
                                     modifier = Modifier.size(20.dp),
                                 )
@@ -438,15 +470,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text("Fermer") } },
+            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text(stringResource(R.string.settings_close)) } },
         )
     }
 
     when (dialog) {
         AccountDialog.Username -> CredentialDialog(
-            title = "Nouvel identifiant",
-            confirmLabel = "Enregistrer",
-            secondLabel = "Identifiant",
+            title = stringResource(R.string.settings_new_username),
+            confirmLabel = stringResource(R.string.settings_save),
+            secondLabel = stringResource(R.string.settings_username),
             onDismiss = { dialog = null },
             onConfirm = { current, value ->
                 dialog = null
@@ -455,9 +487,9 @@ fun SettingsScreen(onBack: () -> Unit) {
         )
 
         AccountDialog.Password -> CredentialDialog(
-            title = "Nouveau mot de passe",
-            confirmLabel = "Changer",
-            secondLabel = "Mot de passe",
+            title = stringResource(R.string.settings_new_password),
+            confirmLabel = stringResource(R.string.settings_change_action),
+            secondLabel = stringResource(R.string.settings_password),
             onDismiss = { dialog = null },
             onConfirm = { current, value ->
                 dialog = null
@@ -494,7 +526,7 @@ private fun CredentialDialog(
                 OutlinedTextField(
                     value = current,
                     onValueChange = { current = it },
-                    label = { Text("Mot de passe actuel") },
+                    label = { Text(stringResource(R.string.settings_current_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -517,6 +549,6 @@ private fun CredentialDialog(
                 enabled = current.isNotBlank() && value.length >= 6,
             ) { Text(confirmLabel) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) } },
     )
 }

@@ -26,11 +26,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
 @Composable
@@ -57,12 +59,12 @@ fun ConnectScreen(
         horizontalAlignment = Alignment.Start,
     ) {
         Text(
-            text = "Mercury",
+            text = stringResource(R.string.connect_brand),
             style = MaterialTheme.typography.displayLarge,
             color = colors.textPrimary,
         )
         Text(
-            text = "Ton agent, dans ta poche.",
+            text = stringResource(R.string.connect_tagline),
             style = MaterialTheme.typography.bodyLarge,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 6.dp, bottom = 32.dp),
@@ -71,20 +73,20 @@ fun ConnectScreen(
         Field(
             value = url,
             onValueChange = { url = it },
-            label = "Serveur",
+            label = stringResource(R.string.connect_label_server),
             hint = "https://spark-a286.tail128204.ts.net:8443",
             keyboardType = KeyboardType.Uri,
         )
         Field(
             value = username,
             onValueChange = { username = it },
-            label = "Identifiant",
+            label = stringResource(R.string.connect_label_username),
             hint = "mercury",
         )
         Field(
             value = password,
             onValueChange = { password = it },
-            label = "Mot de passe",
+            label = stringResource(R.string.connect_label_password),
             hint = "••••••••",
             isPassword = true,
         )
@@ -119,13 +121,12 @@ fun ConnectScreen(
                     strokeWidth = 2.dp,
                 )
             } else {
-                Text("Se connecter", modifier = Modifier.padding(vertical = 6.dp))
+                Text(stringResource(R.string.connect_sign_in), modifier = Modifier.padding(vertical = 6.dp))
             }
         }
 
         Text(
-            text = "Le dashboard Mercury doit être joignable depuis le téléphone " +
-                "(Tailscale + `tailscale serve`, ou tunnel SSH).",
+            text = stringResource(R.string.connect_reachability_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             textAlign = TextAlign.Start,

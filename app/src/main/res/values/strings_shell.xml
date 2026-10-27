@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le tiroir, le pont, les runs, les livrables et les fournisseurs. -->
+<resources>
+    <!-- Tiroir -->
+    <string name="drawer_section_crew">Équipiers</string>
+    <string name="drawer_all_crew">Tous les équipiers</string>
+    <string name="drawer_section_sessions">Sessions</string>
+    <string name="drawer_new_session">Nouvelle session</string>
+    <string name="drawer_no_session">Aucune session pour l\'instant.</string>
+    <string name="drawer_delete_session">Supprimer la session</string>
+    <string name="drawer_deliverables">Livrables</string>
+    <string name="drawer_boards">Plateaux</string>
+    <string name="drawer_memory">Mémoire</string>
+    <string name="drawer_console">Console</string>
+    <string name="drawer_settings">Réglages</string>
+    <string name="drawer_bridge">Pont appareil</string>
+    <string name="drawer_delete_session_title">Supprimer la session ?</string>
+    <string name="drawer_delete">Supprimer</string>
+    <string name="drawer_cancel">Annuler</string>
+    <string name="drawer_sign_out">Se déconnecter</string>
+
+    <!-- Pont appareil -->
+    <string name="bridge_title">Pont appareil</string>
+    <string name="bridge_back">Retour</string>
+    <string name="bridge_calendar">Calendrier</string>
+    <string name="bridge_read_events">lire les événements</string>
+    <string name="bridge_contacts">Contacts</string>
+    <string name="bridge_contacts_detail">noms, numéros, e-mails</string>
+    <string name="bridge_read_received">lire les messages reçus</string>
+    <string name="bridge_intro">Mercury lit ton téléphone en lecture seule, à la demande, via le tailnet. Rien n\'est copié sur le Spark : chaque requête de l\'agent relit la donnée locale.</string>
+    <string name="bridge_active">Pont actif</string>
+    <string name="bridge_listening">Le serveur écoute sur le port %1$d</string>
+    <string name="bridge_stopped">Serveur arrêté</string>
+    <string name="bridge_access_title">Accès aux données</string>
+    <string name="bridge_granted">accordé · %1$s</string>
+    <string name="bridge_allow">Autoriser</string>
+    <string name="bridge_app_messages">Messages des apps</string>
+    <string name="bridge_notif_granted">accès notifications accordé · WhatsApp, Signal, Messenger…</string>
+    <string name="bridge_notif_hint">via l\'accès notifications (WhatsApp, Signal…)</string>
+    <string name="bridge_enable">Activer</string>
+    <string name="bridge_give_title">À donner à Mercury</string>
+    <string name="bridge_url_label">URL</string>
+    <string name="bridge_token_label">Token</string>
+    <string name="bridge_show_token">Afficher le token</string>
+    <string name="bridge_hide_token">Masquer le token</string>
+    <string name="bridge_revoke">Révoquer le token</string>
+    <string name="bridge_readable_title">Ce que l\'agent peut lire</string>
+    <string name="bridge_endpoints">GET /health · version, appareil, fournisseurs actifs\nGET /device/status · batterie, réseau, fuseau horaire\nGET /calendar?from=&amp;to=&amp;limit= · événements (ISO 8601)\nGET /contacts?q=&amp;limit= · noms, numéros, e-mails\nGET /sms?limit=&amp;address= · messages SMS reçus\nGET /messages?limit= · SMS + notifications d\'apps\nEn-tête requis : Authorization: Bearer ***</string>
+    <string name="bridge_footer">Sans le pont, l\'agent ne voit rien du téléphone. Avec, il ne voit que ce que tu as autorisé, pendant que le service tourne. « Révoquer » invalide l\'ancien token.</string>
+    <string name="bridge_copied">Copié</string>
+
+    <!-- Runs et incidents -->
+    <string name="run_title">Runs</string>
+    <string name="run_details">détail</string>
+    <string name="run_older">… %1$d run(s) plus ancien(s)</string>
+    <string name="run_detail_title">Détail du run</string>
+    <string name="run_loading">Chargement…</string>
+    <string name="run_state">État</string>
+    <string name="run_started">Démarré</string>
+    <string name="run_duration">Durée</string>
+    <string name="run_tokens">Tokens</string>
+    <string name="run_trigger">Déclencheur</string>
+    <string name="run_tools">Outils</string>
+    <string name="run_tool_calls">%1$d appel(s) · %2$d étape(s)</string>
+    <string name="run_result">Résultat</string>
+    <string name="run_summary">Résumé</string>
+    <string name="run_error">Erreur : %1$s</string>
+    <string name="run_prompt">Consigne</string>
+    <string name="run_answer">Réponse</string>
+    <string name="run_close">Fermer</string>
+    <string name="run_incidents">Incidents</string>
+    <string name="run_no_incident">Aucun incident : la file n\'a abandonné aucun job.</string>
+    <string name="run_job">job %1$s</string>
+    <string name="run_retry">relancer</string>
+    <string name="run_purge">Vider la DLQ</string>
+    <string name="run_purge_title">Vider la DLQ ?</string>
+    <string name="run_purge_body">Tous les jobs abandonnés de toute la flotte sont supprimés. Rien n\'est relancé : utilisez « Relancer » sur un incident pour le rejouer.</string>
+    <string name="run_purge_confirm">Vider</string>
+    <string name="run_cancel">Annuler</string>
+
+    <!-- Livrables -->
+    <string name="out_title">Livrables</string>
+    <string name="out_subtitle">ce que les équipiers ont produit</string>
+    <string name="out_one_file">1 fichier</string>
+    <string name="out_n_files">%1$d fichiers</string>
+    <string name="out_preview_of">Aperçu de %1$s</string>
+    <string name="out_share_of">Partager %1$s</string>
+    <string name="out_delete_of">Supprimer %1$s</string>
+    <string name="out_delete_title">Supprimer ce livrable ?</string>
+    <string name="out_delete_body">Le fichier est retiré du dossier de l\'équipier. Cette action est définitive.</string>
+    <string name="out_delete_confirm">Supprimer</string>
+    <string name="out_cancel">Annuler</string>
+    <string name="out_kind_final">final</string>
+    <string name="out_kind_work">travail</string>
+    <string name="out_loading">Chargement…</string>
+    <string name="out_empty_file">(fichier vide)</string>
+    <string name="out_truncated">Aperçu tronqué aux 64 premiers ko — partagez le fichier pour le lire en entier.</string>
+    <string name="out_unavailable">Aperçu indisponible.</string>
+    <string name="out_close">Fermer</string>
+    <string name="out_share">Partager</string>
+    <string name="out_none_fleet">Aucun livrable dans la flotte pour l\'instant.</string>
+    <string name="out_of_bot">Livrables de %1$s</string>
+    <string name="out_none_bot">Rien encore : demandez-lui un fichier dans la conversation.</string>
+    <string name="out_count_one">1 fichier · aperçu, partage, suppression.</string>
+    <string name="out_count_many">%1$d fichiers · aperçu, partage, suppression.</string>
+    <string name="out_files">Fichiers</string>
+    <string name="out_none_this">Aucun livrable pour cet équipier.</string>
+    <string name="out_refresh">Rafraîchir</string>
+
+    <!-- Fournisseurs -->
+    <string name="prov_disabled">désactivé</string>
+    <string name="prov_no_key">sans clé</string>
+    <string name="prov_ready">prêt</string>
+    <string name="prov_edit">Modifier %1$s</string>
+    <string name="prov_test">Tester %1$s</string>
+    <string name="prov_connected">Connecté · %1$d modèle(s)</string>
+    <string name="prov_recommended"> · conseillé %1$s</string>
+    <string name="prov_failed">Échec · </string>
+    <string name="prov_refused">connexion refusée</string>
+    <string name="prov_key_label">Clé API (vide = inchangée)</string>
+    <string name="prov_url_label">URL de base (vide = inchangée)</string>
+    <string name="prov_model_label">Modèle par défaut (vide = inchangé)</string>
+    <string name="prov_enabled">Activé</string>
+    <string name="prov_save">Enregistrer</string>
+    <string name="prov_cancel">Annuler</string>
+
+    <!-- Rendu openui -->
+    <string name="openui_not_rendered">non rendu</string>
+    <string name="openui_in">en %1$s</string>
+</resources>

@@ -15,12 +15,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.vm.ConsoleViewModel
+import io.github.tournierjc.mercury.R
 
 /**
  * The fleet's deliverables, as a destination of their own.
@@ -49,11 +51,11 @@ fun DeliverablesScreen(onBack: () -> Unit) {
             .padding(horizontal = 20.dp, vertical = 8.dp),
     ) {
         ScreenHeader(
-            title = "Livrables",
+            title = stringResource(R.string.out_title),
             subtitle = when (state.outputs.size) {
-                0 -> "ce que les équipiers ont produit"
+                0 -> stringResource(R.string.out_subtitle)
                 1 -> "1 fichier"
-                else -> "${state.outputs.size} fichiers"
+                else -> stringResource(R.string.out_n_files, state.outputs.size)
             },
             onBack = onBack,
             onRefresh = viewModel::refresh,

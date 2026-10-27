@@ -82,12 +82,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.bots.BotWatchState
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
@@ -148,10 +150,10 @@ fun BotsScreen(
     ) {
         val selected = state.selectedId?.let { id -> watch.bots.firstOrNull { BotJson.id(it) == id } }
         ScreenHeader(
-            title = selected?.let { BotJson.name(it) } ?: "Équipiers et Flotte",
+            title = selected?.let { BotJson.name(it) } ?: stringResource(R.string.bots_title_roster),
             subtitle = if (selected == null) {
-                "${watch.bots.size} équipiers · ${watch.queue.pending} en file" +
-                    if (!watch.connected) " · hors ligne" else ""
+                stringResource(R.string.bots_header_subtitle, watch.bots.size, watch.queue.pending) +
+                    if (!watch.connected) stringResource(R.string.bots_header_offline) else ""
             } else {
                 BotJson.stateLabel(BotJson.state(selected))
             },
@@ -163,14 +165,14 @@ fun BotsScreen(
             // bot had to be created with a POST or by hand.
             if (state.selectedId == null) {
                 IconButton(onClick = { showNewBot = true }) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Nouvel équipier", tint = colors.accent)
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bots_cd_new_bot), tint = colors.accent)
                 }
             } else {
                 // The conversation is one tap away from the sheet, like in the chat's top bar.
                 IconButton(onClick = { onOpenChat(state.selectedId!!) }) {
                     Icon(
                         Icons.AutoMirrored.Rounded.Chat,
-                        contentDescription = "Conversation",
+                        contentDescription = stringResource(R.string.bots_cd_conversation),
                         tint = colors.textSecondary,
                     )
                 }
@@ -192,10 +194,12 @@ fun BotsScreen(
         // A downloaded deliverable is handed to the share sheet from the screen: the
         // view model has no Context, and the slot is cleared so it fires exactly once.
         val pendingShare = state.pendingShare
+        // Resolved here: the effect block below is not a composable scope.
+        val shareFailed = stringResource(R.string.bots_error_share_failed)
         LaunchedEffect(pendingShare) {
             if (pendingShare != null) {
                 runCatching { OutputSharing.share(context, pendingShare) }
-                    .onFailure { viewModel.showError(it.message ?: "Partage impossible") }
+                    .onFailure { viewModel.showError(it.message ?: shareFailed) }
                 viewModel.consumeShare()
             }
         }
@@ -210,7 +214,7 @@ fun BotsScreen(
                 FleetBlock(viewModel, watch, avatars, onSelect = viewModel::select)
                 RosterList(watch, onSelect = viewModel::select, onOpenChat = onOpenChat, avatars = avatars)
                 if (watch.recent.isNotEmpty()) {
-                    SectionTitle("Activité récente")
+                    SectionTitle(stringResource(R.string.bots_section_recent_activity))
                     CardBlock {
                         watch.recent.take(12).forEach { line ->
                             val bot = watch.bots.firstOrNull { BotJson.id(it) == line.botId }
@@ -265,6 +269,7 @@ private fun FleetBlock(
 ) {
     val colors = LocalMercuryColors.current
     val context = LocalContext.current
+    val unreadableFile = stringResource(R.string.bots_error_unreadable_file)
     var overwrite by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
 
@@ -275,7 +280,7 @@ private fun FleetBlock(
             context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
         }.getOrNull()
         if (text.isNullOrBlank()) {
-            importError = "Fichier illisible"
+            importError = unreadableFile
         } else {
             importError = null
             viewModel.importBundle(text, overwrite)
@@ -284,12 +289,12 @@ private fun FleetBlock(
 
     val leads = watch.bots.filter { BotJson.isLead(it) }
 
-    CollapsibleSection("Flotte") {
+    CollapsibleSection(stringResource(R.string.bots_section_fleet)) {
         IconActionBar(
             listOf(
                 QuickAction(
                     icon = Icons.Rounded.UploadFile,
-                    label = "Importer",
+                    label = stringResource(R.string.bots_action_import),
                     tint = colors.accent,
                     onClick = {
                         bundlePicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
@@ -297,14 +302,14 @@ private fun FleetBlock(
                 ),
                 QuickAction(
                     icon = Icons.Rounded.Layers,
-                    label = if (overwrite) "Écraser : oui" else "Écraser",
+                    label = if (overwrite) stringResource(R.string.bots_action_overwrite_on) else stringResource(R.string.bots_action_overwrite),
                     tint = if (overwrite) colors.accent else null,
                     onClick = { overwrite = !overwrite },
                 ),
             ),
         )
         Text(
-            text = "Un bundle importé arrive désactivé : la flotte ne dépense rien avant que tu l'actives.",
+            text = stringResource(R.string.bots_fleet_import_hint),
             style = MaterialTheme.typography.labelSmall,
             color = colors.textSecondary,
         )
@@ -313,7 +318,7 @@ private fun FleetBlock(
         }
         if (leads.isEmpty()) {
             Text(
-                text = "Aucun chef de flotte. Un chef engendre ses spécialistes depuis sa fiche.",
+                text = stringResource(R.string.bots_fleet_no_lead),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 8.dp),
@@ -339,8 +344,8 @@ private fun FleetBlock(
                     )
                     Text(
                         text = listOf(
-                            "chef de flotte",
-                            if (crew > 0) "$crew en cours" else null,
+                            stringResource(R.string.bots_role_fleet_lead),
+                            if (crew > 0) stringResource(R.string.bots_crew_running, crew) else null,
                             BotJson.stateLabel(BotJson.state(lead)),
                         ).filterNotNull().joinToString(" · "),
                         style = MaterialTheme.typography.labelSmall,
@@ -368,24 +373,24 @@ private fun RosterList(
     val colors = LocalMercuryColors.current
     val needsYou = watch.needsYou()
     if (needsYou.isNotEmpty()) {
-        SectionTitle("En attente de vous · ${needsYou.size}")
+        SectionTitle(stringResource(R.string.bots_section_waiting, needsYou.size))
         CardBlock {
             needsYou.forEach { bot ->
                 ActionRow(
                     title = BotJson.name(bot),
-                    subtitle = BotJson.activity(bot).ifBlank { "Il attend une réponse avant de continuer." },
-                    trailing = "ouvrir",
+                    subtitle = BotJson.activity(bot).ifBlank { stringResource(R.string.bots_waiting_default_activity) },
+                    trailing = stringResource(R.string.bots_action_open_lower),
                     onClick = { onOpenChat(BotJson.id(bot)) },
                 )
             }
         }
     }
 
-    SectionTitle("Équipiers")
+    SectionTitle(stringResource(R.string.bots_section_teammates))
     CardBlock {
         if (watch.bots.isEmpty()) {
             Text(
-                text = "Aucun équipier. Le + en haut à droite en crée un.",
+                text = stringResource(R.string.bots_empty_roster),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -414,7 +419,7 @@ private fun RosterList(
                         )
                         if (BotJson.isLead(bot)) {
                             Text(
-                                text = "  chef" + (BotJson.crewWorking(bot)?.takeIf { it > 0 }?.let { " · $it en cours" } ?: ""),
+                                text = stringResource(R.string.bots_lead_badge) + (BotJson.crewWorking(bot)?.takeIf { it > 0 }?.let { stringResource(R.string.bots_lead_crew_count, it) } ?: ""),
                                 color = colors.accent,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -427,7 +432,7 @@ private fun RosterList(
                         text = listOf(
                             BotJson.stateLabel(BotJson.state(bot)),
                             live.takeIf { it.isNotBlank() },
-                            BotJson.parent(bot).takeIf { it.isNotBlank() }?.let { "crew de $it" },
+                            BotJson.parent(bot).takeIf { it.isNotBlank() }?.let { stringResource(R.string.bots_crew_of, it) },
                         ).filterNotNull().joinToString(" · "),
                         color = colors.textSecondary,
                         style = MaterialTheme.typography.labelSmall,
@@ -436,7 +441,7 @@ private fun RosterList(
                 IconButton(onClick = { onOpenChat(id) }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Chat,
-                        contentDescription = "Conversation avec ${BotJson.name(bot)}",
+                        contentDescription = stringResource(R.string.bots_cd_conversation_with, BotJson.name(bot)),
                         tint = colors.textSecondary,
                     )
                 }
@@ -470,6 +475,9 @@ private fun BotDetail(
     var dispatchText by remember { mutableStateOf("") }
     var dispatchFiles by remember(id) { mutableStateOf<List<PendingFile>>(emptyList()) }
     var dispatchFileError by remember(id) { mutableStateOf<String?>(null) }
+    // Picker callbacks below are not composable scopes: resolve the messages here.
+    val unreadableFile = stringResource(R.string.bots_error_unreadable_file)
+    val unreadablePhoto = stringResource(R.string.bots_error_unreadable_photo)
 
     // 1600 px / JPEG q80 like the chat composer: a photo from a 50 MP sensor must not
     // travel at full size, and the server's 8 MB image cap is a guard, not a routine stop.
@@ -486,7 +494,7 @@ private fun BotDetail(
                     dispatchFileError = null
                 }
             }
-            .onFailure { error -> dispatchFileError = error.message ?: "Fichier illisible" }
+            .onFailure { error -> dispatchFileError = error.message ?: unreadableFile }
     }
     var personaText by remember(state.personaLoaded, id) { mutableStateOf(state.persona) }
     var showAddCrew by remember { mutableStateOf(false) }
@@ -507,10 +515,10 @@ private fun BotDetail(
         if (uri == null) return@rememberLauncherForActivityResult
         MediaPicker.read(context, uri, maxDimension = 512)
             .onSuccess { file -> avatarError = null; viewModel.uploadAvatar(id, file.bytes) }
-            .onFailure { error -> avatarError = error.message ?: "Photo illisible" }
+            .onFailure { error -> avatarError = error.message ?: unreadablePhoto }
     }
 
-    CollapsibleSection("Aperçu", defaultOpen = true) {
+    CollapsibleSection(stringResource(R.string.bots_section_preview), defaultOpen = true) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BotFace(bot, avatars[BotJson.id(bot)])
             Column(modifier = Modifier.padding(start = 10.dp)) {
@@ -518,63 +526,63 @@ private fun BotDetail(
                 Text(
                     text = listOf(
                         BotJson.stateLabel(BotJson.state(bot)),
-                        BotJson.fleetRole(bot).ifBlank { "solo" },
-                        BotJson.enabled(bot).let { if (it) "activé" else "désactivé" },
+                        BotJson.fleetRole(bot).ifBlank { stringResource(R.string.bots_role_solo) },
+                        BotJson.enabled(bot).let { if (it) stringResource(R.string.bots_state_enabled) else stringResource(R.string.bots_state_disabled) },
                     ).joinToString(" · "),
                     color = colors.textSecondary,
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
-        if (live.isNotBlank()) KeyValueRow("Activité", live, highlight = true)
-        KeyValueRow("Dernier passage", BotJson.lastRunState(bot).ifBlank { "—" })
-        BotJson.description(bot).takeIf { it.isNotBlank() }?.let { KeyValueRow("Rôle", it) }
-        KeyValueRow("Modèle", BotJson.model(bot).ifBlank { "défaut" })
+        if (live.isNotBlank()) KeyValueRow(stringResource(R.string.bots_label_activity), live, highlight = true)
+        KeyValueRow(stringResource(R.string.bots_label_last_run), BotJson.lastRunState(bot).ifBlank { "—" })
+        BotJson.description(bot).takeIf { it.isNotBlank() }?.let { KeyValueRow(stringResource(R.string.bots_label_role), it) }
+        KeyValueRow(stringResource(R.string.bots_label_model), BotJson.model(bot).ifBlank { stringResource(R.string.bots_value_default) })
         // Glyphs, not five identical grey words: the same vocabulary as the conversation
         // screen's top bar. Every label is also the icon's content description.
         IconActionBar(
             listOf(
                 QuickAction(
                     icon = if (avatars[id] != null) Icons.Rounded.PhotoCamera else Icons.Rounded.AddAPhoto,
-                    label = if (avatars[id] != null) "Photo" else "Photo",
+                    label = if (avatars[id] != null) stringResource(R.string.bots_action_photo) else stringResource(R.string.bots_action_photo),
                     onClick = {
                         avatarPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.PlayArrow,
-                    label = "Démarrer",
+                    label = stringResource(R.string.bots_action_start),
                     enabled = !state.busy,
                     onClick = { viewModel.start(id) },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.Stop,
-                    label = "Arrêter",
+                    label = stringResource(R.string.bots_action_stop),
                     enabled = !state.busy,
                     onClick = { viewModel.stop(id) },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.Bolt,
-                    label = "Exécuter",
+                    label = stringResource(R.string.bots_action_run),
                     enabled = !state.busy,
                     onClick = { viewModel.run(id) },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.PowerSettingsNew,
-                    label = if (BotJson.enabled(bot)) "Désactiver" else "Activer",
+                    label = if (BotJson.enabled(bot)) stringResource(R.string.bots_action_disable) else stringResource(R.string.bots_action_enable),
                     tint = if (BotJson.enabled(bot)) colors.textPrimary else colors.accent,
                     enabled = !state.busy,
                     onClick = { viewModel.setEnabled(id, !BotJson.enabled(bot)) },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.IosShare,
-                    label = "Partager",
+                    label = stringResource(R.string.bots_action_share),
                     enabled = !state.busy,
                     onClick = { viewModel.exportBundle(id) },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.DeleteOutline,
-                    label = "Supprimer",
+                    label = stringResource(R.string.bots_action_delete),
                     tint = colors.danger,
                     onClick = { confirmDelete = true },
                 ),
@@ -585,7 +593,7 @@ private fun BotDetail(
                 listOf(
                     QuickAction(
                         icon = Icons.Rounded.HideImage,
-                        label = "Sans photo",
+                        label = stringResource(R.string.bots_action_remove_photo),
                         onClick = { viewModel.removeAvatar(id) },
                     ),
                 ),
@@ -595,18 +603,16 @@ private fun BotDetail(
             Text(message, color = colors.danger, style = MaterialTheme.typography.labelSmall)
         }
         Text(
-            text = "Le bundle contient l'identité, le persona, les permissions et les skills — jamais les secrets " +
-                "ni le journal. Un chef de flotte exporte toute son équipe.",
+            text = stringResource(R.string.bots_bundle_hint),
             style = MaterialTheme.typography.labelSmall,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 6.dp),
         )
     }
 
-    CollapsibleSection("Lui écrire", defaultOpen = true) {
+    CollapsibleSection(stringResource(R.string.bots_section_write), defaultOpen = true) {
         Text(
-            text = "La conversation est un écran à part : ce panneau ne sert qu'à le régler. " +
-                "Un message part en tâche de fond, la réponse s'écrit dans la conversation.",
+            text = stringResource(R.string.bots_write_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
@@ -627,7 +633,7 @@ private fun BotDetail(
             Box(modifier = Modifier.weight(1f).padding(top = 6.dp)) {
                 if (dispatchText.isEmpty()) {
                     Text(
-                        text = "Tâche rapide à confier",
+                        text = stringResource(R.string.bots_dispatch_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary.copy(alpha = 0.7f),
                     )
@@ -647,7 +653,7 @@ private fun BotDetail(
             ) {
                 Icon(
                     Icons.Rounded.AttachFile,
-                    contentDescription = "Joindre un fichier",
+                    contentDescription = stringResource(R.string.bots_cd_attach_file),
                     tint = colors.textSecondary,
                     modifier = Modifier.size(19.dp),
                 )
@@ -667,7 +673,7 @@ private fun BotDetail(
             ) {
                 Icon(
                     Icons.AutoMirrored.Rounded.Send,
-                    contentDescription = "Envoyer la tâche",
+                    contentDescription = stringResource(R.string.bots_cd_send_task),
                     tint = if (canSend) colors.canvas else colors.textSecondary,
                     modifier = Modifier.size(18.dp),
                 )
@@ -683,7 +689,7 @@ private fun BotDetail(
                             color = colors.textSecondary,
                         )
                         IconButton(onClick = { dispatchFiles = dispatchFiles - file }) {
-                            Icon(Icons.Rounded.Close, contentDescription = "Retirer ${file.name}", tint = colors.danger)
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.bots_cd_remove_attachment, file.name), tint = colors.danger)
                         }
                     }
                 }
@@ -702,9 +708,9 @@ private fun BotDetail(
         }
     }
 
-    CollapsibleSection("Persona") {
+    CollapsibleSection(stringResource(R.string.bots_section_persona)) {
         Text(
-            text = "Qui il est et comment il travaille — c'est ce que Mercury relit à chaque réveil.",
+            text = stringResource(R.string.bots_persona_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             // Le champ collait à la phrase : la ligne respire avant le cadre.
@@ -713,7 +719,7 @@ private fun BotDetail(
         OutlinedTextField(
             value = personaText,
             onValueChange = { personaText = it },
-            label = { Text("Persona") },
+            label = { Text(stringResource(R.string.bots_label_persona)) },
             minLines = 4,
             textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             modifier = Modifier.fillMaxWidth(),
@@ -725,14 +731,14 @@ private fun BotDetail(
             actions = listOf(
                 QuickAction(
                     icon = Icons.Rounded.Check,
-                    label = "Enregistrer",
+                    label = stringResource(R.string.bots_action_save),
                     tint = colors.accent,
                     enabled = !state.busy && personaText.isNotBlank() && personaText != state.persona,
                     onClick = { viewModel.savePersona(personaText) },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.Undo,
-                    label = "Rétablir",
+                    label = stringResource(R.string.bots_action_revert),
                     enabled = personaText != state.persona,
                     onClick = { personaText = state.persona },
                 ),
@@ -740,7 +746,7 @@ private fun BotDetail(
         )
     }
 
-    CollapsibleSection("Permissions") {
+    CollapsibleSection(stringResource(R.string.bots_section_permissions)) {
         LaunchedEffect(state.selectedId) { viewModel.loadTiers() }
         // The file names its tier since 1.5.0-local.9. A file written before that carries only
         // the grants, so the tier is deduced by matching its deny list against the catalogue —
@@ -758,10 +764,10 @@ private fun BotDetail(
         }
         val tier = inferredTier
         val tiers = listOf(
-            "readonly" to ("Lecture" to "lire"),
-            "builder" to ("Écriture" to "écrire"),
-            "operator" to ("Opérateur" to "exécuter"),
-            "full" to ("Complet" to "tout"),
+            "readonly" to (stringResource(R.string.bots_tier_read_only) to stringResource(R.string.bots_tier_read_only_verb)),
+            "builder" to (stringResource(R.string.bots_tier_write) to stringResource(R.string.bots_tier_write_verb)),
+            "operator" to (stringResource(R.string.bots_tier_operator) to stringResource(R.string.bots_tier_operator_verb)),
+            "full" to (stringResource(R.string.bots_tier_full) to stringResource(R.string.bots_tier_full_verb)),
         )
         // One row, four cells: the active tier is filled and ticked, the others are outlines.
         // A chip row that only tints its label is not readable at a glance on a phone.
@@ -816,7 +822,7 @@ private fun BotDetail(
         }
     }
 
-    CollapsibleSection("Modèle et budget") {
+    CollapsibleSection(stringResource(R.string.bots_section_model_budget)) {
         // A list of what the instance actually offers, not a free field: the daemon stores
         // { provider, model } and a typo used to fall back to the default in silence.
         val pickedProvider = BotJson.modelProvider(bot)
@@ -838,13 +844,13 @@ private fun BotDetail(
         ) {
             Icon(Icons.Rounded.Memory, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
             Text(
-                text = "Modèle",
+                text = stringResource(R.string.bots_label_model),
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.textPrimary,
                 modifier = Modifier.weight(1f).padding(start = 12.dp),
             )
             Text(
-                text = currentLabel.ifBlank { "défaut" },
+                text = currentLabel.ifBlank { stringResource(R.string.bots_value_default) },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (currentLabel.isBlank()) colors.textSecondary else colors.accent,
                 maxLines = 1,
@@ -861,8 +867,8 @@ private fun BotDetail(
             OutlinedTextField(
                 value = budgetText,
                 onValueChange = { budgetText = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Budget quotidien (tokens)") },
-                placeholder = { Text("0 = illimité") },
+                label = { Text(stringResource(R.string.bots_label_daily_budget)) },
+                placeholder = { Text(stringResource(R.string.bots_budget_unlimited)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
@@ -872,7 +878,7 @@ private fun BotDetail(
                 trailingIcon = {
                     if (budgetText.isNotBlank()) {
                         IconButton(onClick = { budgetText.trim().toIntOrNull()?.let { viewModel.setDailyBudget(id, it) } }) {
-                            Icon(Icons.Rounded.Check, contentDescription = "Appliquer le budget", tint = colors.accent)
+                            Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.bots_cd_apply_budget), tint = colors.accent)
                         }
                     }
                 },
@@ -881,11 +887,11 @@ private fun BotDetail(
         }
     }
 
-    CollapsibleSection("Flotte") {
+    CollapsibleSection(stringResource(R.string.bots_section_fleet)) {
         val crew = state.crew
-        KeyValueRow("Rôle", if (BotJson.isLead(bot)) "chef de flotte" else BotJson.fleetRole(bot).ifBlank { "solo" })
+        KeyValueRow(stringResource(R.string.bots_label_role), if (BotJson.isLead(bot)) stringResource(R.string.bots_role_fleet_lead) else BotJson.fleetRole(bot).ifBlank { stringResource(R.string.bots_role_solo) })
         crew?.crew?.let { members ->
-            KeyValueRow("Membres", "${members.size} / ${crew.maxCrew}")
+            KeyValueRow(stringResource(R.string.bots_label_members), stringResource(R.string.bots_members_count, members.size, crew.maxCrew))
             members.forEach { member ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     BotFace(member, avatars[BotJson.id(member)], small = true)
@@ -904,7 +910,7 @@ private fun BotDetail(
                     IconButton(onClick = { viewModel.detachCrew(id, BotJson.id(member)) }) {
                         Icon(
                             Icons.Rounded.Close,
-                            contentDescription = "Retirer ${BotJson.name(member)} de la flotte",
+                            contentDescription = stringResource(R.string.bots_cd_remove_from_fleet, BotJson.name(member)),
                             tint = colors.textSecondary,
                         )
                     }
@@ -916,7 +922,7 @@ private fun BotDetail(
         }
         if (BotJson.parent(bot).isNotBlank()) {
             Text(
-                text = "Membre de la flotte de ${BotJson.parent(bot)}.",
+                text = stringResource(R.string.bots_member_of_fleet, BotJson.parent(bot)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -924,7 +930,7 @@ private fun BotDetail(
                 listOf(
                     QuickAction(
                         icon = Icons.Rounded.PersonRemove,
-                        label = "Quitter",
+                        label = stringResource(R.string.bots_action_leave),
                         tint = colors.danger,
                         onClick = { viewModel.detachCrew(BotJson.parent(bot), id) },
                     ),
@@ -933,15 +939,15 @@ private fun BotDetail(
         }
         IconActionBar(
             listOf(
-                QuickAction(icon = Icons.Rounded.Star, label = "Promouvoir", onClick = { viewModel.promote(id) }),
-                QuickAction(icon = Icons.Rounded.AutoAwesome, label = "Auto", onClick = { viewModel.autoCrew(id) }),
-                QuickAction(icon = Icons.Rounded.PersonAddAlt, label = "Membre", onClick = { showAddCrew = true }),
+                QuickAction(icon = Icons.Rounded.Star, label = stringResource(R.string.bots_action_promote), onClick = { viewModel.promote(id) }),
+                QuickAction(icon = Icons.Rounded.AutoAwesome, label = stringResource(R.string.bots_action_auto), onClick = { viewModel.autoCrew(id) }),
+                QuickAction(icon = Icons.Rounded.PersonAddAlt, label = stringResource(R.string.bots_action_member), onClick = { showAddCrew = true }),
             ),
         )
     }
 
     if (state.tasks.isNotEmpty()) {
-        CollapsibleSection("Tâches déléguées") {
+        CollapsibleSection(stringResource(R.string.bots_section_delegated_tasks)) {
             state.tasks.forEach { task ->
                 val goal = (task["goal"] as? JsonPrimitive)?.contentOrNull.orEmpty()
                 val status = (task["status"] as? JsonPrimitive)?.contentOrNull.orEmpty()
@@ -957,10 +963,10 @@ private fun BotDetail(
     }
 
     if (state.inbox.isNotEmpty()) {
-        CollapsibleSection("Boîte aux lettres") {
+        CollapsibleSection(stringResource(R.string.bots_section_mailbox)) {
             state.inbox.forEach { mail ->
                 KeyValueRow(
-                    (mail["from"] as? JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { "message" },
+                    (mail["from"] as? JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { stringResource(R.string.bots_label_message) },
                     (mail["body"] as? JsonPrimitive)?.contentOrNull.orEmpty().take(160),
                 )
             }
@@ -975,10 +981,10 @@ private fun BotDetail(
     // What the bot produced, what it did, and what the queue gave up on. The three
     // sections read the deliverables, runs and DLQ routes of this bot.
     DeliverablesSection(
-        title = "Livrables",
+        title = stringResource(R.string.bots_section_deliverables),
         outputs = state.outputs,
         busy = state.busy,
-        emptyText = "Aucun livrable : l'équipier n'a rien déposé dans son dossier.",
+        emptyText = stringResource(R.string.bots_empty_deliverables),
         onPreview = viewModel::previewOutput,
         onShare = viewModel::shareOutput,
         onDelete = viewModel::deleteOutput,
@@ -986,7 +992,7 @@ private fun BotDetail(
 
     RunsSection(
         runs = state.runs,
-        emptyText = "Aucun run enregistré pour cet équipier.",
+        emptyText = stringResource(R.string.bots_empty_runs),
         onOpen = viewModel::openRun,
     )
 
@@ -1027,7 +1033,7 @@ private fun BotDetail(
         AlertDialog(
             onDismissRequest = { showModelPicker = false },
             containerColor = colors.surface,
-            title = { Text("Modèle de l'équipier", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.bots_model_dialog_title), color = colors.textPrimary) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     // "Default" is a real choice, not the absence of one: it removes the key so
@@ -1041,19 +1047,19 @@ private fun BotDetail(
                             .padding(vertical = 10.dp, horizontal = 4.dp),
                     ) {
                         Text(
-                            text = "Défaut de l'instance",
+                            text = stringResource(R.string.bots_model_instance_default),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.textPrimary,
                             modifier = Modifier.weight(1f),
                         )
                         if (picked.isBlank() && pickedM.isBlank()) {
-                            Icon(Icons.Rounded.Check, contentDescription = "Sélectionné", tint = colors.accent, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.bots_cd_selected), tint = colors.accent, modifier = Modifier.size(18.dp))
                         }
                     }
                     HorizontalDivider(color = colors.hairline)
                     if (state.models.isEmpty()) {
                         Text(
-                            text = "Aucun modèle : ajoute une clé dans Réglages → Fournisseurs.",
+                            text = stringResource(R.string.bots_empty_models),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                             modifier = Modifier.padding(vertical = 10.dp),
@@ -1085,22 +1091,22 @@ private fun BotDetail(
                                 )
                             }
                             if (selected) {
-                                Icon(Icons.Rounded.Check, contentDescription = "Sélectionné", tint = colors.accent, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.bots_cd_selected), tint = colors.accent, modifier = Modifier.size(18.dp))
                             } else if (!ref.available) {
-                                Text("clé absente", style = MaterialTheme.typography.labelSmall, color = colors.danger)
+                                Text(stringResource(R.string.bots_model_no_key), style = MaterialTheme.typography.labelSmall, color = colors.danger)
                             }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text("Fermer") } },
+            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text(stringResource(R.string.bots_action_close)) } },
         )
     }
     if (showNewCrew) {
         NewBotDialog(
             busy = state.busy,
-            title = "Nouveau membre",
-            submitLabel = "Ajouter",
+            title = stringResource(R.string.bots_new_member_title),
+            submitLabel = stringResource(R.string.bots_action_add),
             onDismiss = { showNewCrew = false },
             onCreate = { name, crewId, tier, persona ->
                 showNewCrew = false
@@ -1135,7 +1141,7 @@ internal fun BotFace(bot: JsonObject, avatar: ByteArray?, small: Boolean = false
         if (bitmap != null) {
             Image(
                 bitmap = bitmap,
-                contentDescription = "Photo de ${BotJson.name(bot)}",
+                contentDescription = stringResource(R.string.bots_cd_photo_of, BotJson.name(bot)),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(size)
@@ -1199,18 +1205,18 @@ private fun AddCrewSheet(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Ajouter un membre", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.bots_add_member_title), color = colors.textPrimary) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "Un équipier libre rejoint la flotte en un tap.",
+                    text = stringResource(R.string.bots_add_member_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                     modifier = Modifier.padding(bottom = 6.dp),
                 )
                 if (adoptable.isEmpty()) {
                     Text(
-                        text = "Aucun équipier libre : tous sont déjà en flotte, ou il n'y en a pas encore.",
+                        text = stringResource(R.string.bots_add_member_empty),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary,
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -1241,7 +1247,7 @@ private fun AddCrewSheet(
                                 color = colors.textSecondary,
                             )
                         }
-                        Icon(Icons.Rounded.Add, contentDescription = "Ajouter ${BotJson.name(candidate)}", tint = colors.accent)
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bots_cd_add_bot, BotJson.name(candidate)), tint = colors.accent)
                     }
                 }
                 HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 10.dp))
@@ -1256,15 +1262,15 @@ private fun AddCrewSheet(
                         .padding(vertical = 8.dp, horizontal = 4.dp),
                 ) {
                     Text(
-                        text = "Créer un bot",
+                        text = stringResource(R.string.bots_action_create_bot),
                         style = MaterialTheme.typography.bodyLarge,
                         color = colors.accent,
                         modifier = Modifier.weight(1f),
                     )
-                    Icon(Icons.Rounded.Add, contentDescription = "Créer un bot", tint = colors.accent)
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bots_action_create_bot), tint = colors.accent)
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.bots_action_close)) } },
     )
 }

@@ -37,11 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BoardJson
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.AttachmentFiles
@@ -89,7 +91,7 @@ fun BoardsScreen(onBack: () -> Unit) {
         pendingSave = null
         if (target != null && export != null) {
             if (!AttachmentFiles.save(context, target, export.file.bytes)) {
-                viewModel.report("Écriture impossible dans cet emplacement")
+                viewModel.report(context.getString(R.string.boards_erreur_ecriture))
             }
         }
     }
@@ -100,7 +102,7 @@ fun BoardsScreen(onBack: () -> Unit) {
             pendingSave = export
             saveLauncher.launch(export.file.name)
         } else if (!AttachmentFiles.open(context, export.file)) {
-            viewModel.report("Aucune application ne peut ouvrir ${export.file.name}")
+            viewModel.report(context.getString(R.string.boards_aucune_app_ouverture, export.file.name))
         }
         viewModel.consumeExport()
     }
@@ -112,13 +114,15 @@ fun BoardsScreen(onBack: () -> Unit) {
             .safeDrawingPadding(),
     ) {
         ScreenHeader(
-            title = state.openBoardId?.let { state.boardName.ifBlank { "Plateau" } } ?: "Plateaux",
+            title = state.openBoardId?.let {
+                state.boardName.ifBlank { stringResource(R.string.boards_titre_plateau) }
+            } ?: stringResource(R.string.boards_titre_plateaux),
             subtitle = if (state.openBoardId == null) {
-                "${state.boards.size} plateaux"
+                stringResource(R.string.boards_sous_titre_nb_plateaux, state.boards.size)
             } else {
                 listOfNotNull(
-                    "${state.cards.size} cartes",
-                    if (state.live) "direct" else "actualisation auto",
+                    stringResource(R.string.boards_sous_titre_nb_cartes, state.cards.size),
+                    stringResource(if (state.live) R.string.boards_live_direct else R.string.boards_live_auto),
                 ).joinToString(" · ")
             },
             onBack = { if (state.openBoardId == null) onBack() else viewModel.close() },
@@ -159,10 +163,10 @@ fun BoardsScreen(onBack: () -> Unit) {
                     onNewCard = { showNewCard = true },
                 )
                 if (state.plan.isNotEmpty()) {
-                    SectionTitle("Plan d'exécution")
+                    SectionTitle(stringResource(R.string.boards_plan_titre))
                     CardBlock {
                         state.plan.forEachIndexed { index, batch ->
-                            KeyValueRow("Lot ${index + 1}", batch.joinToString(" · "))
+                            KeyValueRow(stringResource(R.string.boards_lot, index + 1), batch.joinToString(" · "))
                         }
                     }
                 }
@@ -173,10 +177,10 @@ fun BoardsScreen(onBack: () -> Unit) {
 
     if (showCreateBoard) {
         TextPromptDialog(
-            title = "Nouveau plateau",
-            label = "Nom",
-            secondLabel = "Description (optionnel)",
-            confirm = "Créer",
+            title = stringResource(R.string.boards_nouveau_plateau),
+            label = stringResource(R.string.boards_nom),
+            secondLabel = stringResource(R.string.boards_description_optionnelle),
+            confirm = stringResource(R.string.boards_creer),
             onDismiss = { showCreateBoard = false },
             onConfirm = { name, description ->
                 showCreateBoard = false
@@ -188,9 +192,9 @@ fun BoardsScreen(onBack: () -> Unit) {
     if (showNewCard) {
         var priority by remember { mutableStateOf<String?>(null) }
         TextPromptDialog(
-            title = "Nouvelle carte",
-            label = "Tâche",
-            confirm = "Ajouter",
+            title = stringResource(R.string.boards_nouvelle_carte),
+            label = stringResource(R.string.boards_tache),
+            confirm = stringResource(R.string.boards_ajouter),
             onDismiss = { showNewCard = false },
             extra = {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -214,24 +218,24 @@ fun BoardsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showPlan = false },
             containerColor = colors.surface,
-            title = { Text("Plan d'exécution", color = colors.textPrimary) },
+            title = { Text(stringResource(R.string.boards_plan_titre), color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (state.plan.isEmpty()) {
-                        Text("Aucun lot calculable (pas de dépendances).", color = colors.textSecondary)
+                        Text(stringResource(R.string.boards_plan_vide), color = colors.textSecondary)
                     }
                     state.plan.forEachIndexed { index, batch ->
-                        Text("Lot ${index + 1}", color = colors.accent, style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.boards_lot, index + 1), color = colors.accent, style = MaterialTheme.typography.labelSmall)
                         Text(batch.joinToString(" · "), color = colors.textPrimary, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showPlan = false; viewModel.smartExecute() }) {
-                    Text("Exécuter dans cet ordre")
+                    Text(stringResource(R.string.boards_plan_executer))
                 }
             },
-            dismissButton = { TextButton(onClick = { showPlan = false }) { Text("Fermer") } },
+            dismissButton = { TextButton(onClick = { showPlan = false }) { Text(stringResource(R.string.boards_fermer)) } },
         )
     }
 
@@ -276,7 +280,7 @@ private fun AttachmentDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 when {
-                    preview.loading -> Text("Lecture…", color = colors.textSecondary)
+                    preview.loading -> Text(stringResource(R.string.boards_lecture), color = colors.textSecondary)
                     preview.error != null -> Text(preview.error, color = colors.danger)
                     preview.isImage -> {
                         val bitmap = remember(preview.bytes) {
@@ -293,15 +297,15 @@ private fun AttachmentDialog(
                             )
                         } else {
                             Text(
-                                "Image illisible ici — utilise « Ouvrir ».",
+                                stringResource(R.string.boards_image_illisible),
                                 color = colors.textSecondary,
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         }
                     }
                     else -> Text(
-                        text = preview.text?.ifBlank { "(fichier vide)" }
-                            ?: "Aperçu indisponible pour ce format — ouvre le fichier.",
+                        text = preview.text?.ifBlank { stringResource(R.string.boards_fichier_vide) }
+                            ?: stringResource(R.string.boards_apercu_indisponible),
                         color = if (preview.text == null) colors.textSecondary else colors.textPrimary,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = if (preview.text != null) FontFamily.Monospace else FontFamily.Default,
@@ -309,13 +313,13 @@ private fun AttachmentDialog(
                 }
                 if (!preview.loading && preview.error == null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(onClick = onOpen) { Text("Ouvrir") }
-                        TextButton(onClick = onDownload) { Text("Télécharger") }
+                        TextButton(onClick = onOpen) { Text(stringResource(R.string.boards_ouvrir)) }
+                        TextButton(onClick = onDownload) { Text(stringResource(R.string.boards_telecharger)) }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.boards_fermer)) } },
     )
 }
 
@@ -327,11 +331,15 @@ private fun BoardList(
     onCreate: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    SectionTitle("Plateaux")
+    SectionTitle(stringResource(R.string.boards_titre_plateaux))
     CardBlock {
         if (state.boards.isEmpty()) {
             Text(
-                text = if (state.loading) "Chargement…" else "Aucun plateau. Un plateau est une file de tâches que le runtime exécute carte par carte.",
+                text = if (state.loading) {
+                    stringResource(R.string.boards_chargement)
+                } else {
+                    stringResource(R.string.boards_aucun_plateau)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -341,19 +349,19 @@ private fun BoardList(
             ActionRow(
                 title = BoardJson.title(board),
                 subtitle = listOfNotNull(
-                    BoardJson.intField(board, "cardCount")?.let { "$it cartes" },
-                    BoardJson.intField(board, "pendingCount")?.let { "$it en attente" },
-                    BoardJson.intField(board, "runningCount")?.takeIf { it > 0 }?.let { "$it en cours" },
-                    if (BoardJson.boolField(board, "active") == true) "actif" else null,
+                    BoardJson.intField(board, "cardCount")?.let { stringResource(R.string.boards_nb_cartes, it) },
+                    BoardJson.intField(board, "pendingCount")?.let { stringResource(R.string.boards_en_attente, it) },
+                    BoardJson.intField(board, "runningCount")?.takeIf { it > 0 }?.let { stringResource(R.string.boards_en_cours, it) },
+                    if (BoardJson.boolField(board, "active") == true) stringResource(R.string.boards_actif) else null,
                 ).joinToString(" · "),
-                trailing = "ouvrir",
+                trailing = stringResource(R.string.boards_action_ouvrir),
                 onClick = { if (id.isNotBlank()) onOpen(id) },
             )
             if (id.isNotBlank()) {
-                ButtonRow { TextButton(onClick = { onDelete(id) }) { Text("Supprimer", color = colors.danger) } }
+                ButtonRow { TextButton(onClick = { onDelete(id) }) { Text(stringResource(R.string.boards_supprimer), color = colors.danger) } }
             }
         }
-        ButtonRow { TextButton(onClick = onCreate) { Text("Nouveau plateau") } }
+        ButtonRow { TextButton(onClick = onCreate) { Text(stringResource(R.string.boards_nouveau_plateau)) } }
     }
 }
 
@@ -370,20 +378,24 @@ private fun BoardActions(
     onClearDone: () -> Unit,
     onGenerate: () -> Unit,
 ) {
-    SectionTitle("Exécution")
+    SectionTitle(stringResource(R.string.boards_execution))
     CardBlock {
         val active = BoardJson.boolField(state.board, "active") == true
-        KeyValueRow("État", if (active) "actif" else "inactif", highlight = active)
+        KeyValueRow(
+            stringResource(R.string.boards_etat),
+            if (active) stringResource(R.string.boards_actif) else stringResource(R.string.boards_inactif),
+            highlight = active,
+        )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FilterChip(selected = false, onClick = { if (active) onDeactivate() else onActivate() }, label = {
-                Text(if (active) "Désactiver" else "Activer")
+                Text(if (active) stringResource(R.string.boards_desactiver) else stringResource(R.string.boards_activer))
             })
-            FilterChip(selected = false, onClick = onRunAll, label = { Text("Tout lancer") })
-            FilterChip(selected = false, onClick = onHaltAll, label = { Text("Tout arrêter") })
-            FilterChip(selected = false, onClick = onPlan, label = { Text("Plan") })
-            FilterChip(selected = false, onClick = onContext, label = { Text("Contexte") })
-            FilterChip(selected = false, onClick = onClearDone, label = { Text("Nettoyer") })
-            FilterChip(selected = false, onClick = onGenerate, label = { Text("Générer") })
+            FilterChip(selected = false, onClick = onRunAll, label = { Text(stringResource(R.string.boards_tout_lancer)) })
+            FilterChip(selected = false, onClick = onHaltAll, label = { Text(stringResource(R.string.boards_tout_arreter)) })
+            FilterChip(selected = false, onClick = onPlan, label = { Text(stringResource(R.string.boards_plan)) })
+            FilterChip(selected = false, onClick = onContext, label = { Text(stringResource(R.string.boards_contexte)) })
+            FilterChip(selected = false, onClick = onClearDone, label = { Text(stringResource(R.string.boards_nettoyer)) })
+            FilterChip(selected = false, onClick = onGenerate, label = { Text(stringResource(R.string.boards_generer)) })
         }
     }
 }
@@ -400,14 +412,14 @@ private fun CardColumns(
 ) {
     val colors = LocalMercuryColors.current
     if (state.grouped.isEmpty()) {
-        SectionTitle("Cartes")
+        SectionTitle(stringResource(R.string.boards_cartes))
         CardBlock {
             Text(
-                text = "Aucune carte sur ce plateau.",
+                text = stringResource(R.string.boards_aucune_carte),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            ButtonRow { TextButton(onClick = onNewCard) { Text("Nouvelle carte") } }
+            ButtonRow { TextButton(onClick = onNewCard) { Text(stringResource(R.string.boards_nouvelle_carte)) } }
         }
         return
     }
@@ -419,25 +431,25 @@ private fun CardColumns(
                 ActionRow(
                     title = BoardJson.title(card),
                     subtitle = listOfNotNull(
-                        BoardJson.priority(card).takeIf { it.isNotBlank() }?.let { "priorité $it" },
-                        BoardJson.labels(card).size.takeIf { it > 0 }?.let { "$it étapes" },
-                        BoardJson.intField(card, "tokenBudget")?.let { "$it tokens" },
+                        BoardJson.priority(card).takeIf { it.isNotBlank() }?.let { stringResource(R.string.boards_priorite, it) },
+                        BoardJson.labels(card).size.takeIf { it > 0 }?.let { stringResource(R.string.boards_etapes, it) },
+                        BoardJson.intField(card, "tokenBudget")?.let { stringResource(R.string.boards_tokens, it) },
                     ).joinToString(" · "),
-                    trailing = "détails",
+                    trailing = stringResource(R.string.boards_action_details),
                     onClick = { if (cardId.isNotBlank()) onOpen(cardId) },
                 )
                 if (cardId.isNotBlank()) {
                     ButtonRow {
-                        TextButton(onClick = { onRun(cardId) }) { Text("Lancer") }
-                        TextButton(onClick = { onHalt(cardId) }) { Text("Arrêter") }
-                        TextButton(onClick = { onCascade(cardId) }) { Text("Cascade") }
-                        TextButton(onClick = { onDelete(cardId) }) { Text("Suppr.", color = colors.danger) }
+                        TextButton(onClick = { onRun(cardId) }) { Text(stringResource(R.string.boards_lancer)) }
+                        TextButton(onClick = { onHalt(cardId) }) { Text(stringResource(R.string.boards_arreter)) }
+                        TextButton(onClick = { onCascade(cardId) }) { Text(stringResource(R.string.boards_cascade)) }
+                        TextButton(onClick = { onDelete(cardId) }) { Text(stringResource(R.string.boards_suppr), color = colors.danger) }
                     }
                 }
             }
         }
     }
-    ButtonRow { TextButton(onClick = onNewCard) { Text("Nouvelle carte") } }
+    ButtonRow { TextButton(onClick = onNewCard) { Text(stringResource(R.string.boards_nouvelle_carte)) } }
 }
 
 @Composable
@@ -459,7 +471,7 @@ private fun CardDetailDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text(BoardJson.title(card).ifBlank { "Carte" }, color = colors.textPrimary) },
+        title = { Text(BoardJson.title(card).ifBlank { stringResource(R.string.boards_carte) }, color = colors.textPrimary) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -468,13 +480,13 @@ private fun CardDetailDialog(
                 if (BoardJson.description(card).isNotBlank()) {
                     Text(BoardJson.description(card), color = colors.textSecondary, style = MaterialTheme.typography.bodyMedium)
                 }
-                KeyValueRow("Statut", BoardJson.status(card))
-                KeyValueRow("Commentaires", detail.comments.size.toString())
-                KeyValueRow("Pièces jointes", detail.attachments.size.toString())
-                KeyValueRow("Étiquettes", detail.labels.size.toString())
-                KeyValueRow("Dépendances", detail.dependencies.size.toString())
+                KeyValueRow(stringResource(R.string.boards_statut), BoardJson.status(card))
+                KeyValueRow(stringResource(R.string.boards_commentaires), detail.comments.size.toString())
+                KeyValueRow(stringResource(R.string.boards_pieces_jointes), detail.attachments.size.toString())
+                KeyValueRow(stringResource(R.string.boards_etiquettes), detail.labels.size.toString())
+                KeyValueRow(stringResource(R.string.boards_dependances), detail.dependencies.size.toString())
 
-                SectionTitle("Commentaires")
+                SectionTitle(stringResource(R.string.boards_commentaires))
                 detail.comments.forEach { entry ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -491,14 +503,18 @@ private fun CardDetailDialog(
                         }
                     }
                 }
-                PromptRow(value = comment, onValue = { comment = it }, label = "Ajouter un commentaire") {
+                PromptRow(
+                    value = comment,
+                    onValue = { comment = it },
+                    label = stringResource(R.string.boards_ajouter_commentaire),
+                ) {
                     if (comment.isNotBlank()) {
                         viewModel.addComment(comment)
                         comment = ""
                     }
                 }
 
-                SectionTitle("Étiquettes")
+                SectionTitle(stringResource(R.string.boards_etiquettes))
                 detail.labels.forEach { label ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -513,16 +529,25 @@ private fun CardDetailDialog(
                         }
                     }
                 }
-                PromptRow(value = labelName, onValue = { labelName = it }, label = "Nom d'étiquette", trailing = {
-                    PromptRowInline(value = labelColor, onValue = { labelColor = it }, label = "Couleur")
-                }) {
+                PromptRow(
+                    value = labelName,
+                    onValue = { labelName = it },
+                    label = stringResource(R.string.boards_nom_etiquette),
+                    trailing = {
+                        PromptRowInline(
+                            value = labelColor,
+                            onValue = { labelColor = it },
+                            label = stringResource(R.string.boards_couleur),
+                        )
+                    },
+                ) {
                     if (labelName.isNotBlank()) {
                         viewModel.addLabel(labelName, labelColor)
                         labelName = ""
                     }
                 }
 
-                SectionTitle("Pièces jointes")
+                SectionTitle(stringResource(R.string.boards_pieces_jointes))
                 detail.attachments.forEach { attachment ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -540,7 +565,7 @@ private fun CardDetailDialog(
                                 text = listOfNotNull(
                                     BoardJson.attachmentType(attachment).takeIf { it.isNotBlank() },
                                     BoardJson.attachmentSize(attachment)?.let(::formatSize),
-                                ).joinToString(" · ").ifBlank { "lire" },
+                                ).joinToString(" · ").ifBlank { stringResource(R.string.boards_action_lire) },
                                 color = colors.textSecondary,
                                 style = MaterialTheme.typography.labelSmall,
                             )
@@ -553,7 +578,11 @@ private fun CardDetailDialog(
                         }
                     }
                 }
-                PromptRow(value = attachmentPath, onValue = { attachmentPath = it }, label = "Chemin dans le workspace") {
+                PromptRow(
+                    value = attachmentPath,
+                    onValue = { attachmentPath = it },
+                    label = stringResource(R.string.boards_chemin_workspace),
+                ) {
                     if (attachmentPath.isNotBlank()) {
                         val name = attachmentPath.substringAfterLast('/').ifBlank { attachmentPath }
                         viewModel.addAttachment(name, attachmentPath)
@@ -561,7 +590,7 @@ private fun CardDetailDialog(
                     }
                 }
 
-                SectionTitle("Dépendances")
+                SectionTitle(stringResource(R.string.boards_dependances))
                 detail.dependencies.forEach { dependency ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -578,25 +607,35 @@ private fun CardDetailDialog(
                         }
                     }
                 }
-                PromptRow(value = dependencyId, onValue = { dependencyId = it }, label = "Identifiant de carte requise") {
+                PromptRow(
+                    value = dependencyId,
+                    onValue = { dependencyId = it },
+                    label = stringResource(R.string.boards_dependance_identifiant),
+                ) {
                     if (dependencyId.isNotBlank()) {
                         viewModel.addDependency(dependencyId)
                         dependencyId = ""
                     }
                 }
-                PromptRow(value = parentId, onValue = { parentId = it }, label = "Carte parente (vide = détacher)") {
+                PromptRow(
+                    value = parentId,
+                    onValue = { parentId = it },
+                    label = stringResource(R.string.boards_carte_parente),
+                ) {
                     viewModel.setParent(parentId.ifBlank { null })
                     parentId = ""
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { viewModel.runCard(detail.cardId) }) { Text("Lancer") }
+            TextButton(onClick = { viewModel.runCard(detail.cardId) }) { Text(stringResource(R.string.boards_lancer)) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { viewModel.haltCard(detail.cardId) }) { Text("Arrêter", color = colors.danger) }
-                TextButton(onClick = onDismiss) { Text("Fermer") }
+                TextButton(onClick = { viewModel.haltCard(detail.cardId) }) {
+                    Text(stringResource(R.string.boards_arreter), color = colors.danger)
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.boards_fermer)) }
             }
         },
     )
@@ -615,45 +654,53 @@ private fun ContextDialog(state: BoardsUiState, viewModel: BoardsViewModel, onDi
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Contexte du plateau", color = colors.textPrimary) },
+        title = { Text(stringResource(R.string.boards_contexte_titre), color = colors.textPrimary) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "Ce que chaque carte reçoit avant de démarrer.",
+                    text = stringResource(R.string.boards_contexte_intro),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
                 OutlinedTextField(
                     value = instructions,
                     onValueChange = { instructions = it },
-                    label = { Text("Consignes") },
+                    label = { Text(stringResource(R.string.boards_consignes)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = directory,
                     onValueChange = { directory = it },
-                    label = { Text("Dossier de travail") },
+                    label = { Text(stringResource(R.string.boards_dossier_travail)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = knowledge,
                     onValueChange = { knowledge = it },
-                    label = { Text("Connaissances") },
+                    label = { Text(stringResource(R.string.boards_connaissances)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                PromptRow(value = variableKey, onValue = { variableKey = it }, label = "Variable (clé)") {
+                PromptRow(
+                    value = variableKey,
+                    onValue = { variableKey = it },
+                    label = stringResource(R.string.boards_variable_cle),
+                ) {
                     if (variableKey.isNotBlank()) {
                         viewModel.setVariable(variableKey, variableValue)
                         variableKey = ""; variableValue = ""
                     }
                 }
-        PromptRow(value = variableValue, onValue = { variableValue = it }, label = "Valeur") {}
+        PromptRow(
+            value = variableValue,
+            onValue = { variableValue = it },
+            label = stringResource(R.string.boards_valeur),
+        ) {}
             }
         },
         confirmButton = {
@@ -662,9 +709,9 @@ private fun ContextDialog(state: BoardsUiState, viewModel: BoardsViewModel, onDi
                 if (directory.isNotBlank()) viewModel.setDirectory(directory)
                 if (knowledge.isNotBlank()) viewModel.setKnowledge(knowledge)
                 onDismiss()
-            }) { Text("Enregistrer") }
+            }) { Text(stringResource(R.string.boards_enregistrer)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Fermer") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.boards_fermer)) } },
     )
 }
 
@@ -704,7 +751,7 @@ private fun PromptRow(
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onConfirm) { Text("OK") }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.boards_ok)) }
         }
         trailing?.invoke()
     }
@@ -760,6 +807,6 @@ private fun TextPromptDialog(
         confirmButton = {
             TextButton(onClick = { onConfirm(first, second) }, enabled = first.isNotBlank()) { Text(confirm) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.boards_annuler)) } },
     )
 }
