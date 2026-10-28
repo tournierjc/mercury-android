@@ -47,12 +47,10 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.BOT_STARTED -> R.string.notice_bot_started
     NoticeKey.BOT_STOPPED -> R.string.notice_bot_stopped
     NoticeKey.RUN_REQUESTED -> R.string.notice_run_requested
-    NoticeKey.TEAMMATE_DELETED -> R.string.notice_teammate_deleted
     NoticeKey.TEAMMATE_CREATED -> R.string.notice_teammate_created
     NoticeKey.OUTPUT_DELETED -> R.string.notice_output_deleted
     NoticeKey.JOB_RESTARTED -> R.string.notice_job_restarted
     NoticeKey.INCIDENTS_CLEARED -> R.string.notice_incidents_cleared
-    NoticeKey.TEAMMATE_ENABLED_TOGGLED -> R.string.notice_teammate_enabled_toggled
     NoticeKey.TEAMMATE_MODEL_SAVED -> R.string.notice_teammate_model_saved
     NoticeKey.TEAMMATE_MODEL_CLEARED -> R.string.notice_teammate_model_cleared
     NoticeKey.TEAMMATE_DESCRIPTION_SAVED -> R.string.notice_teammate_description_saved
@@ -118,7 +116,7 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.TEAMMATE_ENABLED -> R.string.notice_teammate_enabled
     NoticeKey.TEAMMATE_DISABLED -> R.string.notice_teammate_disabled
     NoticeKey.TEAMMATE_DELETED_NAMED -> R.string.notice_teammate_deleted_named
-    NoticeKey.RESTART_REQUESTED -> R.string.notice_restart_requested
+    NoticeKey.DAEMON_RESTART_REQUESTED -> R.string.notice_daemon_restart_requested
     NoticeKey.SHUTDOWN_ACCEPTED -> R.string.notice_shutdown_accepted
     NoticeKey.SHUTDOWN_REFUSED -> R.string.notice_shutdown_refused
     NoticeKey.CREW_IMPORT_NOTHING -> R.string.notice_crew_import_nothing

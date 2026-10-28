@@ -52,7 +52,8 @@ enum class NoticeKey {
     /** More files were attached than the composer accepts. */
     ATTACHMENTS_LIMIT,
 
-    /** One attachment is over the cap of its kind: `%1$s` its name, `%2$d` the cap in megabytes. */
+    /** One attachment is over the cap of its kind: `%1$s` its name, `%2$s` the cap in megabytes.
+     *  Arguments are strings, so no notice may ask for a number (see `NoticeStringsTest`). */
     ATTACHMENT_TOO_LARGE,
 
     /** The daemon warned about the turn (a loop, a truncated tool) without stopping it. */
@@ -92,13 +93,10 @@ enum class NoticeKey {
     BOT_STARTED,
     BOT_STOPPED,
     RUN_REQUESTED,
-    TEAMMATE_DELETED,
     TEAMMATE_CREATED,
     OUTPUT_DELETED,
     JOB_RESTARTED,
     INCIDENTS_CLEARED,
-    /** The teammate was enabled or disabled. */
-    TEAMMATE_ENABLED_TOGGLED,
     /** One field of a teammate's manifest was written. One key per field, like the rest. */
     TEAMMATE_MODEL_SAVED,
     TEAMMATE_MODEL_CLEARED,
@@ -169,7 +167,7 @@ enum class NoticeKey {
     TEAMMATE_ENABLED,
     TEAMMATE_DISABLED,
     TEAMMATE_DELETED_NAMED,
-    RESTART_REQUESTED,
+    DAEMON_RESTART_REQUESTED,
     SHUTDOWN_ACCEPTED,
     SHUTDOWN_REFUSED,
     CREW_IMPORT_NOTHING,

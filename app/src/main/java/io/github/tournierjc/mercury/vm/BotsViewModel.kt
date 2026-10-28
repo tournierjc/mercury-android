@@ -364,7 +364,12 @@ class BotsViewModel(
     }
 
     fun setEnabled(id: String, enabled: Boolean) =
-        patch(id, """{"enabled":$enabled}""", Notice(NoticeKey.TEAMMATE_ENABLED_TOGGLED))
+        patch(
+            id,
+            """{"enabled":$enabled}""",
+            // The same fact the console reports, same key, teammate named.
+            Notice(if (enabled) NoticeKey.TEAMMATE_ENABLED else NoticeKey.TEAMMATE_DISABLED, args = listOf(id)),
+        )
 
     /**
      * `model` is an object in the manifest — `{ provider, model }` — so a bot inherits the main
@@ -517,7 +522,7 @@ class BotsViewModel(
                     if (_state.value.selectedId == id) {
                         _state.value = BotsUiState() // the sheet closes; the roster is the screen
                     }
-                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.TEAMMATE_DELETED)) }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.TEAMMATE_DELETED_NAMED, args = listOf(id))) }
                     refreshRoster()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }

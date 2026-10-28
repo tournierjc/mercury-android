@@ -284,7 +284,7 @@ class ConsoleViewModel(
     fun setCodeMode(state: String) = action(Notice(NoticeKey.CODE_MODE_SET, args = listOf(state))) { api.setCodeMode(state) }
 
     /** Restarts the daemon: the HTTP call returns before the socket actually drops. */
-    fun restart() = action(Notice(NoticeKey.RESTART_REQUESTED)) { api.restart() }
+    fun restart() = action(Notice(NoticeKey.DAEMON_RESTART_REQUESTED)) { api.restart() }
 
     /**
      * Stops the daemon. The follow-up refresh would hit a socket that is going away, so this

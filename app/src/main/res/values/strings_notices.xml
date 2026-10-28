@@ -30,12 +30,10 @@
     <string name="notice_bot_started">Équipier démarré</string>
     <string name="notice_bot_stopped">Équipier arrêté</string>
     <string name="notice_run_requested">Exécution demandée</string>
-    <string name="notice_teammate_deleted">Équipier supprimé</string>
     <string name="notice_teammate_created">Équipier « %1$s » créé</string>
     <string name="notice_output_deleted">Livrable supprimé</string>
     <string name="notice_job_restarted">Job relancé (%1$s)</string>
     <string name="notice_incidents_cleared">%1$s incident(s) effacé(s)</string>
-    <string name="notice_teammate_enabled_toggled">Activation enregistrée</string>
     <string name="notice_teammate_model_saved">Modèle de l\'équipier enregistré</string>
     <string name="notice_teammate_model_cleared">Modèle de l\'équipier effacé</string>
     <string name="notice_teammate_description_saved">Description de l\'équipier enregistrée</string>
@@ -102,7 +100,7 @@
     <string name="notice_teammate_enabled">Équipier %1$s activé</string>
     <string name="notice_teammate_disabled">Équipier %1$s désactivé</string>
     <string name="notice_teammate_deleted_named">Équipier %1$s supprimé</string>
-    <string name="notice_restart_requested">Redémarrage accepté — le runtime revient dans quelques secondes</string>
+    <string name="notice_daemon_restart_requested">Redémarrage accepté — le runtime revient dans quelques secondes</string>
     <string name="notice_shutdown_accepted">Arrêt accepté (pid %1$s) — le démon s\'arrête</string>
     <string name="notice_shutdown_refused">Arrêt refusé par le démon</string>
     <string name="notice_crew_import_nothing">Rien d\'importé — %1$s équipier(s) déjà présent(s)</string>
