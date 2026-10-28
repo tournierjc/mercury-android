@@ -373,7 +373,11 @@ private fun RosterList(
     val colors = LocalMercuryColors.current
     val needsYou = watch.needsYou()
     if (needsYou.isNotEmpty()) {
-        CollapsibleSection(stringResource(R.string.bots_section_waiting, needsYou.size), defaultOpen = true) {
+        CollapsibleSection(
+            stringResource(R.string.bots_section_waiting, needsYou.size),
+            defaultOpen = true,
+            stateKey = "bots-waiting",
+        ) {
             needsYou.forEach { bot ->
                 ActionRow(
                     title = BotJson.name(bot),
@@ -678,7 +682,7 @@ private fun BotDetail(
             }
         }
         if (dispatchFiles.isNotEmpty()) {
-            ButtonRow {
+            Column {
                 dispatchFiles.forEach { file ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(

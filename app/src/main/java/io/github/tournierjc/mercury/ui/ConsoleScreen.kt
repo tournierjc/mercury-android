@@ -21,6 +21,21 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.DriveFileMove
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.FactCheck
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Edit
@@ -158,7 +173,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             WorkspaceSection(state, viewModel)
             MusicSection(state, viewModel)
 
-            CollapsibleSection(stringResource(R.string.console_section_system), defaultOpen = true) {
+            CollapsibleSection(stringResource(R.string.console_section_system)) {
                 Text(
                     text = stringResource(R.string.console_restart_required_note),
                     style = MaterialTheme.typography.bodyMedium,
@@ -341,14 +356,26 @@ private fun SchedulesSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
 @Composable
 private fun AgentsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     if (state.agents.isEmpty()) return
+    val colors = LocalMercuryColors.current
     CollapsibleSection(stringResource(R.string.console_section_agents)) {
         state.agents.forEach { agent ->
             ActionRow(title = agent.titleHint(), subtitle = agent.detailHint())
         }
-        ButtonRow {
-            TextButton(onClick = viewModel::haltAgents) { Text(stringResource(R.string.console_pause)) }
-            TextButton(onClick = viewModel::stopAgents) { Text(stringResource(R.string.console_stop)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Pause,
+                    label = stringResource(R.string.console_pause),
+                    onClick = viewModel::haltAgents,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Stop,
+                    label = stringResource(R.string.console_stop),
+                    tint = colors.danger,
+                    onClick = viewModel::stopAgents,
+                ),
+            ),
+        )
     }
 }
 
@@ -396,10 +423,22 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 color = colors.textSecondary,
             )
         }
-        ButtonRow {
-            TextButton(onClick = { installUrl = true }, enabled = !state.busy) { Text(stringResource(R.string.console_install_url)) }
-            TextButton(onClick = { installRegistry = true }, enabled = !state.busy) { Text(stringResource(R.string.console_registry)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Link,
+                    label = stringResource(R.string.console_install_url),
+                    enabled = !state.busy,
+                    onClick = { installUrl = true },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.CloudDownload,
+                    label = stringResource(R.string.console_registry),
+                    enabled = !state.busy,
+                    onClick = { installRegistry = true },
+                ),
+            ),
+        )
     }
 
     if (installUrl) {
@@ -527,9 +566,16 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
         KeyValueRow(stringResource(R.string.console_label_folder), workspace.cwd.ifBlank { "—" })
         KeyValueRow(stringResource(R.string.console_label_project), workspace.projectName.ifBlank { "—" })
         KeyValueRow("Git", if (workspace.isGit) workspace.branch.ifBlank { stringResource(R.string.console_repository) } else stringResource(R.string.console_none))
-        ButtonRow {
-            TextButton(onClick = { changing = true }, enabled = !state.busy) { Text(stringResource(R.string.console_change_root)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.DriveFileMove,
+                    label = stringResource(R.string.console_change_root),
+                    enabled = !state.busy,
+                    onClick = { changing = true },
+                ),
+            ),
+        )
     }
 
     if (changing) {
@@ -849,7 +895,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
         historyIndex = -1
     }
 
-    CollapsibleSection(stringResource(R.string.console_section_terminal)) {
+    CollapsibleSection(stringResource(R.string.console_section_terminal), defaultOpen = true) {
         // The screen itself: monospace on a sunken panel, prompt and transcript together.
         Column(
             modifier = Modifier
@@ -1105,26 +1151,38 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             )
         }
 
-        ButtonRow {
-            TextButton(
-                onClick = viewModel::stageAll,
-                enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
-            ) { Text(stringResource(R.string.console_stage_all)) }
-            TextButton(
-                onClick = viewModel::unstageAll,
-                enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
-            ) { Text(stringResource(R.string.console_unstage_all)) }
-        }
-        ButtonRow {
-            TextButton(
-                onClick = { viewModel.showDiff(null, false) },
-                enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
-            ) { Text(stringResource(R.string.console_diff_unstaged)) }
-            TextButton(
-                onClick = { viewModel.showDiff(null, true) },
-                enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
-            ) { Text(stringResource(R.string.console_diff_staged)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Add,
+                    label = stringResource(R.string.console_stage_all),
+                    enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
+                    onClick = viewModel::stageAll,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Remove,
+                    label = stringResource(R.string.console_unstage_all),
+                    enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
+                    onClick = viewModel::unstageAll,
+                ),
+            ),
+        )
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Visibility,
+                    label = stringResource(R.string.console_diff_unstaged),
+                    enabled = !state.gitBusy && unstagedFiles.isNotEmpty(),
+                    onClick = { viewModel.showDiff(null, false) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.FactCheck,
+                    label = stringResource(R.string.console_diff_staged),
+                    enabled = !state.gitBusy && stagedFiles.isNotEmpty(),
+                    onClick = { viewModel.showDiff(null, true) },
+                ),
+            ),
+        )
 
         OutlinedTextField(
             value = state.commitDraft,
@@ -1140,48 +1198,71 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
         val commitTitle = stringResource(R.string.console_create_commit_title)
         val commitBody = stringResource(R.string.console_create_commit_body)
         val commitConfirm = stringResource(R.string.console_commit)
-        ButtonRow {
-            TextButton(
-                onClick = viewModel::generateCommitMessage,
-                enabled = !state.gitBusy,
-            ) { Text(if (state.gitBusy) "…" else stringResource(R.string.console_generate)) }
-            TextButton(
-                onClick = { confirm = GitConfirm(
-                    title = commitTitle,
-                    body = commitBody,
-                    confirm = commitConfirm,
-                    action = viewModel::commit,
-                ) },
-                enabled = !state.gitBusy && state.commitDraft.isNotBlank(),
-            ) { Text(stringResource(R.string.console_commit)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.AutoAwesome,
+                    label = stringResource(R.string.console_generate),
+                    enabled = !state.gitBusy,
+                    onClick = viewModel::generateCommitMessage,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Check,
+                    label = stringResource(R.string.console_commit),
+                    enabled = !state.gitBusy && state.commitDraft.isNotBlank(),
+                    onClick = {
+                        confirm = GitConfirm(
+                            title = commitTitle,
+                            body = commitBody,
+                            confirm = commitConfirm,
+                            action = viewModel::commit,
+                        )
+                    },
+                ),
+            ),
+        )
         val pushTitle = stringResource(R.string.console_push_branch_title)
         val pushBody = stringResource(R.string.console_push_body)
         val pushConfirm = stringResource(R.string.console_push)
         val pullTitle = stringResource(R.string.console_pull_title)
         val pullBody = stringResource(R.string.console_pull_body)
         val pullConfirm = stringResource(R.string.console_pull)
-        ButtonRow {
-            TextButton(
-                onClick = { confirm = GitConfirm(
-                    title = pushTitle,
-                    body = pushBody,
-                    confirm = pushConfirm,
-                    action = viewModel::push,
-                ) },
-                enabled = !state.gitBusy,
-            ) { Text(stringResource(R.string.console_push)) }
-            TextButton(
-                onClick = { confirm = GitConfirm(
-                    title = pullTitle,
-                    body = pullBody,
-                    confirm = pullConfirm,
-                    action = viewModel::pull,
-                ) },
-                enabled = !state.gitBusy,
-            ) { Text(stringResource(R.string.console_pull)) }
-            TextButton(onClick = viewModel::refreshGit, enabled = !state.gitBusy) { Text(stringResource(R.string.console_refresh)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.CloudUpload,
+                    label = stringResource(R.string.console_push),
+                    enabled = !state.gitBusy,
+                    onClick = {
+                        confirm = GitConfirm(
+                            title = pushTitle,
+                            body = pushBody,
+                            confirm = pushConfirm,
+                            action = viewModel::push,
+                        )
+                    },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.CloudDownload,
+                    label = stringResource(R.string.console_pull),
+                    enabled = !state.gitBusy,
+                    onClick = {
+                        confirm = GitConfirm(
+                            title = pullTitle,
+                            body = pullBody,
+                            confirm = pullConfirm,
+                            action = viewModel::pull,
+                        )
+                    },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Refresh,
+                    label = stringResource(R.string.console_refresh),
+                    enabled = !state.gitBusy,
+                    onClick = viewModel::refreshGit,
+                ),
+            ),
+        )
 
         val branches = state.gitBranches.filter { it.name.isNotBlank() }
         if (branches.isNotEmpty()) {
@@ -1361,12 +1442,34 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             )
         }
 
-        ButtonRow {
-            TextButton(onClick = viewModel::previous, enabled = !state.musicBusy) { Text(stringResource(R.string.console_previous_track)) }
-            TextButton(onClick = viewModel::play, enabled = !state.musicBusy) { Text(stringResource(R.string.console_play)) }
-            TextButton(onClick = viewModel::pause, enabled = !state.musicBusy) { Text(stringResource(R.string.console_pause)) }
-            TextButton(onClick = viewModel::next, enabled = !state.musicBusy) { Text(stringResource(R.string.console_next_track)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.SkipPrevious,
+                    label = stringResource(R.string.console_previous_track),
+                    enabled = !state.musicBusy,
+                    onClick = viewModel::previous,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.PlayArrow,
+                    label = stringResource(R.string.console_play),
+                    enabled = !state.musicBusy,
+                    onClick = viewModel::play,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Pause,
+                    label = stringResource(R.string.console_pause),
+                    enabled = !state.musicBusy,
+                    onClick = viewModel::pause,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.SkipNext,
+                    label = stringResource(R.string.console_next_track),
+                    enabled = !state.musicBusy,
+                    onClick = viewModel::next,
+                ),
+            ),
+        )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1439,9 +1542,16 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             )
         }
 
-        ButtonRow {
-            TextButton(onClick = viewModel::refreshMusic, enabled = !state.musicBusy) { Text(stringResource(R.string.console_refresh)) }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Refresh,
+                    label = stringResource(R.string.console_refresh),
+                    enabled = !state.musicBusy,
+                    onClick = viewModel::refreshMusic,
+                ),
+            ),
+        )
     }
 }
 

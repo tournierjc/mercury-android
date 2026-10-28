@@ -103,7 +103,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp),
         ) {
-            CollapsibleSection(stringResource(R.string.settings_language_title), defaultOpen = true) {
+            CollapsibleSection(stringResource(R.string.settings_language_title)) {
                 // The label of each choice is its own name, never translated: an English speaker
                 // looking for French has to recognise « Français » in any UI language.
                 val current = LocaleStore.tag(context)
