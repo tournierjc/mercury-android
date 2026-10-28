@@ -1,6 +1,10 @@
 package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -73,10 +77,9 @@ fun GraphScreen(onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val colors = LocalMercuryColors.current
 
-    var selected by remember { mutableStateOf<GraphNode?>(null) }
-
     // A node that vanished from a refresh must not stay in the panel.
-    val shown = selected?.let { picked -> state.nodes.firstOrNull { it.id == picked.id } }
+    val shown = state.detailId.takeIf { it.isNotBlank() }?.let { id -> state.nodes.firstOrNull { it.id == id } }
+    val drawn = visible(state.nodes, state.query)
 
     Column(
         modifier = Modifier
@@ -89,9 +92,11 @@ fun GraphScreen(onBack: () -> Unit) {
             subtitle = if (state.nodes.isEmpty()) {
                 null
             } else {
+                // With a search running, the header counts what is drawn — not the whole graph.
+                val nodes = if (state.query.isBlank()) state.nodes else drawn
                 stringResource(
                     R.string.brain_graphe_comptes,
-                    pluralStringResource(R.plurals.brain_nb_noeuds, state.nodes.size, state.nodes.size),
+                    pluralStringResource(R.plurals.brain_nb_noeuds, nodes.size, nodes.size),
                     pluralStringResource(R.plurals.brain_nb_liens, state.edges.size, state.edges.size),
                 )
             },
@@ -118,6 +123,18 @@ fun GraphScreen(onBack: () -> Unit) {
                 color = colors.textSecondary,
                 modifier = Modifier.padding(horizontal = 18.dp),
             )
+            // The webapp narrows the drawing by a search field; so does the phone, and the layout
+            // is recomputed on the few nodes left rather than dimming a hairball of them.
+            OutlinedTextField(
+                value = state.query,
+                onValueChange = viewModel::search,
+                label = { Text(stringResource(R.string.brain_graphe_rechercher)) },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+            Legend(state.nodes)
             // The panel used to be a sibling, so opening it shrank the canvas and the layout was
             // recomputed under the finger that had just picked a node. It floats now.
             Box(
@@ -126,14 +143,21 @@ fun GraphScreen(onBack: () -> Unit) {
                     .weight(1f),
             ) {
                 GraphCanvas(
-                    state = state,
-                    onSelect = { node -> selected = node },
+                    state = state.copy(nodes = drawn, edges = state.edges),
+                    // A tap on empty canvas closes the panel; a tap on a node opens its memory.
+                    onSelect = { node ->
+                        if (node == null) viewModel.clearSelection() else viewModel.selectNode(node.id)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
                 shown?.let { node ->
                     NodePanel(
                         node = node,
-                        onClose = { selected = null },
+                        text = state.detailText,
+                        detail = state.detailDetail,
+                        loading = state.detailLoading,
+                        failed = state.detailFailed,
+                        onClose = viewModel::clearSelection,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
@@ -280,8 +304,60 @@ private fun GraphCanvas(
 }
 
 /** The sentence behind a dot, at the bottom, where a thumb can read it. */
+/**
+ * The nodes whose label holds the query, and only the links between them. Empty query, untouched
+ * graph; a query that matches nothing leaves the empty state to say so.
+ */
+internal fun visible(nodes: List<GraphNode>, query: String): List<GraphNode> {
+    val needle = query.trim()
+    if (needle.isBlank()) return nodes
+    return nodes.filter { node ->
+        node.fullLabel.contains(needle, ignoreCase = true) || node.label.contains(needle, ignoreCase = true)
+    }
+}
+
+/** One chip per memory type drawn, in its colour: the graph's colours are not self-evident. */
 @Composable
-private fun NodePanel(node: GraphNode, onClose: () -> Unit, modifier: Modifier = Modifier) {
+private fun Legend(nodes: List<GraphNode>) {
+    val colors = LocalMercuryColors.current
+    val types = nodes.map { it.type }.filter { it.isNotBlank() }.distinct().take(6)
+    if (types.isEmpty()) return
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 4.dp),
+    ) {
+        types.forEach { type ->
+            val sample = nodes.firstOrNull { it.type == type }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(nodeColor(sample?.color, colors.accent), CircleShape),
+                )
+                Text(
+                    text = rawLabel(type),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NodePanel(
+    node: GraphNode,
+    text: String,
+    detail: String,
+    loading: Boolean,
+    failed: Boolean,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalMercuryColors.current
     Row(
         verticalAlignment = Alignment.Top,
@@ -309,6 +385,42 @@ private fun NodePanel(node: GraphNode, onClose: () -> Unit, modifier: Modifier =
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            when {
+                loading -> Text(
+                    text = stringResource(R.string.common_loading),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+
+                failed -> Text(
+                    text = stringResource(R.string.brain_noeud_illisible),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+
+                else -> {
+                    text.takeIf { it.isNotBlank() }?.let { summary ->
+                        Text(
+                            text = summary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textPrimary,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                    detail.takeIf { it.isNotBlank() }?.let { body ->
+                        Text(
+                            text = body,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 4.dp),
+                            maxLines = 6,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.Top) {
             IconButton(onClick = onClose, modifier = Modifier.size(38.dp)) {

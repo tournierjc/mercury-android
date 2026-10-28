@@ -30,6 +30,14 @@ data class GraphUiState(
     val nodes: List<GraphNode> = emptyList(),
     val edges: List<GraphEdge> = emptyList(),
     val error: Notice? = null,
+    /** The node whose memory is being read, empty when no panel is open. */
+    val detailId: String = "",
+    val detailText: String = "",
+    val detailDetail: String = "",
+    val detailLoading: Boolean = false,
+    val detailFailed: Boolean = false,
+    /** What the search field holds: the drawn graph is filtered by it. */
+    val query: String = "",
 )
 
 /**
@@ -71,6 +79,43 @@ class GraphViewModel(private val api: MercuryApi) : ViewModel() {
                 }
                 .onFailure { failure -> _state.update { it.copy(loading = false, error = failure.toNotice()) } }
         }
+    }
+
+    /**
+     * Read the memory behind a node. The webapp fetched it on click too — a graph that shows you a
+     * shape and refuses to say what it is has done half the work.
+     */
+    fun selectNode(id: String) {
+        _state.update {
+            it.copy(detailId = id, detailText = "", detailDetail = "", detailLoading = true, detailFailed = false)
+        }
+        viewModelScope.launch {
+            runCatching { api.memory(id) }
+                .onSuccess { memory ->
+                    _state.update {
+                        if (it.detailId != id) {
+                            it
+                        } else {
+                            it.copy(
+                                detailLoading = false,
+                                detailText = memory.summary,
+                                detailDetail = memory.detail.orEmpty(),
+                            )
+                        }
+                    }
+                }
+                .onFailure {
+                    _state.update { if (it.detailId == id) it.copy(detailLoading = false, detailFailed = true) else it }
+                }
+        }
+    }
+
+    fun clearSelection() {
+        _state.update { it.copy(detailId = "", detailText = "", detailDetail = "", detailLoading = false, detailFailed = false) }
+    }
+
+    fun search(query: String) {
+        _state.update { it.copy(query = query) }
     }
 
     fun clearBanner() {
