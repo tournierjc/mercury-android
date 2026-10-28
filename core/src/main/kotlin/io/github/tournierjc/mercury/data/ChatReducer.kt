@@ -8,6 +8,11 @@ data class ChatMessage(
     val steps: List<ToolStep> = emptyList(),
     val streaming: Boolean = false,
     val failed: Boolean = false,
+    /**
+     * The steps came from a stored tool summary, not from a turn in progress: they are history and
+     * are drawn as a block, where live steps are a row of chips.
+     */
+    val toolTrace: Boolean = false,
 ) {
     enum class Role { User, Assistant }
 }

@@ -261,6 +261,7 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.TERMINAL_EXIT_CODE -> R.string.notice_terminal_exit_code
     NoticeKey.TERMINAL_OK -> R.string.notice_terminal_ok
     NoticeKey.CODE_MODE_SET -> R.string.notice_code_mode_set
+    NoticeKey.CODE_MODE_FAILED -> R.string.notice_code_mode_failed
     NoticeKey.WORKSPACE_SET -> R.string.notice_workspace_set
     NoticeKey.CREW_IMPORT_FAILED -> R.string.notice_crew_import_failed
 

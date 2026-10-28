@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The composer's command palette: what each command does, in plain words. -->
+    <string name="slash_cat_general">General</string>
+    <string name="slash_cat_agents">Agents</string>
+    <string name="slash_cat_background">Background</string>
+    <string name="slash_cat_models">Models</string>
+    <string name="slash_cat_code">Code</string>
+    <string name="slash_cat_spotify">Spotify</string>
+    <string name="slash_cat_budget">Budget</string>
+    <string name="slash_cat_memory">Memory</string>
+    <string name="slash_cat_workspace">Workspace</string>
+    <string name="slash_help">Show all available commands</string>
+    <string name="slash_progress">Show current task progress</string>
+    <string name="slash_halt">Stop all sub-agents</string>
+    <string name="slash_stop">Stop all agents and clear tasks</string>
+    <string name="slash_permissions">Toggle permission mode</string>
+    <string name="slash_exit">Shutdown Mercury</string>
+    <string name="slash_agents">List active sub-agents and status</string>
+    <string name="slash_agents_kill">Kill a specific sub-agent</string>
+    <string name="slash_bg">Run a shell command in background</string>
+    <string name="slash_bg_delegate">Delegate an LLM task to background</string>
+    <string name="slash_bg_list">Show all background tasks</string>
+    <string name="slash_bg_current">Move active task to background</string>
+    <string name="slash_bg_stop">Stop a background task</string>
+    <string name="slash_bg_killall">Stop all background tasks</string>
+    <string name="slash_bg_clear">Prune completed background tasks</string>
+    <string name="slash_models">List available models</string>
+    <string name="slash_models_use">Switch to a different model</string>
+    <string name="slash_code">Toggle programming mode</string>
+    <string name="slash_code_plan">Set plan-only mode</string>
+    <string name="slash_code_execute">Set execute mode</string>
+    <string name="slash_code_off">Disable programming mode</string>
+    <string name="slash_spotify">Spotify status and controls</string>
+    <string name="slash_spotify_play">Play or search for music</string>
+    <string name="slash_spotify_pause">Pause playback</string>
+    <string name="slash_spotify_next">Skip to next track</string>
+    <string name="slash_spotify_prev">Previous track</string>
+    <string name="slash_spotify_queue">Show play queue</string>
+    <string name="slash_budget">Show token budget status</string>
+    <string name="slash_budget_override">Override budget for next request</string>
+    <string name="slash_budget_reset">Reset daily usage counter</string>
+    <string name="slash_budget_set">Set new daily budget limit</string>
+    <string name="slash_memory">Manage second-brain memory</string>
+    <string name="slash_ws">Workspace file operations</string>
+</resources>

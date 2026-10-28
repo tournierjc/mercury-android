@@ -14,9 +14,11 @@ import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.data.ChatState
+import io.github.tournierjc.mercury.data.CodeMode
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.ThreadDto
+import io.github.tournierjc.mercury.data.ToolTrace
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,10 +55,22 @@ class ChatViewModel(
     private var eventsJob: Job? = null
     private var streamSession: String? = null
 
+    /**
+     * The programming mode, as the daemon reports it. Held here because the choice now lives in the
+     * conversation: the console used to own it, on a screen about disk and plugins.
+     */
+    private val _codeMode = MutableStateFlow(CodeMode.Off)
+    val codeMode: StateFlow<CodeMode> = _codeMode.asStateFlow()
+
+    /** False when this runtime has no programming mode at all: the control then draws nothing. */
+    private val _codeModeAvailable = MutableStateFlow(false)
+    val codeModeAvailable: StateFlow<Boolean> = _codeModeAvailable.asStateFlow()
+
     init {
         if (api.hasSession()) {
             _state.update { it.copy(connected = true) }
             refreshThreads()
+            refreshCodeMode()
         }
     }
 
@@ -200,6 +214,31 @@ class ChatViewModel(
         ensureEvents(null)
     }
 
+    /** Reads the mode the daemon is in; silent when the route is absent, as older runtimes are. */
+    fun refreshCodeMode() {
+        viewModelScope.launch {
+            runCatching { api.codeStatus() }
+                .onSuccess { status ->
+                    _codeModeAvailable.value = status.available
+                    _codeMode.value = CodeMode.from(status.state)
+                }
+        }
+    }
+
+    /** Chooses a mode. The screen redraws from the daemon's answer, not from the tap. */
+    fun setCodeMode(mode: CodeMode) {
+        viewModelScope.launch {
+            runCatching { api.setCodeMode(mode.wire) }
+                .onSuccess { status ->
+                    _codeModeAvailable.value = status.available
+                    _codeMode.value = CodeMode.from(status.state)
+                }
+                .onFailure { e ->
+                    _state.update { ChatReducer.setError(it, Notice(NoticeKey.CODE_MODE_FAILED).withDetail(e.message)) }
+                }
+        }
+    }
+
     fun openThread(thread: ThreadDto) {
         eventsJob?.cancel()
         eventsJob = null
@@ -212,10 +251,16 @@ class ChatViewModel(
                 .onSuccess { messages ->
                     _state.update { current ->
                         current.copy(messages = messages.mapIndexed { index, dto ->
+                            // A turn that used tools leaves a summary written for the model. Shown
+                            // verbatim it was a wall of `- tool → ok`; parsed, it is the same chips
+                            // the live turn had.
+                            val trace = dto.kind == "tool-call" || ToolTrace.looksLike(dto.content)
                             ChatMessage(
                                 id = "history-$index",
                                 role = if (dto.role == "user") ChatMessage.Role.User else ChatMessage.Role.Assistant,
-                                text = dto.content,
+                                text = if (trace) "" else dto.content,
+                                steps = if (trace) ToolTrace.parse(dto.content) else emptyList(),
+                                toolTrace = trace,
                             )
                         })
                     }

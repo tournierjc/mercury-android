@@ -22,4 +22,23 @@
     <string name="connect_sign_in">Se connecter</string>
     <string name="connect_reachability_hint">Le dashboard Mercury doit être joignable depuis le téléphone (Tailscale + `tailscale serve`, ou tunnel SSH).</string>
     <string name="common_loading">Chargement…</string>
+    <!-- Le composeur : la palette de commandes et ses deux états vides. -->
+    <string name="composer_commands">Commandes</string>
+    <string name="composer_commands_search">Chercher une commande</string>
+    <string name="composer_commands_none">Aucune commande ne correspond.</string>
+    <!-- L'activité outils relue depuis l'historique : un bloc replié, pas un paragraphe. -->
+    <string name="chat_trace_count">%1$d outils</string>
+    <string name="chat_trace_failures">%1$d en échec</string>
+    <string name="chat_trace_show">déplier</string>
+    <string name="chat_trace_hide">replier</string>
+    <!-- Le mode programmation, dans la conversation : quatre états et ce qu'ils veulent dire. -->
+    <string name="chat_mode_title">MODE PROGRAMMATION</string>
+    <string name="chat_mode_off">mode normal</string>
+    <string name="chat_mode_auto">auto</string>
+    <string name="chat_mode_plan">plan</string>
+    <string name="chat_mode_execute">exécuter</string>
+    <string name="chat_mode_off_hint">Mercury répond, sans toucher au code.</string>
+    <string name="chat_mode_auto_hint">Il passe en mode programme quand la demande s\'y prête.</string>
+    <string name="chat_mode_plan_hint">Il lit et propose un plan, il n\'écrit rien.</string>
+    <string name="chat_mode_execute_hint">Il modifie les fichiers du Spark directement.</string>
 </resources>

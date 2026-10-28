@@ -92,6 +92,7 @@ import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import io.github.tournierjc.mercury.data.ChatState
+import io.github.tournierjc.mercury.data.CodeMode
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.QuoteReply
 import io.github.tournierjc.mercury.data.ThreadDto
@@ -145,6 +146,10 @@ fun ChatScreen(
     onOpenBotConsumed: () -> Unit = {},
     /** True while the first threads/fleet round-trip is in flight (see ChatViewModel.syncing). */
     syncing: Boolean = false,
+    /** The programming mode the daemon is in, drawn above the field. */
+    codeMode: CodeMode = CodeMode.Off,
+    codeModeAvailable: Boolean = false,
+    onCodeMode: (CodeMode) -> Unit = {},
 ) {
     val colors = LocalMercuryColors.current
     var screen by rememberSaveable { mutableStateOf(AppScreen.Chat) }
@@ -657,6 +662,14 @@ fun ChatScreen(
 
             AttachmentStrip(attachments = attachments, onRemove = onRemoveAttachment)
 
+            // The programming mode, where the next message is typed: it changes what the agent does
+            // with that message, so it belongs above the field and not in the console.
+            CodeModeBar(
+                mode = codeMode,
+                available = codeModeAvailable,
+                onPick = onCodeMode,
+            )
+
             replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
             Composer(
                 value = composerText,
@@ -1039,34 +1052,44 @@ internal fun MessageItem(
 
     Column(modifier = Modifier.fillMaxWidth().then(press)) {
         if (message.steps.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                message.steps.forEach { step ->
-                    Text(
-                        text = step.label.ifBlank { step.tool },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.textSecondary,
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.extraSmall)
-                            .background(colors.surface)
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                    )
+            if (message.toolTrace) {
+                // History: a block that says "12 outils" and opens into the calls. The row of chips
+                // below is for a turn in progress, where three or four steps arrive one by one;
+                // twenty of them in a strip you scroll sideways is not a record of anything.
+                ToolTraceBlock(message.steps)
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    message.steps.forEach { step ->
+                        Text(
+                            text = step.label.ifBlank { step.tool },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .background(colors.surface)
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                        )
+                    }
                 }
             }
         }
         if (parsed.isQuote) {
             QuoteBlock(parsed.quote)
         }
-        if (selecting) {
+        // A stored tool summary IS the message: an empty body under the block would be a blank
+        // paragraph the reader scrolls past wondering what failed to render.
+        val bodyVisible = parsed.body.isNotBlank() || !message.toolTrace
+        if (bodyVisible && selecting) {
             SelectionContainer {
                 MarkdownText(text = parsed.body, streaming = message.streaming)
             }
-        } else {
+        } else if (bodyVisible) {
             MarkdownText(text = parsed.body, streaming = message.streaming)
         }
         if (message.streaming) {
