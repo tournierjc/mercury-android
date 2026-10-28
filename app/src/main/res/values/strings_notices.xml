@@ -39,7 +39,6 @@
     <string name="notice_teammate_model_cleared">Modèle de l\'équipier effacé</string>
     <string name="notice_teammate_description_saved">Description de l\'équipier enregistrée</string>
     <string name="notice_teammate_budget_saved">Budget quotidien enregistré</string>
-    <string name="notice_saved">Enregistré</string>
     <string name="notice_memory_added">Souvenir ajouté</string>
     <string name="notice_memory_forgotten">Souvenir oublié</string>
     <string name="notice_memory_updated">Souvenir mis à jour</string>

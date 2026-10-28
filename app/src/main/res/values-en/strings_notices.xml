@@ -38,7 +38,6 @@
     <string name="notice_teammate_model_cleared">Teammate model cleared</string>
     <string name="notice_teammate_description_saved">Teammate description saved</string>
     <string name="notice_teammate_budget_saved">Daily budget saved</string>
-    <string name="notice_saved">Saved</string>
     <string name="notice_memory_added">Memory added</string>
     <string name="notice_memory_forgotten">Memory forgotten</string>
     <string name="notice_memory_updated">Memory updated</string>

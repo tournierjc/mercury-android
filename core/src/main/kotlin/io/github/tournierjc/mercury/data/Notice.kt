@@ -94,14 +94,14 @@ enum class NoticeKey {
     OUTPUT_DELETED,
     JOB_RESTARTED,
     INCIDENTS_CLEARED,
-    SAVED,
     /** The teammate was enabled or disabled. */
     TEAMMATE_ENABLED_TOGGLED,
     /** One field of a teammate's manifest was written. One key per field, like the rest. */
     TEAMMATE_MODEL_SAVED,
     TEAMMATE_MODEL_CLEARED,
     TEAMMATE_DESCRIPTION_SAVED,
-    TEAMMATE_BUDGET_SAVED,    MEMORY_ADDED,
+    TEAMMATE_BUDGET_SAVED,
+    MEMORY_ADDED,
     MEMORY_FORGOTTEN,
     MEMORY_UPDATED,
     MODEL_ACTIVE,
