@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.ui
 
+import io.github.tournierjc.mercury.data.FleetRow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -7,24 +8,74 @@ import org.junit.Test
 /**
  * The drawer is the one place the fleet, the sessions and the app's screens meet, and it is drawn
  * by a single list so that a growing crew cannot push the sessions out of reach. These tests guard
- * what a layout cannot show on its own: every destination is present, in the webapp's order, and
- * the group headings are where the webapp puts them.
+ * what a layout cannot show on its own: every destination is present, in the webapp's order, the
+ * group headings are where the webapp puts them, and the roster arrives folded on its leads.
  */
 class DrawerItemsTest {
 
-    private val rows = drawerRows(listOf("mac-lead", "scout"), listOf("t1"))
+    private fun solo(vararg ids: String): List<FleetRow> = ids.map { FleetRow.Solo(it) }
+
+    private fun lead(id: String, vararg crew: String): FleetRow = FleetRow.Lead(id, crew.toList())
+
+    private val fleet = listOf(lead("mac-lead", "scout"), FleetRow.Solo("loner"))
+    private val rows = drawerRows(fleet, listOf("t1"))
 
     private fun screens(current: AppScreen = AppScreen.Chat) =
-        drawerRows(listOf("a"), listOf("t1"), current).filterIsInstance<DrawerRow.Screen>().map { it.screen }
+        drawerRows(solo("a"), listOf("t1"), current).filterIsInstance<DrawerRow.Screen>().map { it.screen }
 
     @Test
     fun `a crew of forty keeps every teammate, in the order the server sent them`() {
         val ids = (1..40).map { "bot-$it" }
 
-        val rows = drawerRows(ids, listOf("t1"))
+        val rows = drawerRows(solo(*ids.toTypedArray()), listOf("t1"))
 
         assertEquals(ids, rows.filterIsInstance<DrawerRow.Bot>().map { it.id })
         assertEquals(DrawerRow.CrewHeader(40), rows.first())
+    }
+
+    @Test
+    fun `a lead arrives folded, and its crew is not drawn`() {
+        val leadRow = rows.filterIsInstance<DrawerRow.Lead>().single()
+
+        assertEquals(DrawerRow.Lead("mac-lead", 1, open = false), leadRow)
+        assertEquals(listOf("loner"), rows.filterIsInstance<DrawerRow.Bot>().map { it.id })
+    }
+
+    @Test
+    fun `unfolding a lead draws its crew under it, indented, in the server's order`() {
+        val unfolded = drawerRows(listOf(lead("mac-lead", "qa", "web", "vue")), listOf("t1"), openLeads = setOf("mac-lead"))
+
+        assertEquals(
+            listOf("mac-lead", "qa", "web", "vue"),
+            unfolded.filterIsInstance<DrawerRow.Lead>().map { it.id } +
+                unfolded.filterIsInstance<DrawerRow.Bot>().map { it.id },
+        )
+        assertTrue("crew members are indented", unfolded.filterIsInstance<DrawerRow.Bot>().all { it.under })
+        assertEquals(DrawerRow.Lead("mac-lead", 3, open = true), unfolded.filterIsInstance<DrawerRow.Lead>().single())
+    }
+
+    @Test
+    fun `the heading counts the whole fleet, folded crew included`() {
+        // Folding hides rows; it must not hide teammates from the count behind « Tous les équipiers ».
+        assertEquals(DrawerRow.CrewHeader(4), drawerRows(listOf(lead("mac-lead", "qa", "web"), FleetRow.Solo("loner")), listOf("t1")).first())
+    }
+
+    @Test
+    fun `a lead nobody answers to yet is one row, with nothing to disclose`() {
+        val rows = drawerRows(listOf(lead("mac-lead")), listOf("t1"))
+
+        assertTrue(rows.none { it is DrawerRow.Lead })
+        assertEquals(listOf("mac-lead"), rows.filterIsInstance<DrawerRow.Bot>().map { it.id })
+    }
+
+    @Test
+    fun `« Tous les équipiers » stays the last row of the crew block`() {
+        val index = rows.indexOf(DrawerRow.AllCrew)
+
+        assertTrue(index > 0)
+        assertTrue("nothing of the crew after it", rows.subList(index + 1, rows.size).none {
+            it is DrawerRow.Bot || it is DrawerRow.Lead || it is DrawerRow.CrewHeader
+        })
     }
 
     @Test
@@ -49,7 +100,7 @@ class DrawerItemsTest {
 
     @Test
     fun `no session says so instead of leaving the space empty`() {
-        val rows = drawerRows(listOf("a"), emptyList())
+        val rows = drawerRows(solo("a"), emptyList())
 
         assertTrue(rows.contains(DrawerRow.NoSession))
         assertTrue(rows.none { it is DrawerRow.Thread })
@@ -119,7 +170,7 @@ class DrawerItemsTest {
 
     @Test
     fun `the screen on top is marked, and only it`() {
-        val marked = drawerRows(listOf("a"), emptyList(), AppScreen.Graph)
+        val marked = drawerRows(solo("a"), emptyList(), AppScreen.Graph)
             .filterIsInstance<DrawerRow.Screen>()
             .filter { it.current }
 

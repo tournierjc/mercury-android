@@ -3,6 +3,11 @@
 <resources>
     <!-- Drawer -->
     <string name="drawer_section_crew">Teammates</string>
+    <!-- One teammate's row: two gestures, two destinations. -->
+    <string name="drawer_bot_open_chat">Open the conversation</string>
+    <string name="drawer_bot_open_config">Open settings</string>
+    <string name="drawer_fold_crew">Fold the teammates of %1$s</string>
+    <string name="drawer_unfold_crew">Unfold the teammates of %1$s</string>
     <string name="drawer_all_crew">All teammates</string>
     <string name="drawer_section_sessions">Sessions</string>
     <string name="drawer_new_session">New session</string>

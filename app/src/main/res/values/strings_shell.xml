@@ -3,6 +3,11 @@
 <resources>
     <!-- Tiroir -->
     <string name="drawer_section_crew">Équipiers</string>
+    <!-- La rangée d'un équipier : deux gestes, deux destinations. -->
+    <string name="drawer_bot_open_chat">Ouvrir la conversation</string>
+    <string name="drawer_bot_open_config">Ouvrir la configuration</string>
+    <string name="drawer_fold_crew">Replier les équipiers de %1$s</string>
+    <string name="drawer_unfold_crew">Déplier les équipiers de %1$s</string>
     <string name="drawer_all_crew">Tous les équipiers</string>
     <string name="drawer_section_sessions">Sessions</string>
     <string name="drawer_new_session">Nouvelle session</string>
