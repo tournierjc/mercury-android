@@ -171,4 +171,10 @@
     <string name="bots_rename_id_notice">The id stays %1$s: folders, journal and teammates keep pointing at it.</string>
     <string name="bots_rename_confirm">Rename</string>
     <string name="bots_rename_cancel">Cancel</string>
+    <string name="bots_label_max_steps">Max steps per turn</string>
+    <string name="bots_label_turn_minutes">Max minutes per turn</string>
+    <string name="bots_label_turn_tokens">Max tokens per turn</string>
+    <string name="bots_limit_steps_hint">default: 25</string>
+    <string name="bots_limit_minutes_hint">default: 20</string>
+    <string name="bots_limit_tokens_hint">default: 300000</string>
 </resources>

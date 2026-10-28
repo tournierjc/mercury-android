@@ -102,6 +102,7 @@ import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.bots.BotWatchState
 import io.github.tournierjc.mercury.data.NoticeSeverity
+import io.github.tournierjc.mercury.data.BotAutonomy
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.BotSlug
@@ -1005,6 +1006,27 @@ private fun BotDetail(
                 modifier = Modifier.weight(1f),
             )
         }
+
+        // The three limits a turn dies of. The defaults are placeholders, not values: an empty
+        // field means the daemon's own, and the sheet says so rather than inventing a number.
+        LimitField(
+            label = stringResource(R.string.bots_label_max_steps),
+            hint = stringResource(R.string.bots_limit_steps_hint),
+            value = BotAutonomy.value(bot, BotAutonomy.STEPS),
+            onApply = { viewModel.setAutonomyLimit(id, BotAutonomy.STEPS, it) },
+        )
+        LimitField(
+            label = stringResource(R.string.bots_label_turn_minutes),
+            hint = stringResource(R.string.bots_limit_minutes_hint),
+            value = BotAutonomy.value(bot, BotAutonomy.TURN_MINUTES),
+            onApply = { viewModel.setAutonomyLimit(id, BotAutonomy.TURN_MINUTES, it) },
+        )
+        LimitField(
+            label = stringResource(R.string.bots_label_turn_tokens),
+            hint = stringResource(R.string.bots_limit_tokens_hint),
+            value = BotAutonomy.value(bot, BotAutonomy.TURN_TOKENS),
+            onApply = { viewModel.setAutonomyLimit(id, BotAutonomy.TURN_TOKENS, it) },
+        )
     }
 
     CollapsibleSection(stringResource(R.string.bots_section_fleet)) {
@@ -1461,4 +1483,48 @@ private fun AddCrewSheet(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.bots_action_close)) } },
     )
+}
+
+/**
+ * One numeric limit of a bot.
+ *
+ * The field shows what the manifest holds; an empty field means "the daemon's default", which is
+ * what the placeholder names. Applying an empty field **removes** the key — that is how a bot goes
+ * back to the default without anyone having to remember what the default was.
+ */
+@Composable
+private fun LimitField(
+    label: String,
+    hint: String,
+    value: Int?,
+    onApply: (Int?) -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    var text by remember(value) { mutableStateOf(value?.toString().orEmpty()) }
+    val apply = { onApply(text.trim().toIntOrNull()) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { typed -> text = typed.filter { it.isDigit() } },
+            label = { Text(label) },
+            placeholder = { Text(hint) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { apply() }),
+            shape = MaterialTheme.shapes.extraSmall,
+            trailingIcon = {
+                if (text != value?.toString().orEmpty()) {
+                    IconButton(onClick = { apply() }) {
+                        Icon(Icons.Rounded.Check, contentDescription = label, tint = colors.accent)
+                    }
+                }
+            },
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
