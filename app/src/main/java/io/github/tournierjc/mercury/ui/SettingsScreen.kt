@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.ServerAddress
+import io.github.tournierjc.mercury.device.AppLanguage
+import io.github.tournierjc.mercury.device.Languages
 import io.github.tournierjc.mercury.device.LocaleStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -78,6 +82,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
     var dialog by remember { mutableStateOf<AccountDialog?>(null) }
 
     var showModelPicker by remember { mutableStateOf(false) }
+    var showLanguagePicker by remember { mutableStateOf(false) }
     var editingProvider by remember { mutableStateOf<String?>(null) }
     // The host address used to be asked once, at first launch, and never again: following the
     // server to another machine meant wiping the app. It now lives with the account rows.
@@ -104,30 +109,40 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 .padding(horizontal = 14.dp),
         ) {
             CollapsibleSection(stringResource(R.string.settings_language_title)) {
-                // The label of each choice is its own name, never translated: an English speaker
-                // looking for French has to recognise « Français » in any UI language.
-                val current = LocaleStore.tag(context)
-                Text(
-                    text = stringResource(R.string.settings_language_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-                LocaleStore.choices.forEach { choice ->
-                    val label = if (choice.tag.isBlank()) {
-                        stringResource(R.string.settings_language_system)
-                    } else {
-                        choice.label
-                    }
+                // One row that opens the list, not one row per language: the handful of languages
+                // the app ships already filled the section, and every added one pushed the model
+                // and the tools further down. The labels are each language's own name, never
+                // translated — an English speaker looking for French recognises « Français ».
+                val current = LocaleStore.language(context)
+                Box {
                     ActionRow(
-                        title = label,
-                        trailing = if (choice.tag == current) stringResource(R.string.settings_active) else null,
-                        selected = choice.tag == current,
-                        onClick = {
-                            LocaleStore.set(context, choice.tag)
-                            (context as? android.app.Activity)?.recreate()
-                        },
+                        title = languageLabel(current),
+                        subtitle = stringResource(R.string.settings_language_hint),
+                        trailing = stringResource(R.string.settings_change),
+                        onClick = { showLanguagePicker = true },
                     )
+                    DropdownMenu(
+                        expanded = showLanguagePicker,
+                        onDismissRequest = { showLanguagePicker = false },
+                    ) {
+                        Languages.all.forEach { language ->
+                            DropdownMenuItem(
+                                text = { Text(languageLabel(language)) },
+                                trailingIcon = if (language == current) {
+                                    { Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.accent) }
+                                } else {
+                                    null
+                                },
+                                onClick = {
+                                    showLanguagePicker = false
+                                    if (language != current) {
+                                        LocaleStore.set(context, language)
+                                        (context as? android.app.Activity)?.recreate()
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -640,3 +655,11 @@ private fun ServerDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) } },
     )
 }
+
+/**
+ * What the picker shows for a language: its own name, or — for "follow the phone" — the word the
+ * current UI language uses for the system, the one label that has to be translated.
+ */
+@Composable
+private fun languageLabel(language: AppLanguage): String =
+    if (language.followsSystem) stringResource(R.string.settings_language_system) else language.nativeName

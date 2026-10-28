@@ -146,7 +146,7 @@ notification-based message access has no such restriction.
 JDK 17+ and the Android SDK (compileSdk 35) are required.
 
 ```bash
-./gradlew testDebugUnitTest   # 6 test classes, no device needed
+./gradlew testDebugUnitTest   # unit tests only, no device needed
 ./gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -167,6 +167,24 @@ Rust UI would hit the same wall). The repo ships a builder image that runs the o
 It builds `docker/Dockerfile.builder` (Android SDK 35 + qemu-user + amd64 `libc`/`libstdc++`), then runs Gradle
 with `-Pandroid.aapt2FromMavenOverride=/opt/aapt2-qemu/bin/aapt2`. Expect ~20 s once the image and the Gradle
 cache are warm.
+
+### Adding a language
+
+The UI ships in French (the base, `values/`) and English (`values-en/`). Adding a third is two steps
+and one command:
+
+```bash
+./scripts/new-language.sh de "Deutsch"   # copies the base strings into values-de/
+```
+
+1. translate the copied files;
+2. add one row to the `Languages` registry and list it in `Languages.all`
+   (`app/src/main/java/io/github/tournierjc/mercury/device/AppLanguage.kt`).
+
+Nothing else enumerates languages: the settings dropdown, the stored choice and the date formatting
+all read that registry. Two tests keep the two halves honest — `StringParityTest` fails when a
+language misses a key or carries one the base does not have (or changes a `%1$s`), and
+`LanguagesTest` fails when a `values-xx/` folder has no registry row, or a row has no folder.
 
 ## How it works
 
