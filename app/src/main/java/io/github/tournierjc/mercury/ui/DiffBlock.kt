@@ -41,7 +41,7 @@ fun DiffBlock(text: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(14.dp))
+            .background(colors.surface, MaterialTheme.shapes.extraSmall)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(

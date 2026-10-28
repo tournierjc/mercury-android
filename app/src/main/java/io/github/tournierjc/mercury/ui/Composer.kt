@@ -50,10 +50,10 @@ fun Composer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(colors.surface)
             // Same hairline as a rounded field: without it the composer melts into the canvas.
-            .border(1.dp, colors.hairlineStrong, RoundedCornerShape(28.dp))
+            .border(1.dp, colors.hairlineStrong, MaterialTheme.shapes.extraLarge)
             .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

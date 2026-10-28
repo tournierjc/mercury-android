@@ -91,7 +91,7 @@ private fun RefusedSpec(spec: String, errors: List<Notice>, modifier: Modifier) 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(14.dp))
+            .background(colors.surface, MaterialTheme.shapes.extraSmall)
             .padding(14.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -153,7 +153,7 @@ private fun NodeView(node: OpenUiNode, spacing: Int = 10) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .background(colors.surface, RoundedCornerShape(14.dp)),
+                .background(colors.surface, MaterialTheme.shapes.extraSmall),
         ) {
             // The tone is a stripe, not a tint: a red card would fight the palette.
             val tone = toneColor(node.tone)
@@ -195,7 +195,7 @@ private fun NodeView(node: OpenUiNode, spacing: Int = 10) {
         is OpenUiNode.Table -> Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.surface, RoundedCornerShape(14.dp))
+                .background(colors.surface, MaterialTheme.shapes.extraSmall)
                 .padding(12.dp)
                 .horizontalScroll(rememberScrollState()),
         ) {
@@ -252,7 +252,7 @@ private fun NodeView(node: OpenUiNode, spacing: Int = 10) {
         is OpenUiNode.Stat -> Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.surface, RoundedCornerShape(14.dp))
+                .background(colors.surface, MaterialTheme.shapes.extraSmall)
                 .padding(14.dp),
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -277,7 +277,7 @@ private fun NodeView(node: OpenUiNode, spacing: Int = 10) {
         is OpenUiNode.Snippet -> Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.surface, RoundedCornerShape(14.dp)),
+                .background(colors.surface, MaterialTheme.shapes.extraSmall),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -350,7 +350,7 @@ private fun ChartView(node: OpenUiNode.Chart) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(14.dp))
+            .background(colors.surface, MaterialTheme.shapes.extraSmall)
             .padding(14.dp),
     ) {
         node.title?.let {
@@ -451,7 +451,7 @@ private fun PieView(node: OpenUiNode.Pie) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(14.dp))
+            .background(colors.surface, MaterialTheme.shapes.extraSmall)
             .padding(14.dp),
     ) {
         node.title?.let {
@@ -531,7 +531,7 @@ private fun GaugeView(node: OpenUiNode.Gauge) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(14.dp))
+            .background(colors.surface, MaterialTheme.shapes.extraSmall)
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

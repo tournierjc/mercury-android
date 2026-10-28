@@ -675,7 +675,7 @@ private fun BotWelcome(name: String, onPick: (String) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(colors.surface)
                     .clickable { onPick(prompt) }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -951,7 +951,7 @@ private fun ReplyChip(message: ChatMessage, onClear: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .background(colors.surface)
             .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
     ) {
@@ -1016,7 +1016,7 @@ private fun ErrorBar(notice: Notice, onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .background(colors.surface)
             .padding(start = 14.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1052,7 +1052,7 @@ private fun AttachmentStrip(attachments: List<PendingFile>, onRemove: (Int) -> U
         attachments.forEachIndexed { index, file ->
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(colors.surface)
                     .padding(start = 10.dp, end = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,

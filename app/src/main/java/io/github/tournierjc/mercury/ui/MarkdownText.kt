@@ -94,7 +94,7 @@ fun MarkdownText(
                         modifier = Modifier
                             .padding(top = spacing)
                             .fillMaxWidth()
-                            .background(colors.surface, RoundedCornerShape(14.dp))
+                            .background(colors.surface, MaterialTheme.shapes.extraSmall)
                             .padding(14.dp),
                     ) {
                         if (block.language.isNotBlank()) {
