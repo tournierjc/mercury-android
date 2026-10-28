@@ -81,7 +81,6 @@
     <string name="notice_dependency_added">Dependency added</string>
     <string name="notice_dependency_removed">Dependency removed</string>
     <string name="notice_card_parent_set">Parent set</string>
-    <string name="notice_preview_truncated">… preview truncated — download the file for the full text</string>
     <string name="notice_board_write_failed">Cannot write to that location</string>
     <string name="notice_no_app_for_type">No app can open %1$s</string>
     <string name="notice_task_cancelled">Task cancelled</string>
@@ -158,13 +157,12 @@
     <string name="notice_run_cancelled_state">interrupted</string>
     <string name="notice_run_running_state">running</string>
     <string name="notice_run_queued_state">queued</string>
-    <string name="notice_run_other_state">%1$s</string>
+    <string name="notice_unknown_code">%1$s</string>
     <string name="notice_reason_provider_rate_limit">provider quota</string>
     <string name="notice_reason_provider_error">provider failure</string>
     <string name="notice_reason_timeout">timed out</string>
-    <string name="notice_reason_cancelled">cancelled</string>
+    <string name="notice_reason_cancelled">interrupted</string>
     <string name="notice_reason_budget_exhausted">budget exhausted</string>
-    <string name="notice_reason_other">%1$s</string>
     <string name="notice_tool_fallback">tool</string>
     <string name="notice_reason_not_found">not found</string>
     <string name="notice_attempts_one">1 attempt</string>
@@ -175,8 +173,6 @@
     <string name="notice_git_ahead">%1$s to push</string>
     <string name="notice_git_behind">%1$s to pull</string>
     <string name="notice_git_up_to_date">up to date</string>
-    <string name="notice_bot_state_running">running</string>
-    <string name="notice_bot_state_queued">queued</string>
     <string name="notice_bot_state_paused">paused</string>
     <string name="notice_bot_state_disabled">disabled</string>
     <string name="notice_bot_state_resting">at rest</string>
@@ -228,4 +224,7 @@
     <string name="notice_openui_line_unknown_variant">line %1$s: unknown `variant`</string>
     <string name="notice_openui_line_too_many_shares">line %1$s: `%2$s` has %3$s shares, the limit is 12</string>
     <string name="notice_permission_mode_question">Allow every tool without confirmation?</string>
+    <string name="notice_size_bytes">%1$s B</string>
+    <string name="notice_size_kb">%1$s kB</string>
+    <string name="notice_size_mb">%1$s MB</string>
 </resources>

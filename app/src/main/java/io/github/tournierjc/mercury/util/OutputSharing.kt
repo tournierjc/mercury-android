@@ -64,7 +64,7 @@ class OutputActions(private val api: MercuryApi) {
             BotOps.kind(output.name) == OutputKind.Image ->
                 note(
                     output,
-                    Notice(NoticeKey.OUTPUT_IMAGE_TOO_HEAVY, args = listOf(BotOps.sizeLabel(output.bytes))),
+                    Notice(NoticeKey.OUTPUT_IMAGE_TOO_HEAVY, args = listOf(BotOps.sizeDigits(output.bytes))),
                 )
 
             else -> note(output, Notice(NoticeKey.OUTPUT_PREVIEW_UNAVAILABLE_FORMAT))

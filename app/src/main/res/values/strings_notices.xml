@@ -82,7 +82,6 @@
     <string name="notice_dependency_added">Dépendance ajoutée</string>
     <string name="notice_dependency_removed">Dépendance retirée</string>
     <string name="notice_card_parent_set">Parent défini</string>
-    <string name="notice_preview_truncated">… aperçu tronqué — télécharge le fichier pour le texte entier</string>
     <string name="notice_board_write_failed">Écriture impossible dans cet emplacement</string>
     <string name="notice_no_app_for_type">Aucune application ne peut ouvrir %1$s</string>
     <string name="notice_task_cancelled">Tâche annulée</string>
@@ -159,13 +158,12 @@
     <string name="notice_run_cancelled_state">interrompu</string>
     <string name="notice_run_running_state">en cours</string>
     <string name="notice_run_queued_state">en file</string>
-    <string name="notice_run_other_state">%1$s</string>
+    <string name="notice_unknown_code">%1$s</string>
     <string name="notice_reason_provider_rate_limit">quota fournisseur</string>
     <string name="notice_reason_provider_error">panne fournisseur</string>
     <string name="notice_reason_timeout">délai dépassé</string>
-    <string name="notice_reason_cancelled">annulé</string>
+    <string name="notice_reason_cancelled">interrompu</string>
     <string name="notice_reason_budget_exhausted">budget épuisé</string>
-    <string name="notice_reason_other">%1$s</string>
     <string name="notice_tool_fallback">outil</string>
     <string name="notice_reason_not_found">introuvable</string>
     <string name="notice_attempts_one">1 tentative</string>
@@ -176,8 +174,6 @@
     <string name="notice_git_ahead">%1$s à pousser</string>
     <string name="notice_git_behind">%1$s à tirer</string>
     <string name="notice_git_up_to_date">à jour</string>
-    <string name="notice_bot_state_running">en cours</string>
-    <string name="notice_bot_state_queued">en file</string>
     <string name="notice_bot_state_paused">en pause</string>
     <string name="notice_bot_state_disabled">désactivé</string>
     <string name="notice_bot_state_resting">au repos</string>
@@ -229,4 +225,7 @@
     <string name="notice_openui_line_unknown_variant">ligne %1$s : `variant` inconnu</string>
     <string name="notice_openui_line_too_many_shares">ligne %1$s : `%2$s` a %3$s parts, la limite est 12</string>
     <string name="notice_permission_mode_question">Autoriser tous les outils sans confirmation ?</string>
+    <string name="notice_size_bytes">%1$s o</string>
+    <string name="notice_size_kb">%1$s ko</string>
+    <string name="notice_size_mb">%1$s Mo</string>
 </resources>

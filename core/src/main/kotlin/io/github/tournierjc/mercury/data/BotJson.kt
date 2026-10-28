@@ -116,8 +116,8 @@ object BotJson {
 
     /** The roster chip's word, as a key — the screens own both languages. */
     fun stateNotice(state: String): Notice = when (state) {
-        "running" -> Notice(NoticeKey.BOT_STATE_RUNNING)
-        "queued" -> Notice(NoticeKey.BOT_STATE_QUEUED)
+        "running" -> Notice(NoticeKey.RUN_RUNNING_STATE)
+        "queued" -> Notice(NoticeKey.RUN_QUEUED_STATE)
         "paused" -> Notice(NoticeKey.BOT_STATE_PAUSED)
         "disabled" -> Notice(NoticeKey.BOT_STATE_DISABLED)
         else -> Notice(NoticeKey.BOT_STATE_RESTING)

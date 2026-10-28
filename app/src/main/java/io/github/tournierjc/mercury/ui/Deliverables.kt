@@ -150,7 +150,7 @@ fun DeliverablesSection(
                         Text(
                             text = listOfNotNull(
                                 noticeText(BotOps.scopeNotice(output)),
-                                BotOps.sizeLabel(output.bytes),
+                                BotOps.sizeNotice(output.bytes)?.let { noticeText(it) }.orEmpty(),
                                 BotOps.ageNotice(output.mtimeMs, now)?.let { noticeText(it) },
                             ).joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall,
@@ -249,7 +249,7 @@ fun OutputPreviewDialog(
                     "Fichier",
                     listOf(
                         if (state.output.final) stringResource(R.string.out_kind_final) else stringResource(R.string.out_kind_work),
-                        BotOps.sizeLabel(state.output.bytes),
+                        BotOps.sizeNotice(state.output.bytes)?.let { noticeText(it) }.orEmpty(),
                     ).joinToString(" · "),
                 )
                 when {

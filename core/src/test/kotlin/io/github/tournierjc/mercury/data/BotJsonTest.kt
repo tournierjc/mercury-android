@@ -46,8 +46,8 @@ class BotJsonTest {
 
     @Test
     fun `state labels are french`() {
-        assertEquals(NoticeKey.BOT_STATE_RUNNING, BotJson.stateNotice("running").key)
-        assertEquals(NoticeKey.BOT_STATE_QUEUED, BotJson.stateNotice("queued").key)
+        assertEquals(NoticeKey.RUN_RUNNING_STATE, BotJson.stateNotice("running").key)
+        assertEquals(NoticeKey.RUN_QUEUED_STATE, BotJson.stateNotice("queued").key)
         assertEquals(NoticeKey.BOT_STATE_PAUSED, BotJson.stateNotice("paused").key)
         assertEquals(NoticeKey.BOT_STATE_DISABLED, BotJson.stateNotice("disabled").key)
         assertEquals(NoticeKey.BOT_STATE_RESTING, BotJson.stateNotice("idle").key)

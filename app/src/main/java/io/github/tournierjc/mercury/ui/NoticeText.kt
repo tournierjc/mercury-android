@@ -169,14 +169,17 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.RUN_CANCELLED_STATE -> R.string.notice_run_cancelled_state
     NoticeKey.RUN_RUNNING_STATE -> R.string.notice_run_running_state
     NoticeKey.RUN_QUEUED_STATE -> R.string.notice_run_queued_state
-    NoticeKey.RUN_OTHER_STATE -> R.string.notice_run_other_state
+    NoticeKey.UNKNOWN_CODE -> R.string.notice_unknown_code
+    NoticeKey.SIZE_BYTES -> R.string.notice_size_bytes
+    NoticeKey.SIZE_KB -> R.string.notice_size_kb
+    NoticeKey.SIZE_MB -> R.string.notice_size_mb
+
     NoticeKey.REASON_NOT_FOUND -> R.string.notice_reason_not_found
     NoticeKey.REASON_PROVIDER_RATE_LIMIT -> R.string.notice_reason_provider_rate_limit
     NoticeKey.REASON_PROVIDER_ERROR -> R.string.notice_reason_provider_error
     NoticeKey.REASON_TIMEOUT -> R.string.notice_reason_timeout
     NoticeKey.REASON_CANCELLED -> R.string.notice_reason_cancelled
     NoticeKey.REASON_BUDGET_EXHAUSTED -> R.string.notice_reason_budget_exhausted
-    NoticeKey.REASON_OTHER -> R.string.notice_reason_other
     NoticeKey.TOOL_FALLBACK -> R.string.notice_tool_fallback
     NoticeKey.ATTEMPTS_ONE -> R.string.notice_attempts_one
     NoticeKey.ATTEMPTS_MANY -> R.string.notice_attempts_many
@@ -186,8 +189,6 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.GIT_AHEAD -> R.string.notice_git_ahead
     NoticeKey.GIT_BEHIND -> R.string.notice_git_behind
     NoticeKey.GIT_UP_TO_DATE -> R.string.notice_git_up_to_date
-    NoticeKey.BOT_STATE_RUNNING -> R.string.notice_bot_state_running
-    NoticeKey.BOT_STATE_QUEUED -> R.string.notice_bot_state_queued
     NoticeKey.BOT_STATE_PAUSED -> R.string.notice_bot_state_paused
     NoticeKey.BOT_STATE_DISABLED -> R.string.notice_bot_state_disabled
     NoticeKey.BOT_STATE_RESTING -> R.string.notice_bot_state_resting
@@ -259,7 +260,6 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
 
 
 
-    NoticeKey.PREVIEW_TRUNCATED -> R.string.notice_preview_truncated
 
 
 }

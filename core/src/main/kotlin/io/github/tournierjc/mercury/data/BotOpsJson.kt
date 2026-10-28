@@ -100,14 +100,22 @@ object BotOps {
         else -> "application/octet-stream"
     }
 
-    /** `512 o`, `12,4 ko`, `3,1 Mo` — what a phone header can afford. */
-    fun sizeLabel(bytes: Long): String {
-        if (bytes < 0) return "—"
-        return when {
-            bytes >= 1024L * 1024 -> "${oneDecimal(bytes / (1024.0 * 1024.0))} Mo"
-            bytes >= 1024L -> "${oneDecimal(bytes / 1024.0)} ko"
-            else -> "$bytes o"
-        }
+    /**
+     * `512 o` / `512 B`, `12.4 ko` / `12.4 kB`, `3.1 Mo` / `3.1 MB` — what a phone header can
+     * afford. The unit is a word (octet, kilo-octet, méga-octet), so it is a key, not a suffix.
+     */
+    /** `12.4` — the number alone, for a sentence that supplies its own unit. */
+    fun sizeDigits(bytes: Long): String = when {
+        bytes >= 1024L * 1024 -> oneDecimal(bytes / (1024.0 * 1024.0))
+        bytes >= 1024L -> oneDecimal(bytes / 1024.0)
+        else -> bytes.toString()
+    }
+
+    fun sizeNotice(bytes: Long): Notice? = when {
+        bytes < 0 -> null
+        bytes >= 1024L * 1024 -> Notice(NoticeKey.SIZE_MB, args = listOf(oneDecimal(bytes / (1024.0 * 1024.0))))
+        bytes >= 1024L -> Notice(NoticeKey.SIZE_KB, args = listOf(oneDecimal(bytes / 1024.0)))
+        else -> Notice(NoticeKey.SIZE_BYTES, args = listOf(bytes.toString()))
     }
 
     private fun oneDecimal(value: Double): String {
@@ -116,7 +124,9 @@ object BotOps {
         val rounded = (value * 10).roundToLong()
         val whole = rounded / 10
         val tenth = rounded % 10
-        return if (tenth == 0L) "$whole" else "$whole,$tenth"
+        // A dot, not the French comma: `:core` has no locale, and a compact counter is not a
+        // sentence. English read "4,2k" as a typo, which is worse than the other way round.
+        return if (tenth == 0L) "$whole" else "$whole.$tenth"
     }
 
     private val stampFormatter: DateTimeFormatter =
@@ -156,7 +166,7 @@ object BotOps {
         "cancelled", "canceled", "timeout" -> Notice(NoticeKey.RUN_CANCELLED_STATE)
         "running" -> Notice(NoticeKey.RUN_RUNNING_STATE).asInfo()
         "queued", "pending" -> Notice(NoticeKey.RUN_QUEUED_STATE).asInfo()
-        else -> state.takeIf { it.isNotBlank() }?.let { Notice(NoticeKey.RUN_OTHER_STATE, args = listOf(it)).asInfo() }
+        else -> state.takeIf { it.isNotBlank() }?.let { Notice(NoticeKey.UNKNOWN_CODE, args = listOf(it)).asInfo() }
     }
 
     fun runStateFailed(state: String): Boolean = state.lowercase() in setOf("failed", "error", "cancelled", "canceled", "timeout")
@@ -211,7 +221,7 @@ object BotOps {
     fun runDetail(tokensText: String, toolCallsText: String, errorText: String?): String = listOfNotNull(
         tokensText.takeIf { it.isNotBlank() },
         toolCallsText.takeIf { it.isNotBlank() },
-        errorText,
+        errorText?.takeIf { it.isNotBlank() },
     ).joinToString(" · ")
 
     /** The tool-call count of a run, `3 outils`, as a key. */
@@ -292,10 +302,10 @@ object BotOps {
      * (the attempt count and the reason) arrive already resolved by the caller.
      */
     fun incidentSubtitle(job: DlqJobDto, attemptsText: String, reasonText: String?): String = listOfNotNull(
-        "#${job.id.take(8).ifBlank { "—" }}",
-        attemptsText,
-        dateLabel(job.createdAt),
-        reasonText,
+        job.id.take(8).takeIf { it.isNotBlank() }?.let { "#$it" },
+        attemptsText.takeIf { it.isNotBlank() },
+        dateLabel(job.createdAt).takeIf { it != "—" },
+        reasonText?.takeIf { it.isNotBlank() },
     ).joinToString(" · ")
 
     /** The attempt count as a key: `1 tentative`, `2 tentatives`. */
@@ -312,7 +322,7 @@ object BotOps {
         "timeout" -> Notice(NoticeKey.REASON_TIMEOUT)
         "cancelled" -> Notice(NoticeKey.REASON_CANCELLED)
         "budget_exhausted" -> Notice(NoticeKey.REASON_BUDGET_EXHAUSTED)
-        else -> Notice(NoticeKey.REASON_OTHER, args = listOf(code.replace('_', ' '))).withDetail(null)
+        else -> Notice(NoticeKey.UNKNOWN_CODE, args = listOf(code.replace('_', ' '))).withDetail(null)
     }
 
     /** `✓ read_file /work/report.md` for one trace step. */
