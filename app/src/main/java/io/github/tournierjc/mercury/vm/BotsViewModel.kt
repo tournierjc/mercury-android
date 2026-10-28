@@ -94,6 +94,12 @@ data class BotsUiState(
  * Teammates: customization (persona, permissions, model, autonomy), supervision (activity,
  * needs-you, journal), the fleet (crew, delegated tasks) and background dispatch.
  */
+/**
+ * The name a rename sends: whitespace collapsed, trimmed, at most 60 characters — the rules the
+ * creation route applies — or null when there is nothing left to send.
+ */
+fun cleanBotName(name: String): String? = name.trim().replace(Regex("\\s+"), " ").take(60).takeIf { it.isNotBlank() }
+
 class BotsViewModel(
     private val api: MercuryApi,
     private val container: AppContainer,
@@ -392,6 +398,20 @@ class BotsViewModel(
                 .onSuccess { list -> _state.update { it.copy(models = list) } }
                 .onFailure { /* the dropdown stays empty; the free-text path is gone, no fake list */ }
         }
+    }
+
+    /**
+     * The name is a label the owner reads; the id is the identity and does not move. Same rules as
+     * creation — whitespace collapsed, trimmed, 60 characters — and a blank name is refused here
+     * too, so the sheet cannot send one.
+     */
+    fun rename(id: String, name: String) {
+        val cleaned = cleanBotName(name)
+        if (cleaned == null) {
+            _state.update { it.copy(error = Notice(NoticeKey.TEAMMATE_NAME_REFUSED)) }
+            return
+        }
+        patch(id, """{"name":"${escape(cleaned)}"}""", Notice(NoticeKey.TEAMMATE_RENAMED))
     }
 
     fun setDescription(id: String, description: String) =
