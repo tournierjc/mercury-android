@@ -75,7 +75,8 @@ data class BotsUiState(
     /** A downloaded deliverable the screen hands to the share sheet, then clears. */
     val pendingShare: SharedFile? = null,
     val busy: Boolean = false,
-    val message: String? = null,
+    /** What the last finished action says (a key, resolved by the screen). */
+    val message: Notice? = null,
     val error: Notice? = null,
     /** What the last dispatch answered: queued, or the reason it was refused. */
     val dispatchFeedback: Notice? = null,
@@ -139,7 +140,7 @@ class BotsViewModel(
             runCatching { api.uploadBotAvatar(id, Attachments.encode(bytes)) }
                 .onSuccess {
                     _avatars.update { it + (id to bytes) }
-                    _state.update { s -> s.copy(message = "Photo enregistrée") }
+                    _state.update { s -> s.copy(message = Notice(NoticeKey.CREW_PHOTO_SAVED)) }
                 }
                 .onFailure { e ->
                     // A 4xx here is the server refusing the bytes: say why, do not retry.
@@ -153,7 +154,7 @@ class BotsViewModel(
             runCatching { api.deleteBotAvatar(id) }
                 .onSuccess {
                     _avatars.update { it - id }
-                    _state.update { s -> s.copy(message = "Photo retirée") }
+                    _state.update { s -> s.copy(message = Notice(NoticeKey.CREW_PHOTO_REMOVED)) }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
         }
@@ -398,7 +399,7 @@ class BotsViewModel(
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
             runCatching { api.setBotPersona(id, text) }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = "Persona enregistré") } }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.PERSONA_SAVED)) } }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
@@ -466,12 +467,12 @@ class BotsViewModel(
         }
     }
 
-    fun promote(id: String) = act("Promu chef de flotte") { api.promoteBot(id) }
+    fun promote(id: String) = act(Notice(NoticeKey.PROMOTED_LEAD)) { api.promoteBot(id) }
 
-    fun autoCrew(id: String) = act("Construction de la flotte demandée") { api.autoCrewBot(id) }
+    fun autoCrew(id: String) = act(Notice(NoticeKey.CREW_AUTOBUILD_REQUESTED)) { api.autoCrewBot(id) }
 
     fun addCrew(leadId: String, id: String, name: String, description: String?, persona: String?, tier: String?) =
-        act("Membre ajouté") { api.addBotCrew(leadId, id, name, description, persona, tier) }
+        act(Notice(NoticeKey.CREW_MEMBER_ADDED)) { api.addBotCrew(leadId, id, name, description, persona, tier) }
 
     /** An existing solo bot joins the fleet instead of a new one being created. */
     /**
@@ -480,22 +481,22 @@ class BotsViewModel(
      * It lives here rather than in the Console: the fleet is the Équipiers screen, and importing
      * one is the first thing that screen offers to an instance with no bots.
      */
-    fun importBundle(bundleJson: String, overwrite: Boolean) = act("Bundle importé · il arrive désactivé") {
+    fun importBundle(bundleJson: String, overwrite: Boolean) = act(Notice(NoticeKey.BUNDLE_IMPORTED)) {
         api.importBotBundle(bundleJson, overwrite)
     }
 
     fun adoptCrew(leadId: String, memberId: String) =
-        act("Équipier rattaché à la flotte") { api.adoptBotCrew(leadId, memberId) }
+        act(Notice(NoticeKey.CREW_MEMBER_ADOPTED)) { api.adoptBotCrew(leadId, memberId) }
 
     /** A member leaves the fleet and becomes solo again — reversible, so no confirmation. */
     fun detachCrew(leadId: String, memberId: String) =
-        act("Équipier retiré de la flotte") { api.detachBotCrew(leadId, memberId) }
+        act(Notice(NoticeKey.CREW_MEMBER_DETACHED)) { api.detachBotCrew(leadId, memberId) }
 
-    fun start(id: String) = act("Équipier démarré") { api.startBot(id) }
+    fun start(id: String) = act(Notice(NoticeKey.BOT_STARTED)) { api.startBot(id) }
 
-    fun stop(id: String) = act("Équipier arrêté") { api.stopBot(id) }
+    fun stop(id: String) = act(Notice(NoticeKey.BOT_STOPPED)) { api.stopBot(id) }
 
-    fun run(id: String) = act("Exécution demandée") { api.runBot(id) }
+    fun run(id: String) = act(Notice(NoticeKey.RUN_REQUESTED)) { api.runBot(id) }
 
     /**
      * Deleting the open bot must also close its sheet: the manifest is gone, and a detail
@@ -509,7 +510,7 @@ class BotsViewModel(
                     if (_state.value.selectedId == id) {
                         _state.value = BotsUiState() // the sheet closes; the roster is the screen
                     }
-                    _state.update { s -> s.copy(busy = false, message = "Équipier supprimé") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.TEAMMATE_DELETED)) }
                     refreshRoster()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
@@ -540,7 +541,7 @@ class BotsViewModel(
                 )
             }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = "Équipier « $cleanName » créé") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.TEAMMATE_CREATED, args = listOf(cleanName))) }
                     refreshRoster()
                     select(cleanId)
                 }
@@ -616,7 +617,7 @@ class BotsViewModel(
             _state.update { it.copy(busy = true, error = null) }
             runCatching { api.deleteOutput(id, output.name) }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = "Livrable supprimé") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.OUTPUT_DELETED)) }
                     reloadOutputs()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
@@ -653,7 +654,7 @@ class BotsViewModel(
                 .onSuccess { result ->
                     _state.update {
                         if (result.accepted) {
-                            it.copy(busy = false, message = "Job relancé (${result.jobId.take(12)})")
+                            it.copy(busy = false, message = Notice(NoticeKey.JOB_RESTARTED, args = listOf(result.jobId.take(12))))
                         } else {
                             // The code is language-neutral; the label table still lives in
                             // BotOps and travels as the detail until it moves to resources.
@@ -673,7 +674,7 @@ class BotsViewModel(
             runCatching { api.clearDlq() }
                 .onSuccess { response ->
                     _state.update { s ->
-                        s.copy(busy = false, message = "${response.cleared} incident(s) effacé(s)")
+                        s.copy(busy = false, message = Notice(NoticeKey.INCIDENTS_CLEARED, args = listOf(response.cleared.toString())))
                     }
                     reloadIncidents()
                 }
@@ -697,7 +698,7 @@ class BotsViewModel(
                 api.patchBot(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject)
             }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = "Enregistré") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.SAVED)) }
                     // The sheet's rows read the model from the manifest: without this the row
                     // kept the old label until the bot was reopened, which looked like the
                     // change had not been applied.
@@ -714,11 +715,11 @@ class BotsViewModel(
         }
     }
 
-    private fun act(successMessage: String, block: suspend () -> Any?) {
+    private fun act(success: Notice, block: suspend () -> Any?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { block() }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = successMessage) } }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = success) } }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }

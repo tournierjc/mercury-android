@@ -95,8 +95,8 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
-        state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
-        state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
+        state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
+        state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
         Column(
             modifier = Modifier

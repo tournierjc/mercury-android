@@ -34,6 +34,41 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.SERVER_WARNING -> R.string.notice_server_warning
     NoticeKey.SESSION_EXPIRED -> R.string.notice_session_expired
     NoticeKey.REQUEST_REFUSED -> R.string.notice_request_refused
+    NoticeKey.CREW_PHOTO_SAVED -> R.string.notice_crew_photo_saved
+    NoticeKey.CREW_PHOTO_REMOVED -> R.string.notice_crew_photo_removed
+    NoticeKey.PERSONA_SAVED -> R.string.notice_persona_saved
+    NoticeKey.PROMOTED_LEAD -> R.string.notice_promoted_lead
+    NoticeKey.CREW_AUTOBUILD_REQUESTED -> R.string.notice_crew_autobuild_requested
+    NoticeKey.CREW_MEMBER_ADDED -> R.string.notice_crew_member_added
+    NoticeKey.BUNDLE_IMPORTED -> R.string.notice_bundle_imported
+    NoticeKey.CREW_MEMBER_ADOPTED -> R.string.notice_crew_member_adopted
+    NoticeKey.CREW_MEMBER_DETACHED -> R.string.notice_crew_member_detached
+    NoticeKey.BOT_STARTED -> R.string.notice_bot_started
+    NoticeKey.BOT_STOPPED -> R.string.notice_bot_stopped
+    NoticeKey.RUN_REQUESTED -> R.string.notice_run_requested
+    NoticeKey.TEAMMATE_DELETED -> R.string.notice_teammate_deleted
+    NoticeKey.TEAMMATE_CREATED -> R.string.notice_teammate_created
+    NoticeKey.OUTPUT_DELETED -> R.string.notice_output_deleted
+    NoticeKey.JOB_RESTARTED -> R.string.notice_job_restarted
+    NoticeKey.INCIDENTS_CLEARED -> R.string.notice_incidents_cleared
+    NoticeKey.SAVED -> R.string.notice_saved
+    NoticeKey.MEMORY_ADDED -> R.string.notice_memory_added
+    NoticeKey.MEMORY_FORGOTTEN -> R.string.notice_memory_forgotten
+    NoticeKey.MEMORY_UPDATED -> R.string.notice_memory_updated
+    NoticeKey.MODEL_ACTIVE -> R.string.notice_model_active
+    NoticeKey.PROVIDER_SAVED -> R.string.notice_provider_saved
+    NoticeKey.LABEL_SAVED -> R.string.notice_label_saved
+    NoticeKey.PASSWORD_CHANGED -> R.string.notice_password_changed
+    NoticeKey.USERNAME_CHANGED -> R.string.notice_username_changed
+    NoticeKey.SESSION_REVOKED -> R.string.notice_session_revoked
+    NoticeKey.BELIEF_CONFIRMED -> R.string.notice_belief_confirmed
+    NoticeKey.BELIEF_FORGOTTEN -> R.string.notice_belief_forgotten
+    NoticeKey.BELIEF_CORRECTED -> R.string.notice_belief_corrected
+    NoticeKey.MEMORY_RESTORED -> R.string.notice_memory_restored
+    NoticeKey.BYPASS_APPROVED -> R.string.notice_bypass_approved
+    NoticeKey.BYPASS_ASKED -> R.string.notice_bypass_asked
+
+
 }
 
 /** The sentence, then the server's own words when it sent any. */

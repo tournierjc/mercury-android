@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.data.toNotice
 
 enum class MemoryTab { Memories, Beliefs, Quarantine, About }
 
@@ -35,8 +38,9 @@ data class MemoryUiState(
     val graph: BeliefGraphDto? = null,
     val config: ConfigDto? = null,
     val busy: Boolean = false,
-    val message: String? = null,
-    val error: String? = null,
+    /** What the last finished action says (a key, resolved by the screen). */
+    val message: Notice? = null,
+    val error: Notice? = null,
 )
 
 /**
@@ -109,7 +113,7 @@ class MemoryViewModel(
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null, message = null) }
             runCatching { api.addMemory(type, summary.trim(), detail?.trim()?.ifBlank { null }) }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = "Souvenir ajouté") }; refresh() }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.MEMORY_ADDED)) }; refresh() }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
@@ -119,7 +123,7 @@ class MemoryViewModel(
             runCatching { api.forgetMemory(id) }
                 .onSuccess {
                     _state.update { s ->
-                        s.copy(memories = s.memories.filterNot { it.id == id }, message = "Souvenir oublié")
+                        s.copy(memories = s.memories.filterNot { it.id == id }, message = Notice(NoticeKey.MEMORY_FORGOTTEN))
                     }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
@@ -137,39 +141,37 @@ class MemoryViewModel(
                     ),
                 )
             }
-                .onSuccess { _state.update { s -> s.copy(message = "Souvenir mis à jour") }; refresh() }
+                .onSuccess { _state.update { s -> s.copy(message = Notice(NoticeKey.MEMORY_UPDATED)) }; refresh() }
                 .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
         }
     }
 
-    fun confirmBelief(id: String) = beliefAction("Croyance confirmée") { api.confirmBelief(id) }
+    fun confirmBelief(id: String) = beliefAction(Notice(NoticeKey.BELIEF_CONFIRMED)) { api.confirmBelief(id) }
 
-    fun forgetBelief(id: String) = beliefAction("Croyance oubliée") { api.forgetBelief(id) }
+    fun forgetBelief(id: String) = beliefAction(Notice(NoticeKey.BELIEF_FORGOTTEN)) { api.forgetBelief(id) }
 
     fun correctBelief(id: String, statement: String) {
         if (statement.trim().length < 3) return
-        beliefAction("Croyance corrigée") { api.correctBelief(id, statement.trim()) }
+        beliefAction(Notice(NoticeKey.BELIEF_CORRECTED)) { api.correctBelief(id, statement.trim()) }
     }
 
-    fun restoreQuarantined(id: String) = beliefAction("Souvenir réintégré") { api.restoreQuarantined(id) }
+    fun restoreQuarantined(id: String) = beliefAction(Notice(NoticeKey.MEMORY_RESTORED)) { api.restoreQuarantined(id) }
 
     fun clearBanner() {
         _state.update { it.copy(message = null, error = null) }
     }
 
-    private fun beliefAction(successMessage: String, block: suspend () -> Any?) {
+    private fun beliefAction(success: Notice, block: suspend () -> Any?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { block() }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = successMessage) }; refresh() }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = success) }; refresh() }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
 
-    private fun Throwable.readable(): String = when (this) {
-        is AuthException -> "Session expirée — reconnecte-toi"
-        else -> message ?: "Requête refusée"
-    }
+    /** One mapping for the whole app (see `toNotice`), no local copy of the wording. */
+    private fun Throwable.readable(): Notice = toNotice()
 
     companion object {
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {

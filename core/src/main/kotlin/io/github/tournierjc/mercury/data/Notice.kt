@@ -75,6 +75,42 @@ enum class NoticeKey {
 
     /** The request failed for a reason only the server can name; `detail` carries it. */
     REQUEST_REFUSED,
+
+    // ---- what a finished action says, in the app's vocabulary: a bot is an « équipier »
+    CREW_PHOTO_SAVED,
+    CREW_PHOTO_REMOVED,
+    PERSONA_SAVED,
+    PROMOTED_LEAD,
+    CREW_AUTOBUILD_REQUESTED,
+    CREW_MEMBER_ADDED,
+    BUNDLE_IMPORTED,
+    CREW_MEMBER_ADOPTED,
+    CREW_MEMBER_DETACHED,
+    BOT_STARTED,
+    BOT_STOPPED,
+    RUN_REQUESTED,
+    TEAMMATE_DELETED,
+    TEAMMATE_CREATED,
+    OUTPUT_DELETED,
+    JOB_RESTARTED,
+    INCIDENTS_CLEARED,
+    SAVED,
+    MEMORY_ADDED,
+    MEMORY_FORGOTTEN,
+    MEMORY_UPDATED,
+    MODEL_ACTIVE,
+    PROVIDER_SAVED,
+    LABEL_SAVED,
+    PASSWORD_CHANGED,
+    USERNAME_CHANGED,
+    SESSION_REVOKED,
+    BELIEF_CONFIRMED,
+    BELIEF_FORGOTTEN,
+    BELIEF_CORRECTED,
+    MEMORY_RESTORED,
+    BYPASS_APPROVED,
+    BYPASS_ASKED,
+
 }
 
 /**
