@@ -1,17 +1,18 @@
 package io.github.tournierjc.mercury.ui
 
+import io.github.tournierjc.mercury.device.Languages
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The two languages say the same things.
+ * Every language says the same things as the base one.
  *
- * A missing French key falls back to the English string at runtime — silently, on a French phone,
- * which is the kind of defect nobody reports and nobody sees in a diff. The screens here are new
- * enough that this is the only guard: every key declared in `values/` must exist in `values-en/`,
- * with the same format arguments, or the build says so.
+ * A missing key falls back to the base string at runtime — silently, on a phone set to that
+ * language, which is the kind of defect nobody reports and nobody sees in a diff. The languages are
+ * walked from [Languages], not from a list written here: adding a translation to the registry is
+ * enough for the build to demand its keys, and nothing has to be remembered in this file.
  */
 class StringParityTest {
 
@@ -26,23 +27,38 @@ class StringParityTest {
             .toMap()
     }
 
+    /** The base folder: `values/`, in the language the app was written in. */
+    private val base: Map<String, String> by lazy { keys("values") }
+
     @Test
-    fun `every French key exists in English, and the other way round`() {
-        val fr = keys("values")
-        val en = keys("values-en")
-        assertTrue("no strings found", fr.isNotEmpty())
-        assertEquals("keys missing in values-en", emptySet<String>(), fr.keys - en.keys)
-        assertEquals("keys missing in values", emptySet<String>(), en.keys - fr.keys)
+    fun `every language has every key of the base, and no key of its own`() {
+        assertTrue("no strings found", base.isNotEmpty())
+        for (language in Languages.translated) {
+            val other = keys(language.resourceDir)
+            assertEquals(
+                "${language.tag}: keys missing in ${language.resourceDir}",
+                emptySet<String>(),
+                base.keys - other.keys,
+            )
+            assertEquals(
+                "${language.tag}: keys that exist nowhere else",
+                emptySet<String>(),
+                other.keys - base.keys,
+            )
+        }
     }
 
     @Test
     fun `a translation keeps the format arguments of the original`() {
-        val fr = keys("values")
-        val en = keys("values-en")
         val wrong = mutableListOf<String>()
-        for ((key, value) in fr) {
-            val other = en[key] ?: continue
-            if (arguments(value) != arguments(other)) wrong += "$key: '$value' vs '$other'"
+        for (language in Languages.translated) {
+            val other = keys(language.resourceDir)
+            for ((key, value) in base) {
+                val translated = other[key] ?: continue
+                if (arguments(value) != arguments(translated)) {
+                    wrong += "${language.tag} $key: '$value' vs '$translated'"
+                }
+            }
         }
         assertEquals("format arguments differ in translation", emptyList<String>(), wrong)
     }
