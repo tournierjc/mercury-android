@@ -30,7 +30,14 @@ object BoardJson {
     fun title(node: JsonObject?): String =
         firstString(node, TITLE_KEYS).orEmpty().ifBlank { id(node) }
 
-    fun status(node: JsonObject?): String = firstString(node, STATUS_KEYS).orEmpty().ifBlank { "todo" }
+    /**
+     * The six statuses both clients share, in the order every surface renders them: what waits for
+     * the owner first, then what runs, then what ended (SPECS/111 §1).
+     */
+    val STATUS_ORDER = listOf("pending", "paused", "question", "running", "done", "failed")
+
+    fun status(node: JsonObject?): String =
+        firstString(node, STATUS_KEYS).orEmpty().ifBlank { STATUS_ORDER.first() }
 
     fun description(node: JsonObject?): String = firstString(node, listOf("description", "detail", "notes")).orEmpty()
 
@@ -151,9 +158,24 @@ object BoardJson {
     }
     fun feedback(root: JsonObject?): List<JsonObject> = array(root, "feedback")
 
-    /** Groups cards by status, keeping the order Mercury returned. */
-    fun byStatus(cards: List<JsonObject>): List<Pair<String, List<JsonObject>>> =
-        cards.groupBy { status(it) }.toList()
+    /**
+     * Groups cards by status in [STATUS_ORDER]. An absent status is not rendered; an unknown one
+     * keeps its raw key and comes after the six, in the order Mercury sent it — folding it into
+     * `pending` would hide the one fact worth seeing, the name the server used (SPECS/111 §1).
+     * `groupBy` keeps the encounter order inside a group, so cards stay in server order.
+     */
+    fun byStatus(cards: List<JsonObject>): List<Pair<String, List<JsonObject>>> {
+        val groups = cards.groupBy { status(it) }
+        val known = STATUS_ORDER.mapNotNull { key -> groups[key]?.let { key to it } }
+        val unknown = groups.filterKeys { it !in STATUS_ORDER }.toList()
+        return known + unknown
+    }
+
+    /**
+     * `available:false` means the boards service did not start on this instance — not that the
+     * owner has no boards. The two states read the same on screen and must not (SPECS/110 §5).
+     */
+    fun available(root: JsonObject?): Boolean? = boolField(root, "available")
 
     private fun array(node: JsonObject?, key: String): List<JsonObject> {
         val element = node?.get(key) as? kotlinx.serialization.json.JsonArray ?: return emptyList()

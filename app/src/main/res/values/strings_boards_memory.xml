@@ -3,8 +3,6 @@
     <!-- BoardsScreen -->
     <string name="boards_titre_plateau">Plateau</string>
     <string name="boards_titre_plateaux">Plateaux</string>
-    <string name="boards_sous_titre_nb_plateaux">%1$d plateaux</string>
-    <string name="boards_sous_titre_nb_cartes">%1$d cartes</string>
     <string name="boards_live_direct">direct</string>
     <string name="boards_live_auto">actualisation auto</string>
     <string name="boards_plan_titre">Plan d\'exécution</string>
@@ -20,7 +18,6 @@
     <string name="boards_telecharger">Télécharger</string>
     <string name="boards_chargement">Chargement…</string>
     <string name="boards_aucun_plateau">Aucun plateau. Un plateau est une file de tâches que le runtime exécute carte par carte.</string>
-    <string name="boards_nb_cartes">%1$d cartes</string>
     <string name="boards_en_attente">%1$d en attente</string>
     <string name="boards_en_cours">%1$d en cours</string>
     <string name="boards_actif">actif</string>
@@ -131,4 +128,22 @@
     <string name="memory_formulation">Formulation correcte</string>
     <string name="memory_enregistrer">Enregistrer</string>
     <string name="boards_apercu_tronque">… aperçu tronqué — télécharge le fichier pour le texte entier</string>
+
+    <string name="boards_statut_pending">En attente</string>
+    <string name="boards_statut_paused">En pause</string>
+    <string name="boards_statut_question">En attente de réponse</string>
+    <string name="boards_statut_running">En cours</string>
+    <string name="boards_statut_done">Terminé</string>
+    <string name="boards_statut_failed">En échec</string>
+    <string name="boards_indisponible_titre">Plateaux indisponibles</string>
+    <string name="boards_indisponible_corps">Le service des plateaux n\'a pas démarré sur cette instance : tes plateaux ne peuvent pas être listés. Ce n\'est pas une liste vide — rien n\'a été supprimé.</string>
+    <string name="boards_indisponible_reessayer">Réessayer</string>
+    <plurals name="boards_nb_cartes">
+        <item quantity="one">%1$d carte</item>
+        <item quantity="other">%1$d cartes</item>
+    </plurals>
+    <plurals name="boards_sous_titre_nb_plateaux">
+        <item quantity="one">%1$d plateau</item>
+        <item quantity="other">%1$d plateaux</item>
+    </plurals>
 </resources>
