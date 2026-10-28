@@ -2,9 +2,13 @@ package io.github.tournierjc.mercury.ui
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -148,8 +152,17 @@ fun ChatScreen(
     // Seeded from the notification, not set afterwards: the Mercury conversation used to be the
     // first frame of a cold start, so tapping a notification showed it, then jumped.
     var botChat by rememberSaveable { mutableStateOf(openBotId) }
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    // Leaving the app takes two presses; the first says so.
+    val exitGate = remember { ExitGate() }
+    val exitPrompt = stringResource(R.string.chat_exit_prompt)
+    val activity = remember(context) {
+        generateSequence(context as Context?) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<Activity>()
+            .firstOrNull()
+    }
 
     // Where the owner has been. Back used to send every screen home to the conversation, so the
     // second screen deep in a corner of the app was unreachable again: one press and the path was
@@ -194,15 +207,21 @@ fun ChatScreen(
                 if (step.drawerOpen) scope.launch { drawerState.open() }
             }
             BackAction.CloseConversation -> botChat = null
-            // Nothing to close: the handler below is disabled in that case and the system exits.
-            BackAction.LeaveApp -> Unit
+            // Nothing to close. Leaving takes two presses — the first asks, the second leaves.
+            BackAction.LeaveApp -> {
+                if (exitGate.press(SystemClock.elapsedRealtime())) {
+                    activity?.finish()
+                } else {
+                    Toast.makeText(context, exitPrompt, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
     // Enabled only while there is something to close or somewhere to go back to: on the
     // conversation with nothing open, Back still leaves the app.
-    val canGoBack = backAction(drawerState.isOpen, history, botChat) != BackAction.LeaveApp
-    BackHandler(enabled = canGoBack) { goBack() }
+    // Always enabled now: at the door of the app the press is ours to answer, twice.
+    BackHandler(enabled = true) { goBack() }
 
     // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
     // bot id, and the app lands on that bot instead of the last conversation.
@@ -333,7 +352,6 @@ fun ChatScreen(
 
         AppScreen.Chat -> Unit
     }
-    val context = LocalContext.current
 
     // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
     val container = remember { (context.applicationContext as MercuryApp).container }
