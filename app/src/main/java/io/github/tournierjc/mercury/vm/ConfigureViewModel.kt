@@ -105,6 +105,10 @@ data class ConfigureUiState(
     val permissions: PermissionSummary? = null,
     val schedules: List<ScheduleSummary> = emptyList(),
     val usage: UsageDto? = null,
+    /** False when the daemon says it could not read the usage tracker — its zeros are not facts. */
+    val usageAvailable: Boolean = true,
+    /** False when the daemon has no scheduler attached: an empty list is not "no routines". */
+    val schedulesAvailable: Boolean = true,
     val byModel: List<UsageSlice> = emptyList(),
     val byChannel: List<UsageSlice> = emptyList(),
     val recent: List<UsageRequest> = emptyList(),
@@ -156,8 +160,26 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
             // so this one route is read raw.
             val pluginList = slice(ConfigureSlice.Plugins, { plugins(api.getJson("/api/plugins")) }, emptyList())
             val permissionSummary = slice(ConfigureSlice.Permissions, { permissions(api.permissions()) }, null)
-            val scheduleList = slice(ConfigureSlice.Schedules, { api.schedules().map { row -> schedule(row) } }, emptyList())
-            val usage = slice(ConfigureSlice.Usage, { api.usage() }, null)
+            var schedulesAvailable = true
+            val scheduleList = slice<List<ScheduleSummary>>(
+                ConfigureSlice.Schedules,
+                {
+                    val page = api.schedulesPage()
+                    schedulesAvailable = page.available != false
+                    page.schedules.map { row -> schedule(row) }
+                },
+                emptyList(),
+            )
+            var usageAvailable = true
+            val usage = slice<UsageDto?>(
+                ConfigureSlice.Usage,
+                {
+                    val dto = api.usage()
+                    usageAvailable = dto.available != false
+                    dto
+                },
+                null,
+            )
 
             _state.update {
                 it.copy(
@@ -170,6 +192,8 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
                     permissions = permissionSummary,
                     schedules = scheduleList,
                     usage = usage,
+                    usageAvailable = usageAvailable,
+                    schedulesAvailable = schedulesAvailable,
                     byModel = usage?.requestLog.orEmpty().let { log -> slices(log) { entry -> entry.model } },
                     byChannel = usage?.requestLog.orEmpty().let { log -> slices(log) { entry -> entry.channelType } },
                     recent = usage?.requestLog.orEmpty().let(::recent),

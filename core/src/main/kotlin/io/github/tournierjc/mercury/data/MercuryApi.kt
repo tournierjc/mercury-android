@@ -1273,6 +1273,10 @@ class MercuryApi(
     suspend fun schedules(): List<JsonObject> =
         getDecoded("/api/schedules", SchedulesResponse.serializer()).schedules
 
+    /** The whole page, so a caller can read the daemon's `available` witness beside the rows. */
+    suspend fun schedulesPage(): SchedulesResponse =
+        getDecoded("/api/schedules", SchedulesResponse.serializer())
+
     suspend fun deleteSchedule(id: String): SimpleResponse =
         executeRaw("DELETE", "/api/schedules/${encode(id)}").let { body ->
             runCatching { json.decodeFromString(SimpleResponse.serializer(), body) }
