@@ -127,4 +127,16 @@
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">en %1$s</string>
     <string name="chat_exit_prompt">Appuie encore une fois pour quitter</string>
+    <!-- Chercher et filtrer les livrables. -->
+    <string name="out_search_hint">Chercher un fichier</string>
+    <string name="out_search_clear">Effacer la recherche</string>
+    <string name="out_filter_all">Tous</string>
+    <string name="out_filter_text">Textes</string>
+    <string name="out_filter_images">Images</string>
+    <string name="out_filter_other">Autres</string>
+    <string name="out_no_match">Aucun livrable ne correspond à ce filtre.</string>
+    <string name="out_filters_clear">Tout effacer</string>
+    <string name="out_showing">%1$d sur %2$d fichiers</string>
+    <string name="out_fold_group">Replier les fichiers de %1$s</string>
+    <string name="out_unfold_group">Déplier les fichiers de %1$s</string>
 </resources>

@@ -127,4 +127,15 @@
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">in %1$s</string>
     <string name="chat_exit_prompt">Press back again to exit</string>
+    <string name="out_search_hint">Search a file</string>
+    <string name="out_search_clear">Clear the search</string>
+    <string name="out_filter_all">All</string>
+    <string name="out_filter_text">Text</string>
+    <string name="out_filter_images">Images</string>
+    <string name="out_filter_other">Other</string>
+    <string name="out_no_match">No deliverable matches this filter.</string>
+    <string name="out_filters_clear">Clear all</string>
+    <string name="out_showing">%1$d of %2$d files</string>
+    <string name="out_fold_group">Fold %1$s\'s files</string>
+    <string name="out_unfold_group">Unfold %1$s\'s files</string>
 </resources>
