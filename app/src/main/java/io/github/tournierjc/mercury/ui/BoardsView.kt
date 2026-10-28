@@ -70,7 +70,6 @@ internal fun BoardList(
     state: BoardsUiState,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
-    onCreate: () -> Unit,
     onRetry: () -> Unit,
     onSetActive: (String, Boolean) -> Unit,
 ) {
@@ -100,22 +99,6 @@ internal fun BoardList(
             ),
         )
         return
-    }
-
-    // The web app puts its one primary verb in the header, and so does this screen: a board list
-    // whose only way forward was a "Nouveau plateau" row at the bottom read as a dead end.
-    Button(
-        onClick = onCreate,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 10.dp),
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-        Text(
-            text = stringResource(R.string.boards_nouveau_plateau),
-            modifier = Modifier.padding(start = 8.dp),
-        )
     }
 
     if (state.boards.isEmpty()) {

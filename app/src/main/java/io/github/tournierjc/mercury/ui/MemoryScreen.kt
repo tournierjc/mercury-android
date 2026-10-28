@@ -93,7 +93,19 @@ fun MemoryScreen(onBack: () -> Unit) {
             onBack = onBack,
             onRefresh = viewModel::refresh,
             refreshing = state.loading,
-        )
+        ) {
+            // A memory is written from here, and only from the tab that lists them: the « + » lives
+            // in the bar, not under the list where a lone labelled button read as part of the page.
+            if (state.tab == MemoryTab.Conscious) {
+                IconButton(onClick = { showAdd = true }) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.memory_nouveau_souvenir),
+                        tint = colors.accent,
+                    )
+                }
+            }
+        }
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
@@ -110,7 +122,7 @@ fun MemoryScreen(onBack: () -> Unit) {
                 .padding(horizontal = 14.dp),
         ) {
             when (state.tab) {
-                MemoryTab.Conscious -> ConsciousTab(state, viewModel, onAdd = { showAdd = true })
+                MemoryTab.Conscious -> ConsciousTab(state, viewModel)
                 MemoryTab.Subconscious -> SubconsciousTab(state, viewModel)
                 MemoryTab.Beliefs -> BeliefsTab(state, viewModel, onCorrect = { correcting = it })
                 MemoryTab.Quarantine -> QuarantineTab(state, viewModel)
@@ -146,7 +158,7 @@ fun MemoryScreen(onBack: () -> Unit) {
 
 /** What the brain calls on without being asked — the memories it acts from. */
 @Composable
-private fun ConsciousTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd: () -> Unit) {
+private fun ConsciousTab(state: MemoryUiState, viewModel: MemoryViewModel) {
     val colors = LocalMercuryColors.current
     OutlinedTextField(
         value = state.query,
@@ -182,16 +194,6 @@ private fun ConsciousTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd
                 onForget = { viewModel.forgetMemory(memory.id) },
             )
         }
-        IconActionBar(
-            listOf(
-                QuickAction(
-                    icon = Icons.Rounded.Add,
-                    label = stringResource(R.string.memory_ajouter),
-                    tint = colors.accent,
-                    onClick = onAdd,
-                ),
-            ),
-        )
     }
 }
 
