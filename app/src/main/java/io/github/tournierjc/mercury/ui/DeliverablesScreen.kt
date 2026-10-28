@@ -59,6 +59,7 @@ fun DeliverablesScreen(onBack: () -> Unit) {
             },
             onBack = onBack,
             onRefresh = viewModel::refresh,
+            refreshing = state.loading,
         )
         FleetDeliverablesSection(state, viewModel, avatars)
         // Same banner as every other screen: the error is dismissable, not a permanent stray line.

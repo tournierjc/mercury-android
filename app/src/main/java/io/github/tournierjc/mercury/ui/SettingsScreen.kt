@@ -98,6 +98,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
             subtitle = state.models?.current?.displayLabel ?: "Mercury",
             onBack = onBack,
             onRefresh = viewModel::refresh,
+            refreshing = state.loading,
         )
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }

@@ -174,6 +174,7 @@ fun BotsScreen(
             },
             onBack = { if (state.selectedId == null) onBack() else viewModel.select(null) },
             onRefresh = viewModel::refreshRoster,
+            refreshing = state.refreshing,
             leading = selected?.let { bot -> { BotFace(bot, state.selectedId?.let { avatars[it] }, small = true) } },
         ) {
             // A teammate can be made from the app: until now the roster was read-only and a
@@ -732,15 +733,22 @@ private fun BotDetail(
         // glyphs touching the left edge and the send chip sitting on the border.
         val canSend = !state.busy && (dispatchText.isNotBlank() || dispatchFiles.isNotEmpty())
         Row(
-            verticalAlignment = Alignment.Bottom,
+            // Centred, like the chat composer: the field used to sit on a 44 dp minimum with a 6 dp
+            // nudge of its own, so the words rode below glyphs that were bottom-aligned in a shorter
+            // row — two baselines in one capsule.
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp)
                 .clip(MaterialTheme.shapes.small)
                 .border(1.dp, colors.hairline, MaterialTheme.shapes.small)
-                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         ) {
-            Box(modifier = Modifier.weight(1f).padding(top = 6.dp)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 6.dp),
+            ) {
                 if (dispatchText.isEmpty()) {
                     Text(
                         text = stringResource(R.string.bots_dispatch_hint),
@@ -754,24 +762,25 @@ private fun BotDetail(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.textPrimary),
                     cursorBrush = SolidColor(colors.accent),
                     maxLines = 5,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                    // One line's own height: the row's height comes from the glyphs beside it.
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             IconButton(
                 onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(ComposerControlSize),
             ) {
                 Icon(
                     Icons.Rounded.AttachFile,
                     contentDescription = stringResource(R.string.bots_cd_attach_file),
                     tint = colors.textSecondary,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(ComposerControlIcon),
                 )
             }
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(ComposerControlSize)
                     .clip(MaterialTheme.shapes.extraSmall)
                     .background(if (canSend) colors.accent else colors.surfaceMuted)
                     .clickable(enabled = canSend) {
@@ -785,7 +794,7 @@ private fun BotDetail(
                     Icons.AutoMirrored.Rounded.Send,
                     contentDescription = stringResource(R.string.bots_cd_send_task),
                     tint = if (canSend) colors.canvas else colors.textSecondary,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(ComposerControlIcon),
                 )
             }
         }

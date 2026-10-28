@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,8 +41,13 @@ fun TasksScreen(onBack: () -> Unit) {
     val container = remember { (context.applicationContext as MercuryApp).container }
     var agents by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
     var available by remember { mutableStateOf<Boolean?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
+    // Bumped by the header button: the one read this screen makes was tied to composition, so a
+    // screen reopened on a stale answer had no way to ask again.
+    var reloads by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reloads) {
+        refreshing = true
         withContext(Dispatchers.IO) {
             runCatching { container.api.getJson("/api/agents") }
                 .onSuccess { root ->
@@ -50,6 +56,7 @@ fun TasksScreen(onBack: () -> Unit) {
                 }
                 .onFailure { available = false }
         }
+        refreshing = false
     }
 
     Column(
@@ -60,7 +67,13 @@ fun TasksScreen(onBack: () -> Unit) {
             .padding(horizontal = 14.dp)
             .verticalScroll(rememberScrollState()),
     ) {
-        ScreenHeader(title = stringResource(R.string.nav_tasks), onBack = onBack)
+        ScreenHeader(
+            title = stringResource(R.string.nav_tasks),
+            onBack = onBack,
+            // The list of running agents is the one live fact here: it needed a way to be re-read.
+            onRefresh = { reloads++ },
+            refreshing = refreshing,
+        )
 
         CollapsibleSection(stringResource(R.string.tasks_agents_titre), defaultOpen = true) {
             if (agents.isEmpty()) {

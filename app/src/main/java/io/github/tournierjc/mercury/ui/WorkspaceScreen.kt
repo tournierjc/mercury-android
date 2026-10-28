@@ -120,7 +120,10 @@ fun WorkspaceScreen(onBack: () -> Unit) {
             title = stringResource(R.string.workspace_titre),
             subtitle = state.info?.let { info -> info.projectName.ifBlank { info.cwd } },
             onBack = goBack,
-            onRefresh = viewModel::refresh,
+            // The terminal tab has nothing to re-read: it is live, and a button that did nothing
+            // there is exactly what made the header's refresh feel broken.
+            onRefresh = if (state.tab == WorkspaceTab.Terminal) null else viewModel::refresh,
+            refreshing = state.busy,
         )
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }

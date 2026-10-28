@@ -78,6 +78,8 @@ data class BotsUiState(
     /** What the last finished action says (a key, resolved by the screen). */
     val message: Notice? = null,
     val error: Notice? = null,
+    /** A roster read on demand: the header button spins on this, not on the first load. */
+    val refreshing: Boolean = false,
     /** What the last dispatch answered: queued, or the reason it was refused. */
     val dispatchFeedback: Notice? = null,
     val detailLoading: Boolean = false,
@@ -172,12 +174,13 @@ class BotsViewModel(
      */
     fun refreshRoster() {
         viewModelScope.launch {
+            _state.update { s -> s.copy(refreshing = true) }
             runCatching { api.bots() }
                 .onSuccess { roster ->
                     watcher.ingest(roster)
-                    _state.update { s -> s.copy(error = null) }
+                    _state.update { s -> s.copy(refreshing = false, error = null) }
                 }
-                .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
+                .onFailure { e -> _state.update { s -> s.copy(refreshing = false, error = e.readable()) } }
         }
     }
 

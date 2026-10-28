@@ -62,6 +62,7 @@ fun StatusScreen(onBack: () -> Unit) {
             },
             onBack = onBack,
             onRefresh = viewModel::refresh,
+            refreshing = state.loading,
         )
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 

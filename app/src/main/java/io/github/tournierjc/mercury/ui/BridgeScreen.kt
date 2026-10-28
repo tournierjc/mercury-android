@@ -116,6 +116,8 @@ fun BridgeScreen(onBack: () -> Unit) {
             // The permissions it shows change outside this screen (system dialogs, a revocation in
             // Réglages), so the header carries the same refresh as every other screen.
             onRefresh = { refresh() },
+            // A local permissions read: instant, so the button never spins.
+            refreshing = false,
         )
         Text(
             text = stringResource(R.string.bridge_intro),

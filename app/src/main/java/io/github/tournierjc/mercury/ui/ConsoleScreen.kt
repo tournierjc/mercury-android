@@ -132,6 +132,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             subtitle = state.status?.let { "${it.state.ifBlank { "?" }} · ${formatUptime(it.uptime)}" },
             onBack = onBack,
             onRefresh = viewModel::refresh,
+            refreshing = state.loading,
         )
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }

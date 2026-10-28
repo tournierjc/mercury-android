@@ -63,6 +63,7 @@ fun ProvidersScreen(onBack: () -> Unit) {
         },
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -100,6 +101,7 @@ fun SkillsScreen(onBack: () -> Unit) {
             .takeIf { state.skills.isNotEmpty() },
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -150,6 +152,7 @@ fun McpScreen(onBack: () -> Unit) {
         ),
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -204,6 +207,7 @@ fun PluginsScreen(onBack: () -> Unit) {
         },
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -253,6 +257,7 @@ fun PermissionsScreen(onBack: () -> Unit) {
         subtitle = null,
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -331,6 +336,7 @@ fun SchedulesScreen(onBack: () -> Unit) {
         },
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -381,6 +387,7 @@ fun UsageScreen(onBack: () -> Unit) {
         },
         onBack = onBack,
         onRefresh = viewModel::refresh,
+        refreshing = state.loading,
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
@@ -497,6 +504,7 @@ private fun ConfigureScaffold(
     subtitle: String?,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
+    refreshing: Boolean,
     error: Notice?,
     onDismissError: () -> Unit,
     content: @Composable () -> Unit,
@@ -508,7 +516,7 @@ private fun ConfigureScaffold(
             .background(colors.canvas)
             .safeDrawingPadding(),
     ) {
-        ScreenHeader(title = title, subtitle = subtitle, onBack = onBack, onRefresh = onRefresh)
+        ScreenHeader(title = title, subtitle = subtitle, onBack = onBack, onRefresh = onRefresh, refreshing = refreshing)
         error?.let { notice -> NoticeBanner(notice, onDismiss = onDismissError) }
         Column(
             modifier = Modifier
