@@ -1,6 +1,8 @@
 package io.github.tournierjc.mercury.bots
 
 import io.github.tournierjc.mercury.data.BotEvent
+import io.github.tournierjc.mercury.data.dto.BotsResponse
+import io.github.tournierjc.mercury.data.dto.asSnapshot
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.MercuryApi
 import kotlinx.coroutines.CoroutineScope
@@ -112,6 +114,24 @@ class BotWatcher(
                 delay(backoff)
                 backoff = (backoff * 2).coerceAtMost(60_000L)
             }
+        }
+    }
+
+    /**
+     * Applies a roster read over HTTP, on top of the live feed.
+     *
+     * The feed is the usual source, but it only speaks when the daemon broadcasts: after a rename
+     * the drawer and the header kept the old name, and the refresh button fetched the list to throw
+     * it away (it cleared the error banner and nothing else, so it looked dead). Two callers, one
+     * way in: the button, and the reply to any write that changes what the roster shows.
+     */
+    fun ingest(roster: BotsResponse) {
+        _state.update {
+            it.copy(
+                bots = roster.bots,
+                queue = roster.queue.asSnapshot(),
+                error = null,
+            )
         }
     }
 

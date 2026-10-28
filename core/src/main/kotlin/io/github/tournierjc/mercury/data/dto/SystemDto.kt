@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.data.dto
 
+import io.github.tournierjc.mercury.data.BotEvent
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -99,6 +100,15 @@ data class BotsResponse(
     val queue: QueueCounts = QueueCounts(),
     val available: Boolean = true,
 )
+
+/**
+ * The queue counters as the live feed reports them.
+ *
+ * Same three numbers under two names (`QueueCounts` for HTTP, `QueueSnapshot` for the feed): mapped
+ * here, once, so a manual refresh cannot quietly swap `pending` and `claimed`.
+ */
+fun QueueCounts.asSnapshot(): BotEvent.QueueSnapshot =
+    BotEvent.QueueSnapshot(pending = pending, claimed = claimed, dlq = dlq)
 
 /** `GET /api/bots/:id` — the manifest and its live state, both untyped. */
 @Serializable
