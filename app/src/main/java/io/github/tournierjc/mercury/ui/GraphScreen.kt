@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -75,6 +76,9 @@ fun GraphScreen(onBack: () -> Unit) {
     val container = remember { (context.applicationContext as MercuryApp).container }
     val viewModel: GraphViewModel = viewModel(factory = GraphViewModel.factory(container))
     val state by viewModel.state.collectAsState()
+
+    // The node panel is the screen's inner depth: it closes before the screen does.
+    BackHandler(enabled = state.detailId.isNotBlank()) { viewModel.clearSelection() }
     val colors = LocalMercuryColors.current
 
     // A node that vanished from a refresh must not stay in the panel.
