@@ -166,10 +166,17 @@ class BotsViewModel(
         }
     }
 
+    /**
+     * Re-reads the fleet and **applies** it. It used to fetch `/api/bots` and discard the answer —
+     * clearing the error banner and nothing else, which is why the refresh button looked dead.
+     */
     fun refreshRoster() {
         viewModelScope.launch {
             runCatching { api.bots() }
-                .onSuccess { _state.update { s -> s.copy(error = null) } }
+                .onSuccess { roster ->
+                    watcher.ingest(roster)
+                    _state.update { s -> s.copy(error = null) }
+                }
                 .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
         }
     }
@@ -735,6 +742,10 @@ class BotsViewModel(
                     // kept the old label until the bot was reopened, which looked like the
                     // change had not been applied.
                     refreshManifest(id)
+                    // And the roster feeds the drawer, the header and the fleet screen: the
+                    // daemon announces the edit, this is the same answer taken directly, so the
+                    // name changes even if the live feed is a beat behind.
+                    refreshRoster()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
