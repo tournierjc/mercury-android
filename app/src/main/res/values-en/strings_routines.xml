@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The « Routines » section of a bot's sheet: the cron slots that wake it. -->
+<resources>
+    <string name="routines_section_title">Routines</string>
+    <string name="routines_empty">No routines yet. A routine is a slot that wakes the bot with a prompt — every morning at 7 for a summary, say.</string>
+    <string name="routines_action_add">Add a routine</string>
+    <string name="routines_action_edit">Edit</string>
+    <string name="routines_action_delete">Delete</string>
+    <string name="routines_action_save">Save</string>
+    <string name="routines_action_cancel">Cancel</string>
+    <string name="routines_action_show_prompt">Show the prompt</string>
+    <string name="routines_action_hide_prompt">Hide the prompt</string>
+
+    <string name="routines_label_name">Name</string>
+    <string name="routines_label_cron">Cron (5 fields)</string>
+    <string name="routines_label_prompt">Prompt sent to the bot</string>
+    <string name="routines_label_deliver">Delivery</string>
+    <string name="routines_label_expects">What it produces</string>
+    <string name="routines_label_interval">Min. interval (minutes)</string>
+    <string name="routines_label_gate">Gate script</string>
+    <string name="routines_hint_interval">None</string>
+    <string name="routines_cron_example">0 7 * * *</string>
+    <string name="routines_error_cron">Invalid expression: five fields — minute, hour, day, month, weekday.</string>
+
+    <string name="routines_value_deliver_bot_chat">Bot chat</string>
+    <string name="routines_value_deliver_telegram">Telegram</string>
+    <string name="routines_value_deliver_none">None</string>
+    <string name="routines_value_expects_work">Work</string>
+    <string name="routines_value_expects_check">Check</string>
+    <string name="routines_badge_interval">%1$d min</string>
+
+    <string name="routines_confirm_delete_title">Delete “%1$s”?</string>
+    <string name="routines_confirm_delete_body">The routine will be removed from the bot’s manifest.</string>
+    <string name="routines_cd_edit">Edit %1$s</string>
+    <string name="routines_cd_delete">Delete %1$s</string>
+</resources>
