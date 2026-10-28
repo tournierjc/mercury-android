@@ -868,6 +868,8 @@ private fun BotDetail(
     }
 
     BotMemorySection(state = state, viewModel = viewModel)
+    // Les créneaux cron de l'équipier : juste après sa persona, avant ses permissions.
+    BotRoutinesSection(state = state, viewModel = viewModel)
 
     CollapsibleSection(stringResource(R.string.bots_section_permissions)) {
         LaunchedEffect(state.selectedId) { viewModel.loadTiers() }

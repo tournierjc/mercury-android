@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Réglages › Instance : ce que le démon accepte d'écrire (PUT /api/config, PUT /api/chat/settings). -->
+<resources>
+    <string name="instance_title">Instance</string>
+    <string name="instance_identity_hint">Le nom et le propriétaire que le runtime annonce.</string>
+    <string name="instance_name_required">Un nom est nécessaire.</string>
+    <string name="instance_provider_title">Fournisseur par défaut</string>
+    <string name="instance_provider_hint">Utilisé quand une demande ne nomme pas de modèle.</string>
+    <string name="instance_provider_none">Aucun fournisseur exposé par le runtime.</string>
+    <string name="instance_budget_title">Budget global par jour</string>
+    <string name="instance_budget_hint">En jetons. 0 = illimité, vide = inchangé.</string>
+    <string name="instance_budget_invalid">Nombre de jetons invalide.</string>
+    <string name="instance_workspace_title">Dossier de travail</string>
+    <string name="instance_workspace_hint">Le dossier où l\'agent lit et écrit. Il doit exister sur la machine du démon.</string>
+    <string name="instance_heartbeat_title">Intervalle de cœur</string>
+    <string name="instance_heartbeat_value">%1$s min</string>
+    <string name="instance_heartbeat_readonly">Lecture seule : la route d\'écriture ne l\'accepte pas. Il se règle dans config.yaml ou par variable d\'environnement du démon.</string>
+    <string name="instance_unavailable">Réglages de l\'instance indisponibles : le démon n\'a pas répondu.</string>
+    <string name="notice_instance_saved">Réglages de l\'instance enregistrés.</string>
+    <string name="notice_instance_restart_required">Enregistré — le runtime doit redémarrer pour les appliquer.</string>
+</resources>

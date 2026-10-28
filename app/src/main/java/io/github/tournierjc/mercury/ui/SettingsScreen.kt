@@ -37,6 +37,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -61,6 +62,7 @@ import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.AttentionPrefs
 import io.github.tournierjc.mercury.bots.AttentionSchedule
 import io.github.tournierjc.mercury.bots.WatchService
+import io.github.tournierjc.mercury.data.dto.InstanceConfig
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.vm.SettingsViewModel
@@ -68,8 +70,8 @@ import io.github.tournierjc.mercury.vm.SettingsViewModel
 private enum class AccountDialog { Username, Password }
 
 /**
- * Model picker, tool-approval mode, token budget, provider wiring and account
- * actions. Each control writes straight to the matching Mercury route.
+ * Model picker, tool-approval mode, token budget, provider wiring, the instance the app is attached
+ * to and account actions. Each control writes straight to the matching Mercury route.
  */
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
@@ -403,6 +405,18 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 )
             }
 
+            CollapsibleSection(stringResource(R.string.instance_title)) {
+                InstanceSection(
+                    instance = state.instance,
+                    workspace = state.settings?.workspace.orEmpty(),
+                    providers = state.providerNames,
+                    busy = state.busy,
+                    loading = state.loading,
+                    onSave = viewModel::saveInstance,
+                    onSaveWorkspace = viewModel::saveWorkspace,
+                )
+            }
+
             CollapsibleSection(stringResource(R.string.settings_server_title), defaultOpen = true) {
                 ActionRow(
                     title = stringResource(R.string.settings_server_address),
@@ -664,3 +678,199 @@ private fun ServerDialog(
 @Composable
 private fun languageLabel(language: AppLanguage): String =
     if (language.followsSystem) stringResource(R.string.settings_language_system) else language.nativeName
+
+/**
+ * Réglages › Instance — ce que le démon dit de lui-même : le nom et le propriétaire qu'il annonce,
+ * le fournisseur par défaut, le plafond quotidien de jetons et le dossier où l'agent travaille.
+ *
+ * Les quatre premiers partent ensemble par `PUT /api/config`; le dossier a sa propre route
+ * (`PUT /api/chat/settings`) et donc son propre bouton. Un seul bouton pour les deux ferait dire
+ * « enregistré » à l'écran alors que la moitié du formulaire a échoué.
+ *
+ * L'intervalle de cœur est affiché et *pas* modifiable : la route d'écriture ne l'accepte pas, il se
+ * règle dans `config.yaml` ou par l'environnement du démon. Un chiffre en lecture seule vaut mieux
+ * qu'un champ qui ne part jamais.
+ */
+@Composable
+private fun InstanceSection(
+    instance: InstanceConfig?,
+    workspace: String,
+    providers: List<String>,
+    busy: Boolean,
+    loading: Boolean,
+    onSave: (name: String, owner: String, defaultProvider: String, tokenBudget: String) -> Unit,
+    onSaveWorkspace: (path: String) -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    if (instance == null) {
+        Text(
+            text = stringResource(if (loading) R.string.common_loading else R.string.instance_unavailable),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        return
+    }
+    // Le formulaire repart de la réponse du démon : après un enregistrement, ce qui s'affiche est ce
+    // qui est stocké — jamais la frappe qui a servi à l'écrire.
+    var name by remember(instance) { mutableStateOf(instance.identity.name) }
+    var owner by remember(instance) { mutableStateOf(instance.identity.owner) }
+    var provider by remember(instance) { mutableStateOf(instance.defaultProvider) }
+    // `0` est une valeur (pas de plafond), pas une absence : le champ montre le nombre tel quel et
+    // seul un champ vidé veut dire « inchangé ».
+    var budget by remember(instance) { mutableStateOf(instance.tokenBudget.toString()) }
+    var folder by remember(workspace) { mutableStateOf(workspace) }
+    var showProviders by remember { mutableStateOf(false) }
+
+    val invalidBudget = budget.isNotBlank() && (budget.toLongOrNull() ?: -1L) < 0
+    val canSave = name.isNotBlank() && !invalidBudget && !busy
+
+    Text(
+        text = stringResource(R.string.instance_identity_hint),
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.textSecondary,
+    )
+    OutlinedTextField(
+        value = name,
+        onValueChange = { name = it },
+        label = { Text(stringResource(R.string.status_label_agent_name)) },
+        singleLine = true,
+        isError = name.isBlank(),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    )
+    if (name.isBlank()) {
+        Text(
+            text = stringResource(R.string.instance_name_required),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.danger,
+        )
+    }
+    // Le propriétaire n'est pas obligatoire : une instance peut n'en annoncer aucun, et un champ
+    // vidé veut dire « inchangé » (voir `InstancePatch`) — l'exiger forcerait à inventer un nom.
+    OutlinedTextField(
+        value = owner,
+        onValueChange = { owner = it },
+        label = { Text(stringResource(R.string.status_label_owner)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    )
+
+    // Même forme que le choix de langue : une ligne qui ouvre la liste, pas une ligne par
+    // fournisseur — la section « Fournisseurs » juste au-dessus en dresse déjà la liste complète.
+    Box(modifier = Modifier.padding(top = 6.dp)) {
+        ActionRow(
+            title = stringResource(R.string.instance_provider_title),
+            subtitle = provider.ifBlank { stringResource(R.string.instance_provider_none) },
+            trailing = if (providers.isEmpty()) null else stringResource(R.string.settings_change),
+            enabled = providers.isNotEmpty() && !busy,
+            onClick = { showProviders = true },
+        )
+        DropdownMenu(
+            expanded = showProviders,
+            onDismissRequest = { showProviders = false },
+        ) {
+            providers.forEach { key ->
+                DropdownMenuItem(
+                    text = { Text(key) },
+                    trailingIcon = if (key == provider) {
+                        { Icon(Icons.Rounded.Check, contentDescription = null, tint = colors.accent) }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        provider = key
+                        showProviders = false
+                    },
+                )
+            }
+        }
+    }
+    Text(
+        text = stringResource(R.string.instance_provider_hint),
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.textSecondary,
+    )
+
+    OutlinedTextField(
+        value = budget,
+        onValueChange = { budget = it },
+        label = { Text(stringResource(R.string.instance_budget_title)) },
+        singleLine = true,
+        isError = invalidBudget,
+        supportingText = { Text(stringResource(R.string.instance_budget_hint), color = colors.textSecondary) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    )
+    if (invalidBudget) {
+        Text(
+            text = stringResource(R.string.instance_budget_invalid),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.danger,
+        )
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        OutlinedTextField(
+            value = folder,
+            onValueChange = { folder = it },
+            label = { Text(stringResource(R.string.instance_workspace_title)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            modifier = Modifier.weight(1f),
+        )
+        // Le glyphe du composeur : 40 dp de cible et 20 dp de trait. Un second bouton texte aurait
+        // ajouté un verbe de plus à une section qui en a déjà un.
+        Box(
+            modifier = Modifier.size(ComposerControlSize),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(
+                onClick = { onSaveWorkspace(folder) },
+                enabled = !busy && folder.isNotBlank() && folder.trim() != workspace.trim(),
+                modifier = Modifier.size(ComposerControlSize),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = stringResource(R.string.settings_save),
+                    tint = colors.accent,
+                    modifier = Modifier.size(ComposerControlIcon),
+                )
+            }
+        }
+    }
+    Text(
+        text = stringResource(R.string.instance_workspace_hint),
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.textSecondary,
+        modifier = Modifier.padding(top = 2.dp),
+    )
+
+    KeyValueRow(
+        label = stringResource(R.string.instance_heartbeat_title),
+        value = stringResource(R.string.instance_heartbeat_value, instance.heartbeatInterval.toString()),
+    )
+    Text(
+        text = stringResource(R.string.instance_heartbeat_readonly),
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.textSecondary,
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        TextButton(
+            onClick = { onSave(name, owner, provider, budget) },
+            enabled = canSave,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_save),
+                color = if (canSave) colors.accent else colors.textSecondary,
+            )
+        }
+    }
+}

@@ -7,9 +7,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.AuthException
+import io.github.tournierjc.mercury.data.InstanceDraft
+import io.github.tournierjc.mercury.data.InstancePatch
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.dto.ChatSettings
 import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
+import io.github.tournierjc.mercury.data.dto.InstanceConfig
 import io.github.tournierjc.mercury.data.dto.ModelsResponse
 import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
@@ -30,18 +33,29 @@ data class SettingsUiState(
     val settings: ChatSettings? = null,
     val usage: UsageDto? = null,
     val providers: List<ProviderDto> = emptyList(),
+    /** The instance's identity, default provider and global budget (`GET /api/config`). */
+    val instance: InstanceConfig? = null,
     val providerTest: ProviderTestResult? = null,
     val providerTestFor: String = "",
     val busy: Boolean = false,
     /** What the last finished action says (a key, resolved by the screen). */
     val message: Notice? = null,
     val error: Notice? = null,
-)
+) {
+    /**
+     * The provider keys the "provider par défaut" list can offer: the console's provider rows and the
+     * chat picker name the same six, but a daemon may answer only one of the two routes.
+     */
+    val providerNames: List<String>
+        get() = (providers.map { it.name } + models?.providers.orEmpty().map { it.name })
+            .filter { it.isNotBlank() }
+            .distinct()
+}
 
 /**
- * Model picker, permission mode, budget and account. Everything here maps to a
- * real Mercury route (`/api/chat/models*`, `/api/chat/settings`, `/api/usage`,
- * `/api/auth/...`) — nothing is faked locally.
+ * Model picker, permission mode, budget, the instance's own settings and the account. Everything
+ * here maps to a real Mercury route (`/api/chat/models*`, `/api/chat/settings`, `/api/usage`,
+ * `/api/config`, `/api/auth/...`) — nothing is faked locally.
  */
 class SettingsViewModel(
     private val api: MercuryApi,
@@ -63,6 +77,9 @@ class SettingsViewModel(
                 val settings = api.settings()
                 val usage = runCatching { api.usage() }.getOrNull()
                 val providers = runCatching { api.providers() }.getOrDefault(emptyList())
+                // Best-effort: a daemon that predates the route still shows its model, budget and
+                // account sections instead of failing the whole screen for one missing read.
+                val instance = runCatching { api.instanceConfig() }.getOrNull()
                 _state.update {
                     it.copy(
                         loading = false,
@@ -70,6 +87,7 @@ class SettingsViewModel(
                         settings = settings,
                         usage = usage,
                         providers = providers,
+                        instance = instance,
                     )
                 }
             } catch (e: Exception) {
@@ -158,6 +176,66 @@ class SettingsViewModel(
             runCatching { api.updateSettings(ChatSettingsUpdate(restrictUser = enabled)) }
                 .onSuccess { settings -> _state.update { it.copy(settings = settings) } }
                 .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
+        }
+    }
+
+    /**
+     * Identity, default provider and global budget, as one route: `PUT /api/config`.
+     *
+     * The patch carries only what differs from the daemon's copy (see `InstancePatch`), so a form
+     * submitted without an edit sends nothing at all. The answer's `restartRequired` decides the
+     * notice: the daemon reads the provider and the budget at boot, and telling the owner "saved"
+     * alone would let them wait for an effect that needs a restart.
+     */
+    fun saveInstance(name: String, owner: String, defaultProvider: String, tokenBudget: String) {
+        viewModelScope.launch {
+            val current = _state.value.instance ?: return@launch
+            val patch = InstancePatch.config(
+                current,
+                InstanceDraft(name = name, owner = owner, defaultProvider = defaultProvider, tokenBudget = tokenBudget),
+            )
+            if (patch.isEmpty()) {
+                // Nothing to write: a PUT of the same values still rewrites config.yaml.
+                refresh()
+                return@launch
+            }
+            _state.update { it.copy(busy = true, error = null, message = null) }
+            runCatching { api.saveInstanceConfig(patch) }
+                .onSuccess { saved ->
+                    _state.update { s ->
+                        s.copy(
+                            busy = false,
+                            message = Notice(
+                                if (saved.restartRequired) NoticeKey.INSTANCE_RESTART_REQUIRED else NoticeKey.INSTANCE_SAVED,
+                            ),
+                        )
+                    }
+                    refresh()
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
+    /**
+     * The workspace is a chat setting, not an instance one: `PUT /api/chat/settings`.
+     *
+     * The notice quotes the folder the daemon answered with rather than the typed text — a host that
+     * resolves the path (`~`, a symlink) would otherwise leave the app showing a path nobody uses.
+     */
+    fun saveWorkspace(path: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null, message = null) }
+            runCatching { api.saveWorkspace(path) }
+                .onSuccess { settings ->
+                    _state.update { s ->
+                        s.copy(
+                            busy = false,
+                            settings = settings,
+                            message = Notice(NoticeKey.WORKSPACE_SET, args = listOf(settings.workspace)),
+                        )
+                    }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
 
