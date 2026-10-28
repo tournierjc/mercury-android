@@ -8,12 +8,7 @@
     <string name="drawer_new_session">New session</string>
     <string name="drawer_no_session">No session yet.</string>
     <string name="drawer_delete_session">Delete session</string>
-    <string name="drawer_deliverables">Deliverables</string>
-    <string name="drawer_boards">Boards</string>
-    <string name="drawer_memory">Memory</string>
-    <string name="drawer_console">Console</string>
     <string name="drawer_settings">Settings</string>
-    <string name="drawer_bridge">Device bridge</string>
     <string name="drawer_delete_session_title">Delete this session?</string>
     <string name="drawer_delete">Delete</string>
     <string name="drawer_cancel">Cancel</string>
@@ -21,7 +16,6 @@
 
     <!-- Device bridge -->
     <string name="bridge_title">Device bridge</string>
-    <string name="bridge_back">Back</string>
     <string name="bridge_calendar">Calendar</string>
     <string name="bridge_read_events">read events</string>
     <string name="bridge_contacts">Contacts</string>

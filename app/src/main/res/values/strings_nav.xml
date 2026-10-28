@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_status">État</string>
+    <string name="nav_chat">Conversation</string>
+    <string name="nav_bots">Équipiers</string>
+    <string name="nav_tasks">Tâches</string>
+    <string name="nav_boards">Plateaux</string>
+    <string name="nav_workspace">Espace de travail</string>
+    <string name="nav_section_second_brain">Second cerveau</string>
+    <string name="nav_memory">Mémoire</string>
+    <string name="nav_persons">Personnes</string>
+    <string name="nav_goals">Objectifs</string>
+    <string name="nav_graph">Graphe</string>
+    <string name="nav_section_configure">Configurer</string>
+    <string name="nav_providers">Fournisseurs</string>
+    <string name="nav_skills">Compétences</string>
+    <string name="nav_mcp">MCP</string>
+    <string name="nav_plugins">Plugins</string>
+    <string name="nav_permissions">Permissions</string>
+    <string name="nav_schedules">Planifications</string>
+    <string name="nav_usage">Consommation</string>
+    <string name="nav_deliverables">Livrables</string>
+    <string name="nav_bridge">Pont</string>
+    <string name="nav_settings">Réglages</string>
+    <string name="tasks_agents_titre">Agents en cours</string>
+    <string name="tasks_aucun_agent">Aucun agent en cours.</string>
+    <string name="tasks_agents_indisponible">Les agents ne sont pas exposés par cette instance.</string>
+    <string name="tasks_agent_sans_id">(agent sans identifiant)</string>
+    <string name="tasks_file_titre">File de tâches</string>
+    <string name="tasks_file_corps">La file de tâches n\'est pas encore exposée par l\'API : la page Tâches de la webapp affiche le même « bientôt ». Ici comme là, ce qui tourne vraiment, ce sont les agents ci-dessus et les planifications.</string>
+    <string name="nav_console">Console</string>
+</resources>

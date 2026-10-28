@@ -33,7 +33,6 @@
     <string name="bots_empty_roster">Aucun équipier. Le + en haut à droite en crée un.</string>
     <string name="bots_lead_badge">"  chef"</string>
     <string name="bots_lead_crew_count">" · %1$d en cours"</string>
-    <string name="bots_crew_of">crew de %1$s</string>
 
     <!-- BotsScreen : fiche d'un bot -->
     <string name="bots_section_preview">Aperçu</string>

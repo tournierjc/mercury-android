@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_status">Status</string>
+    <string name="nav_chat">Chat</string>
+    <string name="nav_bots">Bots</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_boards">Boards</string>
+    <string name="nav_workspace">Workspace</string>
+    <string name="nav_section_second_brain">Second brain</string>
+    <string name="nav_memory">Memory</string>
+    <string name="nav_persons">Persons</string>
+    <string name="nav_goals">Goals</string>
+    <string name="nav_graph">Graph</string>
+    <string name="nav_section_configure">Configure</string>
+    <string name="nav_providers">Providers</string>
+    <string name="nav_skills">Skills</string>
+    <string name="nav_mcp">MCP</string>
+    <string name="nav_plugins">Plugins</string>
+    <string name="nav_permissions">Permissions</string>
+    <string name="nav_schedules">Schedules</string>
+    <string name="nav_usage">Usage</string>
+    <string name="nav_deliverables">Deliverables</string>
+    <string name="nav_bridge">Bridge</string>
+    <string name="nav_settings">Settings</string>
+    <string name="tasks_agents_titre">Running agents</string>
+    <string name="tasks_aucun_agent">No agent is running.</string>
+    <string name="tasks_agents_indisponible">Agents are not exposed by this instance.</string>
+    <string name="tasks_agent_sans_id">(agent without an id)</string>
+    <string name="tasks_file_titre">Task queue</string>
+    <string name="tasks_file_corps">The task queue is not exposed by the API yet: the webapp\'s Tasks page shows the same "coming soon". Here as there, what really runs are the agents above and the schedules.</string>
+    <string name="nav_console">Console</string>
+</resources>

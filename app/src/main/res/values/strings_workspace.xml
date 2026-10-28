@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Espace de travail : l'explorateur de fichiers, le terminal et git, en un seul écran.
+  Fichier propre à cet écran — les autres feuilles de chaînes ne sont pas touchées.
+-->
+<resources>
+    <!-- En-tête et onglets -->
+    <string name="workspace_titre">Espace de travail</string>
+    <string name="workspace_onglet_fichiers">Fichiers</string>
+    <string name="workspace_onglet_terminal">Terminal</string>
+    <string name="workspace_onglet_git">Git</string>
+
+    <!-- Fichiers -->
+    <string name="workspace_chargement">Chargement…</string>
+    <string name="workspace_dossier_vide">Ce dossier est vide.</string>
+    <string name="workspace_dossier_ouvrir">Ouvrir le dossier</string>
+    <string name="workspace_fichier_ouvrir">Ouvrir le fichier</string>
+    <string name="workspace_apercu_titre">Aperçu en lecture seule</string>
+    <string name="workspace_apercu_tronque">Aperçu tronqué — le fichier continue au-delà.</string>
+    <string name="workspace_apercu_binaire">Fichier binaire : aucun aperçu texte.</string>
+    <string name="workspace_apercu_fermer">Fermer l\'aperçu</string>
+    <plurals name="workspace_apercu_lignes">
+        <item quantity="one">%d ligne</item>
+        <item quantity="other">%d lignes</item>
+    </plurals>
+
+    <!-- Terminal -->
+    <string name="workspace_terminal_aide">Une commande à la fois, exécutée dans l\'espace de travail.</string>
+    <string name="workspace_terminal_vide">Aucune commande pour l\'instant.</string>
+    <string name="workspace_terminal_commande">Commande</string>
+    <string name="workspace_terminal_executer">Exécuter</string>
+    <string name="workspace_terminal_sortie_vide">Aucune sortie · code 0</string>
+    <string name="workspace_terminal_code">code %1$d</string>
+    <string name="workspace_terminal_echec">Échec de la requête</string>
+    <string name="workspace_terminal_historique">Historique</string>
+    <string name="workspace_terminal_relancer">Toucher pour relancer</string>
+    <string name="workspace_terminal_effacer">Effacer</string>
+
+    <!-- Git -->
+    <string name="workspace_git_aucun_depot">Aucun dépôt git dans cet espace de travail.</string>
+    <string name="workspace_git_branche">Branche</string>
+    <string name="workspace_git_amont">Amont</string>
+    <string name="workspace_git_aucun">aucun</string>
+    <string name="workspace_git_synchronisation">Synchronisation</string>
+    <string name="workspace_git_arbre_propre">Aucune modification.</string>
+    <string name="workspace_git_indexer">Indexer</string>
+    <string name="workspace_git_desindexer">Désindexer</string>
+    <string name="workspace_git_indexer_tout">Tout indexer</string>
+    <string name="workspace_git_desindexer_tout">Tout désindexer</string>
+    <string name="workspace_git_message">Message de commit</string>
+    <string name="workspace_git_generer">Générer</string>
+    <string name="workspace_git_committer">Committer</string>
+    <string name="workspace_git_pousser">Pousser</string>
+    <string name="workspace_git_tirer">Tirer</string>
+    <string name="workspace_git_rafraichir">Rafraîchir</string>
+    <string name="workspace_git_commits">Commits récents</string>
+    <string name="workspace_git_aucun_commit">Aucun commit.</string>
+    <string name="workspace_git_diff_indexe">Indexé</string>
+    <string name="workspace_git_diff_non_indexe">Non indexé</string>
+    <string name="workspace_git_diff_vide">Aucun diff pour ce fichier.</string>
+    <string name="workspace_git_diff_fermer">Fermer le diff</string>
+    <string name="workspace_git_choisir">Touchez un fichier pour lire son diff.</string>
+    <plurals name="workspace_git_indexes">
+        <item quantity="one">%d fichier indexé</item>
+        <item quantity="other">%d fichiers indexés</item>
+    </plurals>
+    <plurals name="workspace_git_modifies">
+        <item quantity="one">%d fichier modifié</item>
+        <item quantity="other">%d fichiers modifiés</item>
+    </plurals>
+
+    <!-- Confirmation d'une action qui touche au dépôt -->
+    <string name="workspace_confirmer_titre">%1$s ?</string>
+    <string name="workspace_confirmer_corps">Cette action modifie le dépôt de l\'espace de travail.</string>
+    <string name="workspace_confirmer">Confirmer</string>
+    <string name="workspace_annuler">Annuler</string>
+</resources>

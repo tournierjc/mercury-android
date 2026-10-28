@@ -52,15 +52,18 @@ import io.github.tournierjc.mercury.data.dto.MEMORY_TYPES
 import io.github.tournierjc.mercury.data.dto.BeliefDto
 import io.github.tournierjc.mercury.data.dto.MemoryDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
-import io.github.tournierjc.mercury.util.formatTokens
-import io.github.tournierjc.mercury.util.formatUptime
 import io.github.tournierjc.mercury.vm.MemoryTab
 import io.github.tournierjc.mercury.vm.MemoryUiState
 import io.github.tournierjc.mercury.vm.MemoryViewModel
 
 /**
- * What the agent remembers and believes, from the phone: search, add, correct,
- * forget, and inspect what it set aside.
+ * What the agent remembers and believes, from the phone: search, add, correct, forget, and inspect
+ * what it set aside.
+ *
+ * Four sections, the webapp's four: what it keeps conscious, what it only reaches by association,
+ * the beliefs it drew from both, and what it quarantined. There used to be a fifth, « À propos »,
+ * holding the runtime's identity and a count of the graph nodes — facts about the *instance*, not
+ * about its memory, and now the Status screen's.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -82,7 +85,11 @@ fun MemoryScreen(onBack: () -> Unit) {
     ) {
         ScreenHeader(
             title = stringResource(R.string.memory_titre),
-            subtitle = stringResource(R.string.memory_sous_titre, state.total, state.beliefs.size),
+            subtitle = stringResource(
+                R.string.memory_sous_titre,
+                state.consciousTotal + state.subconsciousTotal,
+                state.beliefs.size,
+            ),
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
@@ -132,10 +139,10 @@ fun MemoryScreen(onBack: () -> Unit) {
                 .padding(horizontal = 14.dp),
         ) {
             when (state.tab) {
-                MemoryTab.Memories -> MemoriesTab(state, viewModel, onAdd = { showAdd = true })
+                MemoryTab.Conscious -> ConsciousTab(state, viewModel, onAdd = { showAdd = true })
+                MemoryTab.Subconscious -> SubconsciousTab(state, viewModel)
                 MemoryTab.Beliefs -> BeliefsTab(state, viewModel, onCorrect = { correcting = it })
                 MemoryTab.Quarantine -> QuarantineTab(state, viewModel)
-                MemoryTab.About -> AboutTab(state)
             }
             Text(
                 text = " ",
@@ -166,8 +173,9 @@ fun MemoryScreen(onBack: () -> Unit) {
     }
 }
 
+/** What the brain calls on without being asked — the memories it acts from. */
 @Composable
-private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd: () -> Unit) {
+private fun ConsciousTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd: () -> Unit) {
     val colors = LocalMercuryColors.current
     OutlinedTextField(
         value = state.query,
@@ -179,7 +187,12 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
             .padding(top = 10.dp),
     )
     CollapsibleSection(stringResource(R.string.memory_souvenirs), defaultOpen = true) {
-        if (state.memories.isEmpty()) {
+        Text(
+            text = stringResource(R.string.brain_conscient_intro),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        if (state.conscious.isEmpty()) {
             Text(
                 text = if (state.loading) {
                     stringResource(R.string.memory_chargement)
@@ -188,10 +201,15 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
-        state.memories.forEach { memory ->
-            MemoryRow(memory = memory, onForget = { viewModel.forgetMemory(memory.id) })
+        state.conscious.forEach { memory ->
+            MemoryRow(
+                memory = memory,
+                deleteLabel = stringResource(R.string.memory_oublier_souvenir),
+                onForget = { viewModel.forgetMemory(memory.id) },
+            )
         }
         IconActionBar(
             listOf(
@@ -206,11 +224,51 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
     }
 }
 
+/**
+ * What the brain keeps below the threshold: present, but only recalled when a conversation touches
+ * it. Nothing is added from here — a memory does not choose to be subconscious.
+ */
 @Composable
-private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
+private fun SubconsciousTab(state: MemoryUiState, viewModel: MemoryViewModel) {
     val colors = LocalMercuryColors.current
-    // Même forme que les croyances : le texte respire à gauche, les verbes vivent en colonne à
-    // droite. Un bouton posé sous la dernière ligne se lisait comme une note de bas de carte.
+    CollapsibleSection(stringResource(R.string.brain_sous_seuil_titre), defaultOpen = true) {
+        Text(
+            text = stringResource(R.string.brain_sous_seuil_intro),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        if (state.subconscious.isEmpty()) {
+            Text(
+                text = if (state.loading) {
+                    stringResource(R.string.memory_chargement)
+                } else {
+                    stringResource(R.string.memory_aucun_souvenir)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        state.subconscious.forEach { memory ->
+            MemoryRow(
+                memory = memory,
+                deleteLabel = stringResource(R.string.memory_oublier_souvenir),
+                onForget = { viewModel.forgetMemory(memory.id) },
+            )
+        }
+    }
+}
+
+/**
+ * One memory card, shared by the memory screen and the goals screen: a type label, the summary,
+ * the detail, the two scores, and the bin. Text breathes on the left, verbs live in a column on
+ * the right — a button under the last line reads as a footnote to the card.
+ *
+ * [deleteLabel] is said out loud for a screen reader, so a goal is not announced as a memory.
+ */
+@Composable
+internal fun MemoryRow(memory: MemoryDto, deleteLabel: String, onForget: () -> Unit) {
+    val colors = LocalMercuryColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -256,7 +314,7 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
             IconButton(onClick = onForget, modifier = Modifier.size(38.dp)) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
-                    contentDescription = stringResource(R.string.memory_oublier_souvenir),
+                    contentDescription = deleteLabel,
                     tint = colors.danger,
                     modifier = Modifier.size(19.dp),
                 )
@@ -413,69 +471,6 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
     }
 }
 
-@Composable
-private fun AboutTab(state: MemoryUiState) {
-    val colors = LocalMercuryColors.current
-    CollapsibleSection(stringResource(R.string.memory_runtime)) {
-        val config = state.config
-        if (config == null) {
-            Text(
-                stringResource(R.string.memory_config_indisponible),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        } else {
-            KeyValueRow(stringResource(R.string.memory_agent), config.identity.name.ifBlank { "—" })
-            KeyValueRow(stringResource(R.string.memory_proprietaire), config.identity.owner.ifBlank { "—" })
-            KeyValueRow(stringResource(R.string.memory_fournisseur), config.defaultProvider.ifBlank { "—" })
-            KeyValueRow(stringResource(R.string.memory_budget), formatTokens(config.tokenBudget))
-            KeyValueRow(stringResource(R.string.memory_battement), formatUptime(config.heartbeatInterval * 60))
-            KeyValueRow(
-                stringResource(R.string.memory_second_cerveau),
-                if (config.secondBrainEnabled) {
-                    stringResource(R.string.memory_active)
-                } else {
-                    stringResource(R.string.memory_desactive)
-                },
-            )
-            KeyValueRow(
-                stringResource(R.string.memory_telegram),
-                if (config.telegramEnabled) {
-                    stringResource(R.string.memory_active)
-                } else {
-                    stringResource(R.string.memory_desactive)
-                },
-            )
-        }
-    }
-    CollapsibleSection(stringResource(R.string.memory_graphe)) {
-        val graph = state.graph
-        if (graph == null) {
-            Text(
-                stringResource(R.string.memory_graphe_indisponible),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        } else {
-            KeyValueRow(stringResource(R.string.memory_noeuds), graph.nodes.size.toString())
-            KeyValueRow(stringResource(R.string.memory_liens), graph.edges.size.toString())
-            graph.nodes.take(6).forEach { node ->
-                ActionRow(title = node.fullLabel.ifBlank { node.label }, subtitle = node.type)
-            }
-        }
-    }
-    CollapsibleSection(stringResource(R.string.memory_personnes)) {
-        if (state.persons.isEmpty()) {
-            Text(
-                text = stringResource(R.string.memory_aucune_personne),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-        state.persons.forEach { person -> ActionRow(title = person.titleHint(), subtitle = person.detailHint()) }
-    }
-}
-
 /**
  * The belief lifecycle, in the words the owner thinks in.
  *
@@ -496,10 +491,10 @@ private fun BeliefDto.statusLabel(): String = when (status.lowercase()) {
 
 @Composable
 private fun MemoryTab.label(): String = when (this) {
-    MemoryTab.Memories -> stringResource(R.string.memory_souvenirs)
-    MemoryTab.Beliefs -> stringResource(R.string.memory_croyances)
-    MemoryTab.Quarantine -> stringResource(R.string.memory_quarantaine)
-    MemoryTab.About -> stringResource(R.string.memory_a_propos)
+    MemoryTab.Conscious -> stringResource(R.string.brain_onglet_conscient)
+    MemoryTab.Subconscious -> stringResource(R.string.brain_onglet_subconscient)
+    MemoryTab.Beliefs -> stringResource(R.string.brain_onglet_apprises)
+    MemoryTab.Quarantine -> stringResource(R.string.brain_onglet_quarantaine)
 }
 
 @OptIn(ExperimentalLayoutApi::class)

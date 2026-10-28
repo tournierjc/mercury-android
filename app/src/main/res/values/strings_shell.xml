@@ -8,12 +8,7 @@
     <string name="drawer_new_session">Nouvelle session</string>
     <string name="drawer_no_session">Aucune session pour l\'instant.</string>
     <string name="drawer_delete_session">Supprimer la session</string>
-    <string name="drawer_deliverables">Livrables</string>
-    <string name="drawer_boards">Plateaux</string>
-    <string name="drawer_memory">Mémoire</string>
-    <string name="drawer_console">Console</string>
     <string name="drawer_settings">Réglages</string>
-    <string name="drawer_bridge">Pont appareil</string>
     <string name="drawer_delete_session_title">Supprimer la session ?</string>
     <string name="drawer_delete">Supprimer</string>
     <string name="drawer_cancel">Annuler</string>
@@ -21,7 +16,6 @@
 
     <!-- Pont appareil -->
     <string name="bridge_title">Pont appareil</string>
-    <string name="bridge_back">Retour</string>
     <string name="bridge_calendar">Calendrier</string>
     <string name="bridge_read_events">lire les événements</string>
     <string name="bridge_contacts">Contacts</string>

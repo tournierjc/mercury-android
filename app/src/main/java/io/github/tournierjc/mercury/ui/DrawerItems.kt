@@ -7,33 +7,44 @@ package io.github.tournierjc.mercury.ui
  * below it: as soon as the crew grew, the fixed part took the whole sheet and nothing scrolled — the
  * sessions were squeezed to nothing and the crew itself was unreachable. The rows are data now, and
  * a single `LazyColumn` draws them, so the sheet scrolls whatever the number of teammates.
+ *
+ * The navigation entries follow the webapp's three groups (work / second brain / configure) plus
+ * the app's own two surfaces and the instance settings — see [AppScreen].
  */
 sealed interface DrawerRow {
     /** The crew heading, drawn only when there is a crew. */
     data class CrewHeader(val bots: Int) : DrawerRow
     data class Bot(val id: String) : DrawerRow
     data object AllCrew : DrawerRow
-    data object SessionHeader : DrawerRow
 
     /** The sessions heading says so, instead of leaving an empty space under it. */
+    data object SessionHeader : DrawerRow
     data object NoSession : DrawerRow
     data class Thread(val id: String) : DrawerRow
+
+    /** A group heading: « Second cerveau », « Configurer ». */
+    data class SectionHeader(val section: DrawerSection) : DrawerRow
+
+    /** A screen to open. [current] is true for the one on screen. */
+    data class Screen(val screen: AppScreen, val current: Boolean = false) : DrawerRow
+
     data object NavDivider : DrawerRow
-    data object Deliverables : DrawerRow
-    data object Boards : DrawerRow
-    data object Memory : DrawerRow
-    data object Console : DrawerRow
-    data object Bridge : DrawerRow
-    data object Settings : DrawerRow
     data object SignOut : DrawerRow
 }
+
+/** The webapp's three sidebar groups. */
+enum class DrawerSection { SecondBrain, Configure }
 
 /**
  * The drawer's rows, top to bottom: crew, sessions, then the screens. Pure, so the order and the
  * completeness of the list can be asserted without a screen (the sessions and the crew are two
  * lists the server owns, and the drawer is the only place they meet).
  */
-fun drawerRows(botIds: List<String>, threadIds: List<String>): List<DrawerRow> = buildList {
+fun drawerRows(
+    botIds: List<String>,
+    threadIds: List<String>,
+    current: AppScreen = AppScreen.Chat,
+): List<DrawerRow> = buildList {
     if (botIds.isNotEmpty()) {
         add(DrawerRow.CrewHeader(botIds.size))
         botIds.forEach { add(DrawerRow.Bot(it)) }
@@ -42,11 +53,37 @@ fun drawerRows(botIds: List<String>, threadIds: List<String>): List<DrawerRow> =
     add(DrawerRow.SessionHeader)
     if (threadIds.isEmpty()) add(DrawerRow.NoSession) else threadIds.forEach { add(DrawerRow.Thread(it)) }
     add(DrawerRow.NavDivider)
-    add(DrawerRow.Deliverables)
-    add(DrawerRow.Boards)
-    add(DrawerRow.Memory)
-    add(DrawerRow.Console)
-    add(DrawerRow.Bridge)
-    add(DrawerRow.Settings)
+
+    // The work, in the webapp's order.
+    listOf(
+        AppScreen.Status,
+        AppScreen.Chat,
+        AppScreen.Bots,
+        AppScreen.Tasks,
+        AppScreen.Boards,
+        AppScreen.Workspace,
+    ).forEach { add(DrawerRow.Screen(it, it == current)) }
+
+    add(DrawerRow.SectionHeader(DrawerSection.SecondBrain))
+    listOf(AppScreen.Memory, AppScreen.Persons, AppScreen.Goals, AppScreen.Graph)
+        .forEach { add(DrawerRow.Screen(it, it == current)) }
+
+    add(DrawerRow.SectionHeader(DrawerSection.Configure))
+    listOf(
+        AppScreen.Providers,
+        AppScreen.Skills,
+        AppScreen.Mcp,
+        AppScreen.Plugins,
+        AppScreen.Permissions,
+        AppScreen.Schedules,
+        AppScreen.Usage,
+    ).forEach { add(DrawerRow.Screen(it, it == current)) }
+
+    // The app's own surfaces (a share sheet the webapp does not have, the phone bridge), then the
+    // settings — a dedicated screen, where a settings entry is looked for.
+    add(DrawerRow.NavDivider)
+    listOf(AppScreen.Deliverables, AppScreen.Console, AppScreen.Bridge, AppScreen.Settings)
+        .forEach { add(DrawerRow.Screen(it, it == current)) }
+
     add(DrawerRow.SignOut)
 }

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MemoryScreen : les quatre sections du webapp -->
+    <string name="brain_onglet_conscient">Conscient</string>
+    <string name="brain_onglet_subconscient">Subconscient</string>
+    <string name="brain_onglet_apprises">Apprises</string>
+    <string name="brain_onglet_quarantaine">Quarantaine</string>
+    <string name="brain_sous_seuil_titre">Sous le seuil</string>
+    <string name="brain_sous_seuil_intro">Ces souvenirs ne remontent pas d\'eux-mêmes : le cerveau les rappelle par association quand une conversation les touche.</string>
+    <string name="brain_conscient_intro">Ce que le cerveau garde sous la main et ressort sans effort.</string>
+
+    <!-- PersonsScreen -->
+    <string name="brain_personnes_rechercher">Chercher une personne</string>
+    <string name="brain_personnes_indisponible">Cette instance n\'expose pas son carnet de personnes : ce n\'est pas une liste vide, la route n\'a rien répondu.</string>
+    <plurals name="brain_nb_personnes">
+        <item quantity="one">%1$d personne</item>
+        <item quantity="other">%1$d personnes</item>
+    </plurals>
+
+    <!-- GoalsScreen -->
+    <string name="brain_objectifs_projets">Objectifs et projets</string>
+    <string name="brain_objectifs">Objectifs</string>
+    <string name="brain_projets">Projets</string>
+    <string name="brain_objectif_nouveau">Nouvel objectif</string>
+    <string name="brain_projet_nouveau">Nouveau projet</string>
+    <string name="brain_objectif_vide">Aucun objectif en mémoire.</string>
+    <string name="brain_projet_vide">Aucun projet en mémoire.</string>
+    <string name="brain_modifier_webapp">Le détail et l\'importance s\'éditent depuis la webapp ; ici on ajoute et on supprime.</string>
+    <string name="brain_supprimer">Supprimer</string>
+    <plurals name="brain_nb_objectifs">
+        <item quantity="one">%1$d objectif</item>
+        <item quantity="other">%1$d objectifs</item>
+    </plurals>
+    <plurals name="brain_nb_projets">
+        <item quantity="one">%1$d projet</item>
+        <item quantity="other">%1$d projets</item>
+    </plurals>
+
+    <!-- GraphScreen -->
+    <string name="brain_graphe_vide">Aucun lien tissé pour l\'instant : le cerveau n\'a encore rapproché deux souvenirs.</string>
+    <string name="brain_graphe_indisponible">Cette instance n\'expose pas le graphe.</string>
+    <string name="brain_graphe_aide">Pince pour zoomer, glisse pour déplacer, touche un nœud pour le lire en entier.</string>
+    <string name="brain_graphe_comptes">%1$s · %2$s</string>
+    <string name="brain_noeud_fermer">Fermer le détail</string>
+    <plurals name="brain_nb_noeuds">
+        <item quantity="one">%1$d nœud</item>
+        <item quantity="other">%1$d nœuds</item>
+    </plurals>
+    <plurals name="brain_nb_liens">
+        <item quantity="one">%1$d lien</item>
+        <item quantity="other">%1$d liens</item>
+    </plurals>
+</resources>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Workspace screen: the file browser, the terminal and git, on one screen.
+  This screen's own file — the other string sheets are not touched.
+-->
+<resources>
+    <!-- Header and tabs -->
+    <string name="workspace_titre">Workspace</string>
+    <string name="workspace_onglet_fichiers">Files</string>
+    <string name="workspace_onglet_terminal">Terminal</string>
+    <string name="workspace_onglet_git">Git</string>
+
+    <!-- Files -->
+    <string name="workspace_chargement">Loading…</string>
+    <string name="workspace_dossier_vide">This folder is empty.</string>
+    <string name="workspace_dossier_ouvrir">Open folder</string>
+    <string name="workspace_fichier_ouvrir">Open file</string>
+    <string name="workspace_apercu_titre">Read-only preview</string>
+    <string name="workspace_apercu_tronque">Preview truncated — the file goes on.</string>
+    <string name="workspace_apercu_binaire">Binary file: no text preview.</string>
+    <string name="workspace_apercu_fermer">Close preview</string>
+    <plurals name="workspace_apercu_lignes">
+        <item quantity="one">%d line</item>
+        <item quantity="other">%d lines</item>
+    </plurals>
+
+    <!-- Terminal -->
+    <string name="workspace_terminal_aide">One command at a time, run in the workspace.</string>
+    <string name="workspace_terminal_vide">No command yet.</string>
+    <string name="workspace_terminal_commande">Command</string>
+    <string name="workspace_terminal_executer">Run</string>
+    <string name="workspace_terminal_sortie_vide">No output · exit 0</string>
+    <string name="workspace_terminal_code">exit %1$d</string>
+    <string name="workspace_terminal_echec">Request failed</string>
+    <string name="workspace_terminal_historique">History</string>
+    <string name="workspace_terminal_relancer">Tap to run again</string>
+    <string name="workspace_terminal_effacer">Clear</string>
+
+    <!-- Git -->
+    <string name="workspace_git_aucun_depot">No git repository in this workspace.</string>
+    <string name="workspace_git_branche">Branch</string>
+    <string name="workspace_git_amont">Upstream</string>
+    <string name="workspace_git_aucun">none</string>
+    <string name="workspace_git_synchronisation">Sync</string>
+    <string name="workspace_git_arbre_propre">No changes.</string>
+    <string name="workspace_git_indexer">Stage</string>
+    <string name="workspace_git_desindexer">Unstage</string>
+    <string name="workspace_git_indexer_tout">Stage all</string>
+    <string name="workspace_git_desindexer_tout">Unstage all</string>
+    <string name="workspace_git_message">Commit message</string>
+    <string name="workspace_git_generer">Generate</string>
+    <string name="workspace_git_committer">Commit</string>
+    <string name="workspace_git_pousser">Push</string>
+    <string name="workspace_git_tirer">Pull</string>
+    <string name="workspace_git_rafraichir">Refresh</string>
+    <string name="workspace_git_commits">Recent commits</string>
+    <string name="workspace_git_aucun_commit">No commits.</string>
+    <string name="workspace_git_diff_indexe">Staged</string>
+    <string name="workspace_git_diff_non_indexe">Unstaged</string>
+    <string name="workspace_git_diff_vide">No diff for this file.</string>
+    <string name="workspace_git_diff_fermer">Close diff</string>
+    <string name="workspace_git_choisir">Tap a file to read its diff.</string>
+    <plurals name="workspace_git_indexes">
+        <item quantity="one">%d staged file</item>
+        <item quantity="other">%d staged files</item>
+    </plurals>
+    <plurals name="workspace_git_modifies">
+        <item quantity="one">%d changed file</item>
+        <item quantity="other">%d changed files</item>
+    </plurals>
+
+    <!-- Confirming an action that touches the repository -->
+    <string name="workspace_confirmer_titre">%1$s?</string>
+    <string name="workspace_confirmer_corps">This changes the workspace repository.</string>
+    <string name="workspace_confirmer">Confirm</string>
+    <string name="workspace_annuler">Cancel</string>
+</resources>

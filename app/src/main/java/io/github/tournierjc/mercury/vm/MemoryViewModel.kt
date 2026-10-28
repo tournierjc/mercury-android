@@ -6,11 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
-import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.dto.BeliefDto
-import io.github.tournierjc.mercury.data.dto.BeliefGraphDto
-import io.github.tournierjc.mercury.data.dto.ConfigDto
 import io.github.tournierjc.mercury.data.dto.MemoryDto
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -19,24 +16,29 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.toNotice
 
-enum class MemoryTab { Memories, Beliefs, Quarantine, About }
+/**
+ * The four sections the webapp shows, in its order. `Memories` used to be a merged list of both
+ * scopes and `About` a tab of runtime facts: the scopes are two different memories of the world
+ * (what the agent calls on, what it keeps below) and the runtime facts belong to the Status screen.
+ */
+enum class MemoryTab { Conscious, Subconscious, Beliefs, Quarantine }
 
 data class MemoryUiState(
     val loading: Boolean = true,
-    val tab: MemoryTab = MemoryTab.Memories,
+    val tab: MemoryTab = MemoryTab.Conscious,
     val query: String = "",
-    val memories: List<MemoryDto> = emptyList(),
-    val total: Int = 0,
+    /** What the brain keeps at hand. */
+    val conscious: List<MemoryDto> = emptyList(),
+    val consciousTotal: Int = 0,
+    /** What it only reaches by association. */
+    val subconscious: List<MemoryDto> = emptyList(),
+    val subconsciousTotal: Int = 0,
     val beliefs: List<BeliefDto> = emptyList(),
-    val persons: List<JsonObject> = emptyList(),
     val quarantined: List<MemoryDto> = emptyList(),
-    val graph: BeliefGraphDto? = null,
-    val config: ConfigDto? = null,
     val busy: Boolean = false,
     /** What the last finished action says (a key, resolved by the screen). */
     val message: Notice? = null,
@@ -44,8 +46,8 @@ data class MemoryUiState(
 )
 
 /**
- * The agent's second brain seen from the phone: what it remembers, what it
- * believes, what it set aside, and the runtime identity behind it.
+ * The agent's second brain seen from the phone: what it remembers (both scopes), what it believes,
+ * and what it set aside.
  */
 class MemoryViewModel(
     private val api: MercuryApi,
@@ -65,23 +67,22 @@ class MemoryViewModel(
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             try {
-                val query = _state.value.query
-                val memories = api.memories(query = query.ifBlank { null })
+                val query = _state.value.query.ifBlank { null }
+                val conscious = api.memories(query = query, scope = CONSCIOUS)
+                // The three secondary lists are allowed to fail on their own: a brain whose beliefs
+                // route is off still shows its memories.
+                val subconscious = runCatching { api.memories(query = query, scope = SUBCONSCIOUS) }.getOrNull()
                 val beliefs = runCatching { api.beliefs() }.getOrNull()
-                val persons = runCatching { api.persons() }.getOrNull()
                 val quarantined = runCatching { api.quarantine() }.getOrNull()
-                val graph = runCatching { api.beliefGraph() }.getOrNull()
-                val config = runCatching { api.config() }.getOrNull()
                 _state.update {
                     it.copy(
                         loading = false,
-                        memories = memories.memories,
-                        total = memories.total,
+                        conscious = conscious.memories,
+                        consciousTotal = conscious.total,
+                        subconscious = subconscious?.memories.orEmpty(),
+                        subconsciousTotal = subconscious?.total ?: 0,
                         beliefs = beliefs?.beliefs.orEmpty(),
-                        persons = persons?.persons.orEmpty(),
                         quarantined = quarantined?.memories.orEmpty(),
-                        graph = graph,
-                        config = config,
                     )
                 }
             } catch (e: Exception) {
@@ -100,9 +101,20 @@ class MemoryViewModel(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(350)
-            runCatching { api.memories(query = query.ifBlank { null }) }
-                .onSuccess { page ->
-                    _state.update { it.copy(memories = page.memories, total = page.total) }
+            runCatching {
+                val conscious = api.memories(query = query.ifBlank { null }, scope = CONSCIOUS)
+                val subconscious = api.memories(query = query.ifBlank { null }, scope = SUBCONSCIOUS)
+                conscious to subconscious
+            }
+                .onSuccess { (conscious, subconscious) ->
+                    _state.update {
+                        it.copy(
+                            conscious = conscious.memories,
+                            consciousTotal = conscious.total,
+                            subconscious = subconscious.memories,
+                            subconsciousTotal = subconscious.total,
+                        )
+                    }
                 }
                 .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
         }
@@ -122,8 +134,14 @@ class MemoryViewModel(
         viewModelScope.launch {
             runCatching { api.forgetMemory(id) }
                 .onSuccess {
+                    // The row can be in either scope; both are cleaned so the list the owner is
+                    // looking at never keeps a memory the brain has dropped.
                     _state.update { s ->
-                        s.copy(memories = s.memories.filterNot { it.id == id }, message = Notice(NoticeKey.MEMORY_FORGOTTEN))
+                        s.copy(
+                            conscious = s.conscious.filterNot { it.id == id },
+                            subconscious = s.subconscious.filterNot { it.id == id },
+                            message = Notice(NoticeKey.MEMORY_FORGOTTEN),
+                        )
                     }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(error = e.readable()) } }
@@ -174,6 +192,9 @@ class MemoryViewModel(
     private fun Throwable.readable(): Notice = toNotice()
 
     companion object {
+        private const val CONSCIOUS = "conscious"
+        private const val SUBCONSCIOUS = "subconscious"
+
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer { MemoryViewModel(container.api, container) }
         }

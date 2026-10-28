@@ -1283,6 +1283,14 @@ class MercuryApi(
     // Memory and workspace
     // ---------------------------------------------------------------------
 
+    /**
+     * A raw GET for the screens that only display what a route says — status, usage, schedules,
+     * skills, MCP, plugins, permissions, workspace. No DTO to keep in sync with the server for a
+     * value the app shows and never acts on; the screens read the fields they need and degrade to an
+     * empty state on anything unexpected.
+     */
+    suspend fun getJson(path: String): JsonObject = getDecoded(path, JsonObject.serializer())
+
     suspend fun brainStatus(): BrainStatusDto = getDecoded("/api/brain/status", BrainStatusDto.serializer())
 
     suspend fun searchMemories(query: String): MemoriesResponse = getDecoded(

@@ -41,7 +41,7 @@ class BrainContractTest {
 
         val belief = page.beliefs.single()
         assertEquals("candidate", belief.status)
-        assertEquals(1, belief.netSupport)
+        assertEquals(1.0, belief.netSupport, 0.0)
         assertNull(belief.validTo)
         assertFalse(belief.ownerStated)
     }
@@ -105,4 +105,19 @@ class BrainContractTest {
         assertTrue(ok.readable)
         assertEquals("# hi", ok.content)
     }
+
+    @Test
+    fun `belief support is a weight, not a count — a fractional value decodes`() {
+        // The instance sends 4.5 for a belief seen with a partial session: an Int here threw the
+        // whole beliefs page away, and the Learned tab looked empty for a reason nobody could see.
+        val payload = """
+            {"beliefs":[{"id":"b1","ownerKey":"user:owner","kind":"preference","statement":"Likes terse replies.","support":4.5,"against":0.5,"supportSessions":2,"timescale":"stable","status":"active","ownerStated":true,"validFrom":1792946256716,"validTo":null,"supersededBy":null,"lastSupportedAt":1792946256716}],"total":1,"available":true}
+        """.trimIndent()
+
+        val belief = json.decodeFromString(BeliefsPage.serializer(), payload).beliefs.single()
+
+        assertEquals(4.5, belief.support, 0.001)
+        assertEquals(4.0, belief.netSupport, 0.001)
+    }
+
 }
