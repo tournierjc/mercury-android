@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
+import io.github.tournierjc.mercury.data.BotAutonomy
+import kotlinx.serialization.json.put
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.MercuryApi
@@ -454,12 +456,23 @@ class BotsViewModel(
         patch(id, """{"description":"${escape(description)}"}""", Notice(NoticeKey.TEAMMATE_DESCRIPTION_SAVED))
 
     /** Daily token cap lives in `autonomy`; 0 means "no cap". */
+    /**
+     * Writes one autonomy limit, merged into the manifest's own object.
+     *
+     * `PATCH /api/bots/:id` replaces `autonomy` wholesale, so the old one-key payload erased the
+     * other limits — the daily budget, then the step budget and the turn's wall clock silently
+     * back to the defaults. [BotAutonomy.merge] sends the whole object every time.
+     */
+    fun setAutonomyLimit(id: String, key: String, value: Int?) {
+        val merged = BotAutonomy.merge(_state.value.manifest, mapOf(key to value))
+        val body = buildJsonObject {
+            put("autonomy", merged)
+        }
+        patch(id, body.toString(), Notice(NoticeKey.TEAMMATE_BUDGET_SAVED))
+    }
+
     fun setDailyBudget(id: String, tokens: Int) =
-        patch(
-            id,
-            """{"autonomy":{"dailyTokenBudget":${if (tokens > 0) tokens else 0}}}""",
-            Notice(NoticeKey.TEAMMATE_BUDGET_SAVED),
-        )
+        setAutonomyLimit(id, BotAutonomy.DAILY_TOKENS, tokens)
 
     fun savePersona(text: String) {
         val id = _state.value.selectedId ?: return
@@ -760,10 +773,14 @@ class BotsViewModel(
     }
 
     private fun patch(id: String, patchJson: String, success: Notice) {
+        patch(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject, success)
+    }
+
+    private fun patch(id: String, body: JsonObject, success: Notice) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
             runCatching {
-                api.patchBot(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject)
+                api.patchBot(id, body)
             }
                 .onSuccess {
                     _state.update { s -> s.copy(busy = false, message = success) }

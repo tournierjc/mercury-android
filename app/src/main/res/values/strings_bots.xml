@@ -171,4 +171,11 @@
     <string name="bots_rename_id_notice">L\'identifiant reste %1$s : dossiers, journal et équipiers continuent de le désigner.</string>
     <string name="bots_rename_confirm">Renommer</string>
     <string name="bots_rename_cancel">Annuler</string>
+    <!-- Les limites d'un tour, réglables depuis la fiche. -->
+    <string name="bots_label_max_steps">Étapes max par tour</string>
+    <string name="bots_label_turn_minutes">Minutes max par tour</string>
+    <string name="bots_label_turn_tokens">Jetons max par tour</string>
+    <string name="bots_limit_steps_hint">défaut : 25</string>
+    <string name="bots_limit_minutes_hint">défaut : 20</string>
+    <string name="bots_limit_tokens_hint">défaut : 300000</string>
 </resources>
