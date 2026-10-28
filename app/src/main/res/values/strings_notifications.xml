@@ -13,4 +13,5 @@
     <string name="share_bundle_title">Partager le bundle</string>
     <string name="out_row_file">Fichier</string>
     <string name="prov_catalogue"> : %1$s</string>
+    <string name="share_file_title">Partager « %1$s »</string>
 </resources>
