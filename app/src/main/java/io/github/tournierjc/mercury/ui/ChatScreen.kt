@@ -81,7 +81,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -948,8 +947,11 @@ internal fun MessageList(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
+                // Narrower gutters than a reading screen: the bubbles need the width they lose.
+                .padding(horizontal = 10.dp),
+            // A chat's rhythm, not a document's: 22 dp between two bubbles read as paragraph
+            // breaks, and the bubbles' own margins now do the separating.
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
         ) {
             items(messages, key = { it.id }) { message ->
@@ -998,6 +1000,19 @@ internal fun MessageList(
  * and — once chosen there — native text selection, which is why [selecting] swaps the bubble
  * content for a [SelectionContainer] instead of fighting it for the long press.
  */
+/**
+ * A message, in the shape every phone chat has taught its owner to read: the answer on the left in
+ * a bubble, the message on the right in another, the tail corner pointing at whoever spoke, and
+ * nothing stretched to the full width of the screen.
+ *
+ * The two bubbles used to be different objects — the owner's was a rounded box, the agent's was bare
+ * text laid on the canvas with its tool activity as a strip of pills above it. Bare text has no
+ * edge, so a long answer read as part of the screen, and the strip scrolled sideways past its own
+ * content. Now: one bubble per turn, one framed block for the calls, the same margins on both sides.
+ *
+ * Long press still opens the menu, and [selecting] still swaps the body for a [SelectionContainer]
+ * instead of fighting it for the gesture.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun MessageItem(
@@ -1007,100 +1022,97 @@ internal fun MessageItem(
 ) {
     val colors = LocalMercuryColors.current
     val parsed = remember(message.text) { QuoteReply.parse(message.text) }
+    val user = message.role == ChatMessage.Role.User
     val press = if (onLongPress == null) {
         Modifier
     } else {
         Modifier.combinedClickable(onClick = {}, onLongClick = onLongPress)
     }
 
-    if (message.role == ChatMessage.Role.User) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            Column(
-                modifier = Modifier
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(colors.userBubble)
-                    .then(press)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                if (parsed.isQuote) QuoteBlock(parsed.quote)
-                if (parsed.body.isNotEmpty()) {
-                    if (selecting) {
-                        SelectionContainer {
-                            Text(
-                                text = parsed.body,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = colors.textPrimary,
-                                textAlign = TextAlign.End,
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = parsed.body,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.textPrimary,
-                            textAlign = TextAlign.End,
-                        )
-                    }
-                }
-            }
-        }
-        return
-    }
+    // A stored tool summary IS the message: with no body there is no bubble, only the block.
+    val bodyVisible = parsed.body.isNotBlank() || parsed.isQuote || message.streaming
 
-    Column(modifier = Modifier.fillMaxWidth().then(press)) {
-        if (message.steps.isNotEmpty()) {
-            if (message.toolTrace) {
-                // History: a block that says "12 outils" and opens into the calls. The row of chips
-                // below is for a turn in progress, where three or four steps arrive one by one;
-                // twenty of them in a strip you scroll sideways is not a record of anything.
-                ToolTraceBlock(message.steps)
-            } else {
-                Row(
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
+    ) {
+        Column(
+            // Not the full width either side: a bubble that touches both margins stops reading as
+            // a bubble, and on a phone the wasted column is what keeps the two voices apart.
+            modifier = Modifier.fillMaxWidth(if (user) 0.82f else 0.9f),
+            horizontalAlignment = if (user) Alignment.End else Alignment.Start,
+        ) {
+            if (!user && message.steps.isNotEmpty()) {
+                // The calls sit above the answer and outside its bubble: they are what produced it,
+                // not what it says. Open while streaming, folded once it is history.
+                ToolTraceBlock(
+                    steps = message.steps,
+                    folded = message.toolTrace,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+            if (bodyVisible) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .clip(if (user) UserBubble else BotBubble)
+                        .background(if (user) colors.userBubble else colors.surface)
+                        .then(press)
+                        .padding(horizontal = 13.dp, vertical = 8.dp),
                 ) {
-                    message.steps.forEach { step ->
+                    if (parsed.isQuote) QuoteBlock(parsed.quote)
+                    if (parsed.body.isNotEmpty()) {
+                        if (selecting) {
+                            SelectionContainer {
+                                MessageBody(message = message, body = parsed.body, user = user)
+                            }
+                        } else {
+                            MessageBody(message = message, body = parsed.body, user = user)
+                        }
+                    }
+                    if (message.streaming) {
                         Text(
-                            text = step.label.ifBlank { step.tool },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier
-                                .clip(MaterialTheme.shapes.extraSmall)
-                                .background(colors.surface)
-                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            text = "▍",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.accent,
                         )
                     }
                 }
             }
-        }
-        if (parsed.isQuote) {
-            QuoteBlock(parsed.quote)
-        }
-        // A stored tool summary IS the message: an empty body under the block would be a blank
-        // paragraph the reader scrolls past wondering what failed to render.
-        val bodyVisible = parsed.body.isNotBlank() || !message.toolTrace
-        if (bodyVisible && selecting) {
-            SelectionContainer {
-                MarkdownText(text = parsed.body, streaming = message.streaming)
-            }
-        } else if (bodyVisible) {
-            MarkdownText(text = parsed.body, streaming = message.streaming)
-        }
-        if (message.streaming) {
-            Text(
-                text = "▍",
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.accent,
-            )
         }
     }
 }
+
+/** The body of a bubble: plain words for the owner, rendered markdown for the agent. */
+@Composable
+private fun MessageBody(message: ChatMessage, body: String, user: Boolean) {
+    if (user) {
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyLarge,
+            color = LocalMercuryColors.current.textPrimary,
+        )
+    } else {
+        MarkdownText(text = body, streaming = message.streaming)
+    }
+}
+
+/**
+ * The bubbles' geometry, WhatsApp's own: an 18 dp radius on three corners and a 4 dp corner where
+ * the tail would be — bottom-right for the owner, bottom-left for the agent.
+ */
+private val BubbleRadius = 18.dp
+private val UserBubble = RoundedCornerShape(
+    topStart = BubbleRadius,
+    topEnd = BubbleRadius,
+    bottomStart = BubbleRadius,
+    bottomEnd = 4.dp,
+)
+private val BotBubble = RoundedCornerShape(
+    topStart = BubbleRadius,
+    topEnd = BubbleRadius,
+    bottomStart = 4.dp,
+    bottomEnd = BubbleRadius,
+)
 
 /** The quote the next message will answer, above the composer, dismissible. */
 @Composable
