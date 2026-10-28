@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -56,6 +57,9 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
  */
 internal val ComposerControlSize = 40.dp
 internal val ComposerControlIcon = 20.dp
+
+/** The width of the two controls that open the row: 30 dp leaves 10 dp between two glyphs. */
+private val LeadingControlWidth = 30.dp
 
 @Composable
 fun Composer(
@@ -94,6 +98,7 @@ fun Composer(
             ComposerControl(
                 icon = Icons.Rounded.Mic,
                 label = stringResource(R.string.composer_dictate),
+                width = LeadingControlWidth,
                 onClick = onVoice,
             )
         }
@@ -101,6 +106,7 @@ fun Composer(
             ComposerControl(
                 icon = Icons.Rounded.Terminal,
                 label = stringResource(R.string.composer_commands),
+                width = LeadingControlWidth,
                 onClick = { showCommands = true },
             )
             SlashCommandMenu(
@@ -164,11 +170,17 @@ private fun ComposerControl(
     label: String,
     enabled: Boolean = true,
     badge: Int? = null,
+    /**
+     * Narrower than [ComposerControlSize] for the two controls that open the row: at 40 dp each,
+     * the 20 dp glyph leaves 20 dp of air between dictation and the palette, which read as a gap
+     * in the capsule rather than as two neighbours.
+     */
+    width: Dp = ComposerControlSize,
     onClick: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    Box(modifier = Modifier.size(ComposerControlSize), contentAlignment = Alignment.Center) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(ComposerControlSize)) {
+    Box(modifier = Modifier.size(width, ComposerControlSize), contentAlignment = Alignment.Center) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(width, ComposerControlSize)) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
