@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_crew">Teammates</string>
+    <string name="notification_channel_crew_desc">A teammate needs you, or has finished its work.</string>
+    <string name="notification_watch_title">Mercury — watch</string>
+    <string name="notification_watch_channel">Teammate watch</string>
+    <string name="notification_watch_channel_desc">The server connection stays open so you are alerted without delay.</string>
+    <string name="notification_watch_stop">Stop</string>
+    <string name="picker_unreadable">File could not be read</string>
+    <string name="picker_too_heavy">%1$s is over 15 MB</string>
+    <string name="picker_not_image">%1$s is not a readable image</string>
+    <string name="bridge_no_address">&lt;phone-ip&gt;</string>
+    <string name="share_bundle_title">Share the bundle</string>
+</resources>

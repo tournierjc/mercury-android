@@ -47,7 +47,7 @@ fun InteractionCard(
             color = colors.accent,
         )
         Text(
-            text = interaction.text,
+            text = interaction.notice?.let { noticeText(it) } ?: interaction.text,
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textPrimary,
             modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),

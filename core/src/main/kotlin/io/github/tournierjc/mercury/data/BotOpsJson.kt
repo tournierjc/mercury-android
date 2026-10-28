@@ -126,37 +126,37 @@ object BotOps {
     fun dateLabel(epochMs: Long): String =
         if (epochMs <= 0) "—" else stampFormatter.format(Instant.ofEpochMilli(epochMs))
 
-    /** `il y a 2 h` — a relative age is what an inbox needs. */
-    fun ageLabel(epochMs: Long, nowMs: Long): String {
-        if (epochMs <= 0) return "—"
+    /** A relative age as a key: the inbox needs the age, the screen owns the words. */
+    fun ageNotice(epochMs: Long, nowMs: Long): Notice? {
+        if (epochMs <= 0) return null
         val seconds = (nowMs - epochMs) / 1000
         return when {
-            seconds < 60 -> "à l'instant"
-            seconds < 3_600 -> "il y a ${seconds / 60} min"
-            seconds < 86_400 -> "il y a ${seconds / 3_600} h"
-            else -> "il y a ${seconds / 86_400} j"
+            seconds < 60 -> Notice(NoticeKey.AGE_NOW).asInfo()
+            seconds < 3_600 -> Notice(NoticeKey.AGE_MINUTES, args = listOf((seconds / 60).toString())).asInfo()
+            seconds < 86_400 -> Notice(NoticeKey.AGE_HOURS, args = listOf((seconds / 3_600).toString())).asInfo()
+            else -> Notice(NoticeKey.AGE_DAYS, args = listOf((seconds / 86_400).toString())).asInfo()
         }
     }
 
-    /** `final · 12,4 ko · il y a 2 h` or `travail · …` for drafts under `work/`. */
-    fun outputSubtitle(output: DeliverableDto, nowMs: Long): String = listOf(
-        if (output.final) "final" else "travail",
-        sizeLabel(output.bytes),
-        ageLabel(output.mtimeMs, nowMs),
-    ).joinToString(" · ")
+    /**
+     * The two words of an inbox subtitle that need a language: `final`/`travail`, and the age.
+     * The size stays out of it — `12,4 ko` is a number and a unit, the same in both languages — so
+     * the screen joins `noticeText(scope) · sizeLabel(...) · noticeText(age)` itself.
+     */
+    fun scopeNotice(output: DeliverableDto): Notice =
+        Notice(if (output.final) NoticeKey.OUTPUT_FINAL else NoticeKey.OUTPUT_DRAFT).asInfo()
 
-    /** The line under the file name in the fleet inbox: which bot produced it. */
-    fun outputOrigin(output: DeliverableDto, botName: String, nowMs: Long): String =
-        "${botName.ifBlank { output.botId }} · ${outputSubtitle(output, nowMs)}"
+    /** `Veille` or the bot id when the name is unknown. Data, not words. */
+    fun originName(output: DeliverableDto, botName: String): String = botName.ifBlank { output.botId }
 
     /** `réussi`, `échec`, `en cours`… The journal's `state` is the outcome of one run. */
-    fun runStateLabel(state: String): String = when (state.lowercase()) {
-        "completed", "done", "success", "ok" -> "réussi"
-        "failed", "error" -> "échec"
-        "cancelled", "canceled", "timeout" -> "interrompu"
-        "running" -> "en cours"
-        "queued", "pending" -> "en file"
-        else -> state.ifBlank { "—" }
+    fun runStateNotice(state: String): Notice? = when (state.lowercase()) {
+        "completed", "done", "success", "ok" -> Notice(NoticeKey.RUN_SUCCEEDED).asInfo()
+        "failed", "error" -> Notice(NoticeKey.RUN_FAILED_STATE)
+        "cancelled", "canceled", "timeout" -> Notice(NoticeKey.RUN_CANCELLED_STATE)
+        "running" -> Notice(NoticeKey.RUN_RUNNING_STATE).asInfo()
+        "queued", "pending" -> Notice(NoticeKey.RUN_QUEUED_STATE).asInfo()
+        else -> state.takeIf { it.isNotBlank() }?.let { Notice(NoticeKey.RUN_OTHER_STATE, args = listOf(it)).asInfo() }
     }
 
     fun runStateFailed(state: String): Boolean = state.lowercase() in setOf("failed", "error", "cancelled", "canceled", "timeout")
@@ -176,9 +176,12 @@ object BotOps {
     }
 
     /** `4,2k entrée · 1,1k sortie`, or nothing when the run reported no tokens. */
-    fun tokensLabel(tokensIn: Long, tokensOut: Long): String {
-        if (tokensIn <= 0 && tokensOut <= 0) return "—"
-        return "${tokens(tokensIn)} entrée · ${tokens(tokensOut)} sortie"
+    fun tokensNotices(tokensIn: Long, tokensOut: Long): List<Notice> {
+        if (tokensIn <= 0 && tokensOut <= 0) return emptyList()
+        return listOf(
+            Notice(NoticeKey.TOKENS_IN, args = listOf(tokens(tokensIn))).asInfo(),
+            Notice(NoticeKey.TOKENS_OUT, args = listOf(tokens(tokensOut))).asInfo(),
+        )
     }
 
     private fun tokens(value: Long): String {
@@ -191,19 +194,38 @@ object BotOps {
         }
     }
 
-    /** `27/10 09:31 · réussi · 12,3 s` — the one line a run row shows. */
-    fun runSubtitle(row: RunRow): String = listOf(
+    /**
+     * `27/10 09:31 · réussi · 12,3 s` — the one line a run row shows. The state is the only word
+     * in it, so the caller passes it already resolved (see `runStateNotice`).
+     */
+    fun runSubtitle(row: RunRow, stateText: String): String = listOf(
         dateLabel(if (row.startedAt > 0) row.startedAt else row.mtimeMs),
-        runStateLabel(row.state),
+        stateText,
         durationLabel(row.durationMs),
     ).filter { it.isNotBlank() && it != "—" }.joinToString(" · ")
 
-    /** Tokens and tool calls on a second line; empty when the run recorded none. */
-    fun runDetail(row: RunRow): String = listOfNotNull(
-        tokensLabel(row.tokensIn, row.tokensOut).takeIf { it != "—" },
-        row.toolCalls.takeIf { it > 0 }?.let { "$it outil${if (it > 1) "s" else ""}" },
-        row.error.takeIf { it.isNotBlank() }?.let { "erreur : ${it.take(120)}" },
+    /**
+     * Tokens and tool calls on a second line; empty when the run recorded none. The three words in
+     * it (token counts, tool calls, the error prefix) arrive already resolved.
+     */
+    fun runDetail(tokensText: String, toolCallsText: String, errorText: String?): String = listOfNotNull(
+        tokensText.takeIf { it.isNotBlank() },
+        toolCallsText.takeIf { it.isNotBlank() },
+        errorText,
     ).joinToString(" · ")
+
+    /** The tool-call count of a run, `3 outils`, as a key. */
+    fun toolCallsNotice(row: RunRow): Notice? = when {
+        row.toolCalls <= 0 -> null
+        row.toolCalls == 1 -> Notice(NoticeKey.RUN_TOOL_CALLS_ONE).asInfo()
+        else -> Notice(NoticeKey.RUN_TOOL_CALLS_MANY, args = listOf(row.toolCalls.toString())).asInfo()
+    }
+
+    /** The error line of a run, with the daemon's own text kept as the argument. */
+    fun errorNotice(row: RunRow): Notice? =
+        row.error.takeIf { it.isNotBlank() }?.let {
+            Notice(NoticeKey.RUN_ERROR_LINE, args = listOf(it.take(120))).withDetail(null)
+        }
 
     /**
      * Joins the transcript list with the journal lines.
@@ -265,36 +287,44 @@ object BotOps {
             transcriptId == recordId.takeLast(8)
     }
 
-    /** `#3f2a9b1c · 2 tentatives · 27/10 09:31`, with the reason when there is one. */
-    fun incidentSubtitle(job: DlqJobDto): String = listOf(
+    /**
+     * `#3f2a9b1c · 2 tentatives · 27/10 09:31`, plus the reason when there is one. The two words
+     * (the attempt count and the reason) arrive already resolved by the caller.
+     */
+    fun incidentSubtitle(job: DlqJobDto, attemptsText: String, reasonText: String?): String = listOfNotNull(
         "#${job.id.take(8).ifBlank { "—" }}",
-        "${job.attempts} tentative${if (job.attempts > 1) "s" else ""}",
+        attemptsText,
         dateLabel(job.createdAt),
-        reasonLabel(job.reasonCode).takeIf { it.isNotBlank() },
-    ).filterNotNull().joinToString(" · ")
+        reasonText,
+    ).joinToString(" · ")
+
+    /** The attempt count as a key: `1 tentative`, `2 tentatives`. */
+    fun attemptsNotice(job: DlqJobDto): Notice =
+        if (job.attempts <= 1) Notice(NoticeKey.ATTEMPTS_ONE).asInfo()
+        else Notice(NoticeKey.ATTEMPTS_MANY, args = listOf(job.attempts.toString())).asInfo()
 
     /** The route's `reasonCode` in words the owner can act on. */
-    fun reasonLabel(code: String): String = when (code) {
-        "" -> ""
-        "not_found" -> "introuvable"
-        "provider_rate_limit" -> "quota fournisseur"
-        "provider_error" -> "panne fournisseur"
-        "timeout" -> "délai dépassé"
-        "cancelled" -> "annulé"
-        "budget_exhausted" -> "budget épuisé"
-        else -> code.replace('_', ' ')
+    fun reasonNotice(code: String): Notice? = when (code) {
+        "" -> null
+        "not_found" -> Notice(NoticeKey.REASON_NOT_FOUND)
+        "provider_rate_limit" -> Notice(NoticeKey.REASON_PROVIDER_RATE_LIMIT)
+        "provider_error" -> Notice(NoticeKey.REASON_PROVIDER_ERROR)
+        "timeout" -> Notice(NoticeKey.REASON_TIMEOUT)
+        "cancelled" -> Notice(NoticeKey.REASON_CANCELLED)
+        "budget_exhausted" -> Notice(NoticeKey.REASON_BUDGET_EXHAUSTED)
+        else -> Notice(NoticeKey.REASON_OTHER, args = listOf(code.replace('_', ' '))).withDetail(null)
     }
 
     /** `✓ read_file /work/report.md` for one trace step. */
-    fun traceLabel(step: TraceStepDto): String {
+    fun traceLabel(step: TraceStepDto, toolFallback: String): String {
         val mark = if (step.ok) "✓" else "✗"
         val arg = step.arg.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
-        return "$mark ${step.name.ifBlank { "outil" }}$arg"
+        return "$mark ${step.name.ifBlank { toolFallback }}$arg"
     }
 
     /** One line for a run's transcript header. */
-    fun transcriptLine(state: String, startedAt: Long, durationMs: Long): String =
-        listOf(dateLabel(startedAt), runStateLabel(state), durationLabel(durationMs))
+    fun transcriptLine(stateText: String, startedAt: Long, durationMs: Long): String =
+        listOf(dateLabel(startedAt), stateText, durationLabel(durationMs))
             .filter { it.isNotBlank() && it != "—" }
             .joinToString(" · ")
 }

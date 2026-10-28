@@ -1042,6 +1042,7 @@ private class GitConfirm(
 @Composable
 private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     val colors = LocalMercuryColors.current
+    val context = LocalContext.current
     var confirm by remember { mutableStateOf<GitConfirm?>(null) }
     val git = state.git
 
@@ -1059,9 +1060,11 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         KeyValueRow(stringResource(R.string.console_label_branch), git.branch.ifBlank { "—" }, highlight = true)
         KeyValueRow(stringResource(R.string.console_label_upstream), git.upstream.ifBlank { stringResource(R.string.console_none) })
-        KeyValueRow(stringResource(R.string.console_label_sync), GitJson.syncLabel(git.ahead, git.behind))
+        val syncText = GitJson.syncNotices(git.ahead, git.behind)
+            .joinToString(" · ") { noticeText(context, it) }
+        KeyValueRow(stringResource(R.string.console_label_sync), syncText)
         Text(
-            text = GitJson.summaryLabel(git),
+            text = noticeText(GitJson.summaryNotice(git)),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             modifier = Modifier.padding(top = 2.dp),
@@ -1080,7 +1083,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             stagedFiles.forEach { file ->
                 ActionRow(
                     title = file.path,
-                    subtitle = GitJson.changeLabel(file),
+                    subtitle = noticeText(GitJson.sideNotice(file.staged)) + " · " + noticeText(GitJson.statusNotice(file.status)),
                     trailing = stringResource(R.string.console_unstage),
                     enabled = !state.gitBusy,
                     onClick = { viewModel.unstage(listOf(file.path)) },
@@ -1097,7 +1100,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             unstagedFiles.forEach { file ->
                 ActionRow(
                     title = file.path,
-                    subtitle = GitJson.changeLabel(file),
+                    subtitle = noticeText(GitJson.sideNotice(file.staged)) + " · " + noticeText(GitJson.statusNotice(file.status)),
                     trailing = stringResource(R.string.console_stage),
                     enabled = !state.gitBusy,
                     onClick = { viewModel.stage(listOf(file.path)) },
@@ -1424,7 +1427,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         val devices = state.devices
         if (devices.size == 1) {
-            KeyValueRow(stringResource(R.string.console_label_device), devices[0].name.ifBlank { devices[0].label })
+            KeyValueRow(stringResource(R.string.console_label_device), devices[0].name.ifBlank { noticeText(devices[0].typeNotice) })
         } else if (devices.size > 1) {
             Text(
                 text = stringResource(R.string.console_label_devices),
@@ -1435,7 +1438,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             devices.forEach { device ->
                 ActionRow(
                     title = device.name.ifBlank { device.id },
-                    subtitle = device.label,
+                    subtitle = noticeText(device.typeNotice),
                     trailing = if (device.active) stringResource(R.string.console_active) else null,
                     selected = device.active,
                 )

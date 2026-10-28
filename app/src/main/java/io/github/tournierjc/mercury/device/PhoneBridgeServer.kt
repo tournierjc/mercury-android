@@ -43,10 +43,10 @@ class PhoneBridgeServer(
                 )
             }
             if (!withinRateLimit()) {
-                return json(Response.Status.TOO_MANY_REQUESTS, encode(BridgeError.serializer(), BridgeError("trop de requêtes")))
+                return json(Response.Status.TOO_MANY_REQUESTS, encode(BridgeError.serializer(), BridgeError("rate limited")))
             }
             if (!isAuthorized(session)) {
-                return json(Response.Status.UNAUTHORIZED, encode(BridgeError.serializer(), BridgeError("token invalide")))
+                return json(Response.Status.UNAUTHORIZED, encode(BridgeError.serializer(), BridgeError("invalid token")))
             }
             when (path) {
                 "/", "/device" -> ok(
@@ -102,14 +102,14 @@ class PhoneBridgeServer(
                     ),
                 )
 
-                else -> json(Response.Status.NOT_FOUND, encode(BridgeError.serializer(), BridgeError("route inconnue")))
+                else -> json(Response.Status.NOT_FOUND, encode(BridgeError.serializer(), BridgeError("unknown route")))
             }
         } catch (e: BridgeException) {
-            json(Response.Status.FORBIDDEN, encode(BridgeError.serializer(), BridgeError(e.message ?: "refusé")))
+            json(Response.Status.FORBIDDEN, encode(BridgeError.serializer(), BridgeError(e.message ?: "refused")))
         } catch (e: Exception) {
             json(
                 Response.Status.INTERNAL_ERROR,
-                encode(BridgeError.serializer(), BridgeError(e.message ?: "erreur interne")),
+                encode(BridgeError.serializer(), BridgeError(e.message ?: "internal error")),
             )
         }
     }

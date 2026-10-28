@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.ui
 
+import io.github.tournierjc.mercury.data.Notice
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -84,7 +86,7 @@ fun OpenUiBlock(spec: String, streaming: Boolean = false, modifier: Modifier = M
 }
 
 @Composable
-private fun RefusedSpec(spec: String, errors: List<String>, modifier: Modifier) {
+private fun RefusedSpec(spec: String, errors: List<Notice>, modifier: Modifier) {
     val colors = LocalMercuryColors.current
     Column(
         modifier = modifier
@@ -108,7 +110,7 @@ private fun RefusedSpec(spec: String, errors: List<String>, modifier: Modifier) 
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = errors.firstOrNull().orEmpty(),
+            text = errors.firstOrNull()?.let { noticeText(it) }.orEmpty(),
             style = MaterialTheme.typography.labelSmall,
             color = colors.textSecondary,
         )

@@ -15,11 +15,11 @@ class NoticeStringsTest {
 
     private val root = File("src/main/res")
 
-    private fun strings(locale: String): Map<String, String> {
-        val file = File(root, "$locale/strings_notices.xml")
-        assertTrue("missing ${file.path}", file.exists())
+    private fun strings(locale: String, file: String = "strings_notices.xml"): Map<String, String> {
+        val resource = File(root, "$locale/$file")
+        assertTrue("missing ${resource.path}", resource.exists())
         val pattern = Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
-        return pattern.findAll(file.readText())
+        return pattern.findAll(resource.readText())
             .associate { it.groupValues[1] to it.groupValues[2] }
     }
 
@@ -77,5 +77,15 @@ class NoticeStringsTest {
             val orphans = strings(locale).keys - known
             assertEquals("strings in $locale with no NoticeKey: $orphans", emptySet<String>(), orphans)
         }
+    }
+
+    @Test
+    fun `the notification strings are spelled in both locales too`() {
+        val fr = strings("values", "strings_notifications.xml")
+        val en = strings("values-en", "strings_notifications.xml")
+
+        assertEquals("notification strings only in one locale", fr.keys, en.keys)
+        assertTrue("the watch title lost its French", "notification_watch_title" in fr)
+        assertTrue("the crew channel lost its English name", "notification_channel_crew" in en)
     }
 }

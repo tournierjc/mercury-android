@@ -33,10 +33,9 @@ data class SpotifyDevice(
     val active: Boolean,
     val volume: Int?,
 ) {
-    /** `Ordinateur · actif` — the active one is the only one Mercury can drive. */
-    val label: String
-        get() = listOf(deviceTypeLabel(type), if (active) "actif" else null)
-            .filterNotNull().joinToString(" · ")
+    /** `Ordinateur` — the active badge is drawn separately, so the word does not repeat. */
+    val typeNotice: Notice
+        get() = deviceTypeNotice(type)
 }
 
 /**
@@ -134,15 +133,15 @@ internal fun clock(ms: Long): String {
 }
 
 /** Spotify's device `type` values, in French. Unknown types stay verbatim. */
-internal fun deviceTypeLabel(type: String): String = when (type.lowercase()) {
-    "computer" -> "Ordinateur"
-    "smartphone" -> "Téléphone"
-    "speaker" -> "Enceinte"
-    "tv" -> "Télévision"
-    "tablet" -> "Tablette"
-    "game_console" -> "Console"
-    "castvideo", "castaudio" -> "Cast"
-    "automobile" -> "Voiture"
-    "" -> "Appareil"
-    else -> type
+internal fun deviceTypeNotice(type: String): Notice = when (type.lowercase()) {
+    "computer" -> Notice(NoticeKey.SPOTIFY_COMPUTER)
+    "smartphone" -> Notice(NoticeKey.SPOTIFY_PHONE)
+    "speaker" -> Notice(NoticeKey.SPOTIFY_SPEAKER)
+    "tv" -> Notice(NoticeKey.SPOTIFY_TV)
+    "tablet" -> Notice(NoticeKey.SPOTIFY_TABLET)
+    "game_console" -> Notice(NoticeKey.SPOTIFY_CONSOLE)
+    "castvideo", "castaudio" -> Notice(NoticeKey.SPOTIFY_CAST)
+    "automobile" -> Notice(NoticeKey.SPOTIFY_CAR)
+    "" -> Notice(NoticeKey.SPOTIFY_DEVICE)
+    else -> Notice(NoticeKey.SPOTIFY_OTHER, args = listOf(type))
 }

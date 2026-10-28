@@ -155,7 +155,7 @@ class MercuryApi(
                     response.code == 401 || response.code == 403 ->
                         throw CredentialsRefusedException("sign-in refused")
 
-                    else -> throw MercuryException("Échec de connexion : HTTP ${response.code}")
+                    else -> throw MercuryException("connect: HTTP ${response.code}")
                 }
             }
         }
@@ -424,7 +424,7 @@ class MercuryApi(
                         throw if (response.code == 401 || response.code == 403) {
                             AuthException("session expired")
                         } else {
-                            MercuryException("Flux du plateau indisponible : HTTP ${response.code}")
+                            MercuryException("board stream: HTTP ${response.code}")
                         }
                     }
                     val source = response.body?.source() ?: run { close(); return@use }

@@ -36,8 +36,11 @@ enum class InteractionKind {
 data class Interaction(
     val id: String,
     val kind: InteractionKind,
-    val text: String,
+    /** The server's own wording — an agent asking for a tool, or a choice it wrote itself. */
+    val text: String = "",
     val options: List<String> = emptyList(),
+    /** Set when the sentence is ours: the screen then speaks the owner's language. */
+    val notice: Notice? = null,
 )
 
 data class ChatState(
@@ -142,8 +145,9 @@ object ChatReducer {
             Interaction(
                 event.id,
                 InteractionKind.Mode,
-                "Autoriser tous les outils sans confirmation ?",
-                event.options,
+                text = "",
+                options = event.options,
+                notice = Notice(NoticeKey.PERMISSION_MODE_QUESTION),
             ),
         )
 

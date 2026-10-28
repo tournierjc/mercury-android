@@ -1,5 +1,8 @@
 package io.github.tournierjc.mercury.util
 
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -25,7 +28,7 @@ data class OutputPreviewState(
     val text: String? = null,
     val truncated: Boolean = false,
     val image: ByteArray? = null,
-    val note: String? = null,
+    val note: Notice? = null,
 )
 
 /**
@@ -59,19 +62,22 @@ class OutputActions(private val api: MercuryApi) {
             )
 
             BotOps.kind(output.name) == OutputKind.Image ->
-                note(output, "Image trop lourde pour un aperçu (${BotOps.sizeLabel(output.bytes)}) — partagez-la pour l'ouvrir.")
+                note(
+                    output,
+                    Notice(NoticeKey.OUTPUT_IMAGE_TOO_HEAVY, args = listOf(BotOps.sizeLabel(output.bytes))),
+                )
 
-            else -> note(output, "Aperçu indisponible pour ce format — partagez le fichier pour l'ouvrir.")
+            else -> note(output, Notice(NoticeKey.OUTPUT_PREVIEW_UNAVAILABLE_FORMAT))
         }
     } catch (e: Exception) {
-        note(output, e.message ?: "Aperçu indisponible")
+        note(output, Notice(NoticeKey.OUTPUT_PREVIEW_UNAVAILABLE).withDetail(e.message))
     }
 
-    private fun note(output: DeliverableDto, message: String) =
-        OutputPreviewState(output = output, loading = false, note = message)
+    private fun note(output: DeliverableDto, notice: Notice) =
+        OutputPreviewState(output = output, loading = false, note = notice)
 
     suspend fun download(output: DeliverableDto): SharedFile =
-        SharedFile(output.name.substringAfterLast('/').ifBlank { "livrable" }, api.downloadOutput(output.botId, output.name))
+        SharedFile(output.name.substringAfterLast('/').ifBlank { "output" }, api.downloadOutput(output.botId, output.name))
 }
 
 /**

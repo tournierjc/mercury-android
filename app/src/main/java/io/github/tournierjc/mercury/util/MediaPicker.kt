@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.util
 
+import io.github.tournierjc.mercury.R
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -29,14 +31,14 @@ object MediaPicker {
     fun read(context: Context, uri: Uri, maxDimension: Int = MAX_DIMENSION): Result<PendingFile> = runCatching {
         val name = displayName(context, uri)
         val raw = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("Fichier illisible")
+            ?: error(context.getString(R.string.picker_unreadable))
 
         if (name.endsWith(".pdf", true) || looksLikePdf(raw)) {
-            require(raw.size <= PDF_LIMIT) { "$name dépasse 15 Mo" }
+            require(raw.size <= PDF_LIMIT) { context.getString(R.string.picker_too_heavy, name) }
             return@runCatching PendingFile(name, raw)
         }
 
-        val bitmap = decodeScaled(raw, maxDimension) ?: error("$name n'est pas une image lisible")
+        val bitmap = decodeScaled(raw, maxDimension) ?: error(context.getString(R.string.picker_not_image, name))
         try {
             val out = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)

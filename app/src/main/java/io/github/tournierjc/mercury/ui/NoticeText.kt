@@ -130,6 +130,125 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.PUSHED -> R.string.notice_pushed
     NoticeKey.PULLED -> R.string.notice_pulled
     NoticeKey.BRANCH_CHECKED_OUT -> R.string.notice_branch_checked_out
+    NoticeKey.GIT_MODIFIED -> R.string.notice_git_modified
+    NoticeKey.GIT_ADDED -> R.string.notice_git_added
+    NoticeKey.GIT_DELETED -> R.string.notice_git_deleted
+    NoticeKey.GIT_RENAMED -> R.string.notice_git_renamed
+    NoticeKey.GIT_COPIED -> R.string.notice_git_copied
+    NoticeKey.GIT_UNMERGED -> R.string.notice_git_unmerged
+    NoticeKey.GIT_UNTRACKED -> R.string.notice_git_untracked
+    NoticeKey.GIT_IGNORED -> R.string.notice_git_ignored
+    NoticeKey.GIT_STAGED -> R.string.notice_git_staged
+    NoticeKey.GIT_UNSTAGED -> R.string.notice_git_unstaged
+    NoticeKey.GIT_OTHER -> R.string.notice_git_other
+    NoticeKey.GIT_CLEAN -> R.string.notice_git_clean
+    NoticeKey.GIT_UNAVAILABLE -> R.string.notice_git_unavailable
+    NoticeKey.GIT_SUMMARY_UNSTAGED -> R.string.notice_git_summary_unstaged
+    NoticeKey.GIT_SUMMARY_STAGED -> R.string.notice_git_summary_staged
+    NoticeKey.GIT_SUMMARY_BOTH -> R.string.notice_git_summary_both
+    NoticeKey.ATTENTION_NEEDS_YOU -> R.string.notice_attention_needs_you
+    NoticeKey.ATTENTION_FINISHED -> R.string.notice_attention_finished
+    NoticeKey.ATTENTION_FAILED -> R.string.notice_attention_failed
+    NoticeKey.ATTENTION_NEEDS_YOU_BODY -> R.string.notice_attention_needs_you_body
+    NoticeKey.ATTENTION_FINISHED_BODY -> R.string.notice_attention_finished_body
+    NoticeKey.ATTENTION_FAILED_BODY -> R.string.notice_attention_failed_body
+    NoticeKey.CREW_NONE -> R.string.notice_crew_none
+    NoticeKey.CREW_ONE -> R.string.notice_crew_one
+    NoticeKey.CREW_MANY -> R.string.notice_crew_many
+    NoticeKey.CREW_WAITING_NONE -> R.string.notice_crew_waiting_none
+    NoticeKey.CREW_WAITING_ONE -> R.string.notice_crew_waiting_one
+    NoticeKey.CREW_WAITING_MANY -> R.string.notice_crew_waiting_many
+    NoticeKey.AGE_NOW -> R.string.notice_age_now
+    NoticeKey.AGE_MINUTES -> R.string.notice_age_minutes
+    NoticeKey.AGE_HOURS -> R.string.notice_age_hours
+    NoticeKey.AGE_DAYS -> R.string.notice_age_days
+    NoticeKey.OUTPUT_FINAL -> R.string.notice_output_final
+    NoticeKey.OUTPUT_DRAFT -> R.string.notice_output_draft
+    NoticeKey.RUN_SUCCEEDED -> R.string.notice_run_succeeded
+    NoticeKey.RUN_FAILED_STATE -> R.string.notice_run_failed_state
+    NoticeKey.RUN_CANCELLED_STATE -> R.string.notice_run_cancelled_state
+    NoticeKey.RUN_RUNNING_STATE -> R.string.notice_run_running_state
+    NoticeKey.RUN_QUEUED_STATE -> R.string.notice_run_queued_state
+    NoticeKey.RUN_OTHER_STATE -> R.string.notice_run_other_state
+    NoticeKey.REASON_NOT_FOUND -> R.string.notice_reason_not_found
+    NoticeKey.REASON_PROVIDER_RATE_LIMIT -> R.string.notice_reason_provider_rate_limit
+    NoticeKey.REASON_PROVIDER_ERROR -> R.string.notice_reason_provider_error
+    NoticeKey.REASON_TIMEOUT -> R.string.notice_reason_timeout
+    NoticeKey.REASON_CANCELLED -> R.string.notice_reason_cancelled
+    NoticeKey.REASON_BUDGET_EXHAUSTED -> R.string.notice_reason_budget_exhausted
+    NoticeKey.REASON_OTHER -> R.string.notice_reason_other
+    NoticeKey.TOOL_FALLBACK -> R.string.notice_tool_fallback
+    NoticeKey.ATTEMPTS_ONE -> R.string.notice_attempts_one
+    NoticeKey.ATTEMPTS_MANY -> R.string.notice_attempts_many
+    NoticeKey.OUTPUT_IMAGE_TOO_HEAVY -> R.string.notice_output_image_too_heavy
+    NoticeKey.OUTPUT_PREVIEW_UNAVAILABLE_FORMAT -> R.string.notice_output_preview_unavailable_format
+    NoticeKey.OUTPUT_PREVIEW_UNAVAILABLE -> R.string.notice_output_preview_unavailable
+    NoticeKey.GIT_AHEAD -> R.string.notice_git_ahead
+    NoticeKey.GIT_BEHIND -> R.string.notice_git_behind
+    NoticeKey.GIT_UP_TO_DATE -> R.string.notice_git_up_to_date
+    NoticeKey.BOT_STATE_RUNNING -> R.string.notice_bot_state_running
+    NoticeKey.BOT_STATE_QUEUED -> R.string.notice_bot_state_queued
+    NoticeKey.BOT_STATE_PAUSED -> R.string.notice_bot_state_paused
+    NoticeKey.BOT_STATE_DISABLED -> R.string.notice_bot_state_disabled
+    NoticeKey.BOT_STATE_RESTING -> R.string.notice_bot_state_resting
+    NoticeKey.SPOTIFY_COMPUTER -> R.string.notice_spotify_computer
+    NoticeKey.SPOTIFY_PHONE -> R.string.notice_spotify_phone
+    NoticeKey.SPOTIFY_SPEAKER -> R.string.notice_spotify_speaker
+    NoticeKey.SPOTIFY_TV -> R.string.notice_spotify_tv
+    NoticeKey.SPOTIFY_TABLET -> R.string.notice_spotify_tablet
+    NoticeKey.SPOTIFY_CONSOLE -> R.string.notice_spotify_console
+    NoticeKey.SPOTIFY_CAST -> R.string.notice_spotify_cast
+    NoticeKey.SPOTIFY_CAR -> R.string.notice_spotify_car
+    NoticeKey.SPOTIFY_DEVICE -> R.string.notice_spotify_device
+    NoticeKey.SPOTIFY_OTHER -> R.string.notice_spotify_other
+    NoticeKey.TOKENS_IN -> R.string.notice_tokens_in
+    NoticeKey.TOKENS_OUT -> R.string.notice_tokens_out
+    NoticeKey.RUN_TOOL_CALLS_ONE -> R.string.notice_run_tool_calls_one
+    NoticeKey.RUN_TOOL_CALLS_MANY -> R.string.notice_run_tool_calls_many
+    NoticeKey.RUN_ERROR_LINE -> R.string.notice_run_error_line
+    NoticeKey.OPENUI_EMPTY -> R.string.notice_openui_empty
+    NoticeKey.OPENUI_TOO_LONG -> R.string.notice_openui_too_long
+    NoticeKey.OPENUI_TREE -> R.string.notice_openui_tree
+    NoticeKey.OPENUI_DUPLICATE_ID -> R.string.notice_openui_duplicate_id
+    NoticeKey.OPENUI_UNREFERENCED -> R.string.notice_openui_unreferenced
+    NoticeKey.OPENUI_ROWS -> R.string.notice_openui_rows
+    NoticeKey.OPENUI_STRING_LIST -> R.string.notice_openui_string_list
+    NoticeKey.OPENUI_NUMBER_LIST -> R.string.notice_openui_number_list
+    NoticeKey.OPENUI_NUMBER -> R.string.notice_openui_number
+    NoticeKey.OPENUI_POSITIVE -> R.string.notice_openui_positive
+    NoticeKey.OPENUI_BOOLEAN -> R.string.notice_openui_boolean
+    NoticeKey.OPENUI_CODE_LONG -> R.string.notice_openui_code_long
+    NoticeKey.OPENUI_STRING -> R.string.notice_openui_string
+    NoticeKey.OPENUI_STRING_LONG -> R.string.notice_openui_string_long
+    NoticeKey.OPENUI_LABELS_VALUES -> R.string.notice_openui_labels_values
+    NoticeKey.OPENUI_NEGATIVE_SHARE -> R.string.notice_openui_negative_share
+    NoticeKey.OPENUI_ZERO_SHARES -> R.string.notice_openui_zero_shares
+    NoticeKey.OPENUI_LINE_EXPECT -> R.string.notice_openui_line_expect
+    NoticeKey.OPENUI_LINE_BAD_ID -> R.string.notice_openui_line_bad_id
+    NoticeKey.OPENUI_LINE_UNKNOWN_COMPONENT -> R.string.notice_openui_line_unknown_component
+    NoticeKey.OPENUI_LINE_ID_LIST -> R.string.notice_openui_line_id_list
+    NoticeKey.OPENUI_LINE_PROPS_OBJECT -> R.string.notice_openui_line_props_object
+    NoticeKey.OPENUI_TOO_MANY_COMPONENTS -> R.string.notice_openui_too_many_components
+    NoticeKey.OPENUI_NO_ROOT -> R.string.notice_openui_no_root
+    NoticeKey.OPENUI_DANGLING_CHILD -> R.string.notice_openui_dangling_child
+    NoticeKey.OPENUI_CYCLE -> R.string.notice_openui_cycle
+    NoticeKey.OPENUI_LINE_FORBIDDEN_PROP -> R.string.notice_openui_line_forbidden_prop
+    NoticeKey.OPENUI_LINE_NOT_A_PROP -> R.string.notice_openui_line_not_a_prop
+    NoticeKey.OPENUI_LINE_BAD_KIND -> R.string.notice_openui_line_bad_kind
+    NoticeKey.OPENUI_LINE_UNKNOWN_TONE -> R.string.notice_openui_line_unknown_tone
+    NoticeKey.OPENUI_LINE_UNKNOWN_VARIANT -> R.string.notice_openui_line_unknown_variant
+    NoticeKey.OPENUI_LINE_TOO_MANY_SHARES -> R.string.notice_openui_line_too_many_shares
+    NoticeKey.PERMISSION_MODE_QUESTION -> R.string.notice_permission_mode_question
+
+
+
+
+
+
+
+
+
+
 
     NoticeKey.TERMINAL_REQUEST_FAILED -> R.string.notice_terminal_request_failed
     NoticeKey.TERMINAL_EXIT_CODE -> R.string.notice_terminal_exit_code

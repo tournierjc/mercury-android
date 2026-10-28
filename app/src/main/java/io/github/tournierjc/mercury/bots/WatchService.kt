@@ -10,6 +10,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.ui.noticeText
 import io.github.tournierjc.mercury.MainActivity
 import io.github.tournierjc.mercury.MercuryApp
 import kotlinx.coroutines.CoroutineScope
@@ -56,7 +58,7 @@ class WatchService : Service() {
             return START_NOT_STICKY
         }
 
-        goForeground(WatchSummary.text(0, 0))
+        goForeground(summaryText(0, 0))
         app.container.botWatcher.start()
         observe(app)
         return START_STICKY
@@ -72,11 +74,15 @@ class WatchService : Service() {
         observer?.cancel()
         observer = scope.launch {
             app.container.botWatcher.state
-                .map { WatchSummary.text(it.bots.size, it.needsYou().size) }
+                .map { summaryText(it.bots.size, it.needsYou().size) }
                 .distinctUntilChanged()
                 .collect { text -> notify(text) }
         }
     }
+
+    /** `3 équipiers · 1 vous attend`, resolved in the owner's language. */
+    private fun summaryText(bots: Int, waiting: Int): String =
+        WatchSummary.notices(bots, waiting).joinToString(" · ") { noticeText(this, it) }
 
     private fun goForeground(text: String) {
         ensureChannel()
@@ -110,14 +116,14 @@ class WatchService : Service() {
         )
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle(WatchSummary.TITLE)
+            .setContentTitle(getString(R.string.notification_watch_title))
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
-            .addAction(Notification.Action.Builder(null, "Arrêter", stop).build())
+            .addAction(Notification.Action.Builder(null, getString(R.string.notification_watch_stop), stop).build())
             .build()
     }
 
@@ -127,10 +133,10 @@ class WatchService : Service() {
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Veille des équipiers",
+            getString(R.string.notification_watch_channel),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "La connexion au serveur reste ouverte pour vous alerter sans délai."
+            description = getString(R.string.notification_watch_channel_desc)
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)

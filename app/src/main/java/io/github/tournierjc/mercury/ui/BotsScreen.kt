@@ -156,7 +156,7 @@ fun BotsScreen(
                 stringResource(R.string.bots_header_subtitle, watch.bots.size, watch.queue.pending) +
                     if (!watch.connected) stringResource(R.string.bots_header_offline) else ""
             } else {
-                BotJson.stateLabel(BotJson.state(selected))
+                noticeText(BotJson.stateNotice(BotJson.state(selected)))
             },
             onBack = { if (state.selectedId == null) onBack() else viewModel.select(null) },
             onRefresh = viewModel::refreshRoster,
@@ -347,7 +347,7 @@ private fun FleetBlock(
                         text = listOf(
                             stringResource(R.string.bots_role_fleet_lead),
                             if (crew > 0) stringResource(R.string.bots_crew_running, crew) else null,
-                            BotJson.stateLabel(BotJson.state(lead)),
+                            noticeText(BotJson.stateNotice(BotJson.state(lead))),
                         ).filterNotNull().joinToString(" · "),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
@@ -431,7 +431,7 @@ private fun RosterList(
                     }
                     Text(
                         text = listOf(
-                            BotJson.stateLabel(BotJson.state(bot)),
+                            noticeText(BotJson.stateNotice(BotJson.state(bot))),
                             live.takeIf { it.isNotBlank() },
                             BotJson.parent(bot).takeIf { it.isNotBlank() }?.let { stringResource(R.string.bots_crew_of, it) },
                         ).filterNotNull().joinToString(" · "),
@@ -526,7 +526,7 @@ private fun BotDetail(
                 Text(BotJson.name(bot), color = colors.textPrimary, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = listOf(
-                        BotJson.stateLabel(BotJson.state(bot)),
+                        noticeText(BotJson.stateNotice(BotJson.state(bot))),
                         BotJson.fleetRole(bot).ifBlank { stringResource(R.string.bots_role_solo) },
                         BotJson.enabled(bot).let { if (it) stringResource(R.string.bots_state_enabled) else stringResource(R.string.bots_state_disabled) },
                     ).joinToString(" · "),
@@ -901,7 +901,7 @@ private fun BotDetail(
                         Text(BotJson.name(member), color = colors.textPrimary, style = MaterialTheme.typography.bodyMedium)
                         val memberLive = watch.activity[BotJson.id(member)].orEmpty().ifBlank { BotJson.activity(member) }
                         Text(
-                            text = listOf(BotJson.stateLabel(BotJson.state(member)), memberLive.takeIf { it.isNotBlank() })
+                            text = listOf(noticeText(BotJson.stateNotice(BotJson.state(member))), memberLive.takeIf { it.isNotBlank() })
                                 .filterNotNull().joinToString(" · "),
                             color = colors.textSecondary,
                             style = MaterialTheme.typography.labelSmall,
@@ -1244,7 +1244,7 @@ private fun AddCrewSheet(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = BotJson.stateLabel(BotJson.state(candidate)),
+                                text = noticeText(BotJson.stateNotice(BotJson.state(candidate))),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.textSecondary,
                             )

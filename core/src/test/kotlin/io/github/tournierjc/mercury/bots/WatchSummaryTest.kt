@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.bots
 
+import io.github.tournierjc.mercury.data.NoticeKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -12,30 +13,25 @@ class WatchSummaryTest {
 
     @Test
     fun `nothing connected yet says so without promising a watch`() {
-        assertEquals("Aucun équipier — connexion au serveur en cours", WatchSummary.text(0, 0))
+        assertEquals(listOf(NoticeKey.CREW_NONE), WatchSummary.notices(0, 0).map { it.key })
     }
 
     @Test
     fun `one bot is singular`() {
-        assertEquals("1 équipier · rien ne vous attend", WatchSummary.text(1, 0))
-        assertEquals("1 équipier · 1 vous attend", WatchSummary.text(1, 1))
+        assertEquals(listOf(NoticeKey.CREW_ONE, NoticeKey.CREW_WAITING_NONE), WatchSummary.notices(1, 0).map { it.key })
+        assertEquals(listOf(NoticeKey.CREW_ONE, NoticeKey.CREW_WAITING_ONE), WatchSummary.notices(1, 1).map { it.key })
     }
 
     @Test
     fun `several bots are plural`() {
-        assertEquals("4 équipiers · rien ne vous attend", WatchSummary.text(4, 0))
-        assertEquals("4 équipiers · 2 vous attendent", WatchSummary.text(4, 2))
+        assertEquals(listOf(NoticeKey.CREW_MANY, NoticeKey.CREW_WAITING_NONE), WatchSummary.notices(4, 0).map { it.key })
+        assertEquals(listOf("4", "2"), WatchSummary.notices(4, 2).flatMap { it.args })
     }
 
     @Test
     fun `waiting count is independent of the crew count`() {
         // Three bots waiting out of five: the first number is the roster, the second the queue.
-        assertEquals("5 équipiers · 3 vous attendent", WatchSummary.text(5, 3))
-        assertEquals("12 équipiers · 1 vous attend", WatchSummary.text(12, 1))
-    }
-
-    @Test
-    fun `the title is the one the shade shows`() {
-        assertEquals("Mercury — veille", WatchSummary.TITLE)
+        assertEquals(listOf(NoticeKey.CREW_MANY, NoticeKey.CREW_WAITING_MANY), WatchSummary.notices(5, 3).map { it.key })
+        assertEquals(listOf(NoticeKey.CREW_MANY, NoticeKey.CREW_WAITING_ONE), WatchSummary.notices(12, 1).map { it.key })
     }
 }

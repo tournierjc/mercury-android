@@ -1,5 +1,8 @@
 package io.github.tournierjc.mercury.openui
 
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -68,7 +71,7 @@ object OpenUi {
      */
     sealed interface Result {
         data class Rendered(val root: OpenUiNode) : Result
-        data class Refused(val errors: List<String>) : Result
+        data class Refused(val errors: List<Notice>) : Result
         data object Pending : Result
     }
 
@@ -84,12 +87,16 @@ object OpenUi {
      * The rules are the ones `openui-contract`'s parser applies while streaming, so a spec
      * drawn by the dashboard and by the phone is drawn at the same moment.
      */
+    /** One diagnostic on line `line`: the number leads, the rest are arguments. */
+    private fun at(line: Int, key: NoticeKey, vararg args: String): Notice =
+        Notice(key, args = listOf(line.toString()) + args)
+
     fun parse(spec: String, partial: Boolean = false): Result {
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<Notice>()
         if (spec.isBlank()) {
-            return if (partial) Result.Pending else Result.Refused(listOf("spec vide"))
+            return if (partial) Result.Pending else Result.Refused(listOf(Notice(NoticeKey.OPENUI_EMPTY)))
         }
-        if (spec.length > 32768) return Result.Refused(listOf("spec trop longue"))
+        if (spec.length > 32768) return Result.Refused(listOf(Notice(NoticeKey.OPENUI_TOO_LONG)))
 
         val nodes = LinkedHashMap<String, Node>()
         val lines = spec.lines()
@@ -101,26 +108,26 @@ object OpenUi {
             val typed = partial && index == lines.lastIndex
             val match = STATEMENT.find(line)
             if (match == null) {
-                if (!typed) errors += "ligne $number : attendu `id = Composant(args)`"
+                if (!typed) errors += at(number, NoticeKey.OPENUI_LINE_EXPECT)
                 return@forEachIndexed
             }
             val (id, component, rawArgs) = match.destructured
             if (!ID.matches(id)) {
-                errors += "ligne $number : `$id` n'est pas un identifiant"
+                errors += at(number, NoticeKey.OPENUI_LINE_BAD_ID, id)
                 return@forEachIndexed
             }
             if (nodes.containsKey(id)) {
-                errors += "ligne $number : `$id` est défini deux fois"
+                errors += at(number, NoticeKey.OPENUI_DUPLICATE_ID, id)
                 return@forEachIndexed
             }
             if (component !in COMPONENTS) {
-                errors += "ligne $number : `$component` n'est pas dans le contrat"
+                errors += at(number, NoticeKey.OPENUI_LINE_UNKNOWN_COMPONENT, component)
                 return@forEachIndexed
             }
             if (component in LAYOUT) {
                 val children = parseIds(rawArgs)
                 if (children.isEmpty()) {
-                    if (!typed) errors += "ligne $number : `$component` attend une liste d'identifiants"
+                    if (!typed) errors += at(number, NoticeKey.OPENUI_LINE_ID_LIST, component)
                 } else {
                     nodes[id] = Node(id, component, children = children)
                 }
@@ -128,7 +135,7 @@ object OpenUi {
             }
             val props = runCatching { json.parseToJsonElement(rawArgs.trim()) as? JsonObject }.getOrNull()
             if (props == null) {
-                if (!typed) errors += "ligne $number : les props ne sont pas un objet JSON"
+                if (!typed) errors += at(number, NoticeKey.OPENUI_LINE_PROPS_OBJECT)
                 return@forEachIndexed
             }
             errors += checkProps(id, component, props, number)
@@ -136,90 +143,90 @@ object OpenUi {
             nodes[id] = Node(id, component, props = props)
         }
 
-        if (nodes.size > MAX_NODES) errors += "${nodes.size} composants, la limite est $MAX_NODES"
+        if (nodes.size > MAX_NODES) errors += Notice(NoticeKey.OPENUI_TOO_MANY_COMPONENTS, args = listOf(nodes.size.toString(), MAX_NODES.toString()))
         // A closed spec must be whole. While streaming these checks are premature: the tree
         // is built from what has arrived and drawn as soon as anything is drawable.
         if (errors.isEmpty() && !partial) {
-            if (nodes["root"] == null) errors += "aucun `root`"
+            if (nodes["root"] == null) errors += Notice(NoticeKey.OPENUI_NO_ROOT)
             for (node in nodes.values) {
                 for (child in node.children) {
-                    if (child !in nodes) errors += "`${node.id}` pointe vers `$child`, qui n'existe pas"
+                    if (child !in nodes) errors += Notice(NoticeKey.OPENUI_DANGLING_CHILD, args = listOf(node.id, child))
                 }
             }
             val referenced = nodes.values.flatMap { it.children }.toSet()
             nodes.values.firstOrNull { it.id != "root" && it.id !in referenced }?.let {
-                errors += "`${it.id}` n'est référencé par personne"
+                errors += Notice(NoticeKey.OPENUI_UNREFERENCED, args = listOf(it.id))
             }
             if (errors.isEmpty() && hasCycle(nodes, "root", mutableSetOf(), mutableSetOf())) {
-                errors += "cycle dans les enfants"
+                errors += Notice(NoticeKey.OPENUI_CYCLE)
             }
         }
         if (errors.isNotEmpty()) return Result.Refused(errors)
 
         val built = build(nodes, "root", mutableSetOf())
-            ?: return if (partial) Result.Pending else Result.Refused(listOf("arbre impossible à construire"))
+            ?: return if (partial) Result.Pending else Result.Refused(listOf(Notice(NoticeKey.OPENUI_TREE)))
         return Result.Rendered(built)
     }
 
-    private fun checkProps(id: String, component: String, props: JsonObject, line: Int): List<String> {
+    private fun checkProps(id: String, component: String, props: JsonObject, line: Int): List<Notice> {
         val allowed = ALLOWED_PROPS[component].orEmpty()
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<Notice>()
         for ((key, value) in props) {
             if (key.lowercase() in FORBIDDEN) {
-                errors += "ligne $line : `$key` est interdit"
+                errors += at(line, NoticeKey.OPENUI_LINE_FORBIDDEN_PROP, key)
                 continue
             }
             if (key !in allowed) {
-                errors += "ligne $line : `$key` n'est pas une prop de $component"
+                errors += at(line, NoticeKey.OPENUI_LINE_NOT_A_PROP, key, component)
                 continue
             }
             when {
-                key == "rows" -> if (!isStringMatrix(value)) errors += "ligne $line : `rows` doit être une liste de lignes"
+                key == "rows" -> if (!isStringMatrix(value)) errors += at(line, NoticeKey.OPENUI_ROWS)
                 key == "columns" || key == "labels" || key == "items" ->
-                    if (!isStringList(value, MAX_STRING)) errors += "ligne $line : `$key` doit être une liste de chaînes"
-                key == "values" -> if (!isNumberList(value)) errors += "ligne $line : `values` doit être une liste de nombres"
+                    if (!isStringList(value, MAX_STRING)) errors += at(line, NoticeKey.OPENUI_STRING_LIST, key)
+                key == "values" -> if (!isNumberList(value)) errors += at(line, NoticeKey.OPENUI_NUMBER_LIST)
                 // `isString` matters: JsonPrimitive.doubleOrNull happily parses "42", and a
                 // quoted number is exactly what the contract refuses — a renderer that has to
                 // parse a string is a renderer that guesses.
                 key == "value" && component == "Gauge" -> {
                     val number = (value as? JsonPrimitive)
                     if (number == null || number.isString || number.doubleOrNull == null) {
-                        errors += "ligne $line : `value` doit être un nombre"
+                        errors += at(line, NoticeKey.OPENUI_NUMBER)
                     }
                 }
                 key == "max" -> {
                     val number = value as? JsonPrimitive
                     if (number == null || number.isString || number.doubleOrNull == null || number.doubleOrNull!! <= 0) {
-                        errors += "ligne $line : `max` doit être un nombre positif"
+                        errors += at(line, NoticeKey.OPENUI_POSITIVE)
                     }
                 }
                 key == "legend" -> if (value.jsonPrimitive.booleanOrNull == null) {
-                    errors += "ligne $line : `legend` doit être vrai ou faux"
+                    errors += at(line, NoticeKey.OPENUI_BOOLEAN, "legend")
                 }
                 key == "highlight" || key == "ordered" || key == "muted" ->
-                    if (value.jsonPrimitive.booleanOrNull == null) errors += "ligne $line : `$key` doit être vrai ou faux"
+                    if (value.jsonPrimitive.booleanOrNull == null) errors += at(line, NoticeKey.OPENUI_BOOLEAN, key)
                 key == "code" -> {
                     val text = (value as? JsonPrimitive)?.contentOrNullSafe()
-                    if (text == null || text.length > MAX_CODE) errors += "ligne $line : `code` dépasse $MAX_CODE caractères"
+                    if (text == null || text.length > MAX_CODE) errors += at(line, NoticeKey.OPENUI_CODE_LONG, MAX_CODE.toString())
                 }
                 key == "kind" -> {
                     // `kind` names a variant of the component, not a fixed vocabulary: a Chart
                     // is bar or line, a Pie is pie or donut.
                     val allowedKinds = if (component == "Pie") setOf("pie", "donut") else setOf("bar", "line")
                     if ((value as? JsonPrimitive)?.contentOrNullSafe() !in allowedKinds) {
-                        errors += "ligne $line : `kind` doit valoir ${allowedKinds.joinToString(" ou ")}"
+                        errors += at(line, NoticeKey.OPENUI_LINE_BAD_KIND, allowedKinds.joinToString(" / "))
                     }
                 }
                 key == "tone" -> if ((value as? JsonPrimitive)?.contentOrNullSafe() !in setOf("neutral", "ok", "warn", "danger")) {
-                    errors += "ligne $line : `tone` inconnu"
+                    errors += at(line, NoticeKey.OPENUI_LINE_UNKNOWN_TONE)
                 }
                 key == "variant" -> if ((value as? JsonPrimitive)?.contentOrNullSafe() !in setOf("body", "h1", "h2", "h3", "mono")) {
-                    errors += "ligne $line : `variant` inconnu"
+                    errors += at(line, NoticeKey.OPENUI_LINE_UNKNOWN_VARIANT)
                 }
                 else -> {
                     val text = (value as? JsonPrimitive)?.contentOrNullSafe()
-                    if (text == null) errors += "ligne $line : `$key` doit être une chaîne"
-                    else if (text.length > MAX_STRING) errors += "ligne $line : `$key` dépasse $MAX_STRING caractères"
+                    if (text == null) errors += at(line, NoticeKey.OPENUI_STRING, key)
+                    else if (text.length > MAX_STRING) errors += at(line, NoticeKey.OPENUI_STRING_LONG, key, MAX_STRING.toString())
                 }
             }
         }
@@ -230,17 +237,17 @@ object OpenUi {
      * Rules a per-prop type cannot express, mirrored from the daemon's parser: a pie needs as
      * many labels as values, no negative slice and something to divide.
      */
-    private fun checkSemantics(id: String, component: String, props: JsonObject, line: Int): List<String> {
+    private fun checkSemantics(id: String, component: String, props: JsonObject, line: Int): List<Notice> {
         if (component != "Pie") return emptyList()
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<Notice>()
         val labels = (props["labels"] as? JsonArray).orEmpty()
         val values = (props["values"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull }.orEmpty()
         if (labels.size != values.size) {
-            errors += "ligne $line : `$id` a ${labels.size} libellés et ${values.size} valeurs"
+            errors += at(line, NoticeKey.OPENUI_LABELS_VALUES, id, labels.size.toString(), values.size.toString())
         }
-        if (labels.size > 12) errors += "ligne $line : `$id` a ${labels.size} parts, la limite est 12"
-        if (values.any { it < 0 }) errors += "ligne $line : `$id` a une part négative"
-        if (values.isNotEmpty() && values.sum() <= 0) errors += "ligne $line : les parts de `$id` font zéro"
+        if (labels.size > 12) errors += at(line, NoticeKey.OPENUI_LINE_TOO_MANY_SHARES, id, labels.size.toString())
+        if (values.any { it < 0 }) errors += at(line, NoticeKey.OPENUI_NEGATIVE_SHARE, id)
+        if (values.isNotEmpty() && values.sum() <= 0) errors += at(line, NoticeKey.OPENUI_ZERO_SHARES, id)
         return errors
     }
 

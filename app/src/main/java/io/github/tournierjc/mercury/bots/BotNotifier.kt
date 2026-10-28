@@ -11,6 +11,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import io.github.tournierjc.mercury.MainActivity
 import io.github.tournierjc.mercury.data.BotAttention
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.ui.noticeText
 
 /**
  * System notifications for bot attention. The app posts them while its process is alive:
@@ -27,10 +31,10 @@ class BotNotifier(private val context: Context) {
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Équipiers",
+            context.getString(R.string.notification_channel_crew),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Un équipier a besoin de vous, ou a terminé son travail."
+            description = context.getString(R.string.notification_channel_crew_desc)
             enableVibration(false)
         }
         manager.createNotificationChannel(channel)
@@ -61,9 +65,9 @@ class BotNotifier(private val context: Context) {
         )
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
-            .setContentTitle(title(attention))
-            .setContentText(body(attention))
-            .setStyle(Notification.BigTextStyle().bigText(body(attention)))
+            .setContentTitle(noticeText(context, titleNotice(attention)))
+            .setContentText(noticeText(context, bodyNotice(attention)))
+            .setStyle(Notification.BigTextStyle().bigText(noticeText(context, bodyNotice(attention))))
             .setContentIntent(pending)
             .setAutoCancel(true)
             .build()
@@ -89,19 +93,23 @@ class BotNotifier(private val context: Context) {
         const val EXTRA_BOT_ID = "botId"
         private const val NOTIFICATION_ID = 4200
 
-        fun title(attention: BotAttention): String = when (attention.kind) {
-            BotAttention.Kind.NeedsYou -> "${attention.botName} a besoin de vous"
-            BotAttention.Kind.RunFinished -> "${attention.botName} a terminé"
-            BotAttention.Kind.RunFailed -> "${attention.botName} a échoué"
+        fun titleNotice(attention: BotAttention): Notice = when (attention.kind) {
+            BotAttention.Kind.NeedsYou -> Notice(NoticeKey.ATTENTION_NEEDS_YOU, args = listOf(attention.botName))
+            BotAttention.Kind.RunFinished -> Notice(NoticeKey.ATTENTION_FINISHED, args = listOf(attention.botName))
+            BotAttention.Kind.RunFailed -> Notice(NoticeKey.ATTENTION_FAILED, args = listOf(attention.botName))
         }
 
-        fun body(attention: BotAttention): String = when (attention.kind) {
-            BotAttention.Kind.NeedsYou ->
-                attention.detail.ifBlank { "Il attend une réponse avant de continuer." }
-            BotAttention.Kind.RunFinished ->
-                attention.detail.ifBlank { "Le travail est prêt dans ses livrables." }
-            BotAttention.Kind.RunFailed ->
-                attention.detail.ifBlank { "Le dernier passage s'est arrêté sur une erreur." }
+        /**
+         * The line under the title. A detail from the daemon is passed through verbatim (it is the
+         * teammate's own words); otherwise the kind's own sentence is used.
+         */
+        fun bodyNotice(attention: BotAttention): Notice {
+            val key = when (attention.kind) {
+                BotAttention.Kind.NeedsYou -> NoticeKey.ATTENTION_NEEDS_YOU_BODY
+                BotAttention.Kind.RunFinished -> NoticeKey.ATTENTION_FINISHED_BODY
+                BotAttention.Kind.RunFailed -> NoticeKey.ATTENTION_FAILED_BODY
+            }
+            return if (attention.detail.isBlank()) Notice(key) else Notice(key).withDetail(attention.detail)
         }
     }
 }

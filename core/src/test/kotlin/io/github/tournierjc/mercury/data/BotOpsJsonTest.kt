@@ -11,6 +11,7 @@ import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -129,17 +130,20 @@ class BotOpsJsonTest {
 
     @Test
     fun `run labels translate the journal states`() {
-        assertEquals("réussi", BotOps.runStateLabel("completed"))
-        assertEquals("échec", BotOps.runStateLabel("failed"))
-        assertEquals("interrompu", BotOps.runStateLabel("timeout"))
-        assertEquals("en cours", BotOps.runStateLabel("running"))
-        assertEquals("—", BotOps.runStateLabel(""))
+        assertEquals(NoticeKey.RUN_SUCCEEDED, BotOps.runStateNotice("completed")?.key)
+        assertEquals(NoticeKey.RUN_FAILED_STATE, BotOps.runStateNotice("failed")?.key)
+        assertEquals(NoticeKey.RUN_CANCELLED_STATE, BotOps.runStateNotice("timeout")?.key)
+        assertEquals(NoticeKey.RUN_RUNNING_STATE, BotOps.runStateNotice("running")?.key)
+        assertNull(BotOps.runStateNotice(""))
         assertTrue(BotOps.runStateFailed("failed"))
         assertFalse(BotOps.runStateFailed("completed"))
 
-        assertEquals("4,2k entrée · 800 sortie", BotOps.tokensLabel(4200, 800))
-        assertEquals("1,2M entrée · 0 sortie", BotOps.tokensLabel(1_200_000, 0))
-        assertEquals("—", BotOps.tokensLabel(0, 0))
+        val short = BotOps.tokensNotices(4200, 800)
+        assertEquals(listOf(NoticeKey.TOKENS_IN, NoticeKey.TOKENS_OUT), short.map { it.key })
+        assertEquals(listOf("4,2k", "800"), short.flatMap { it.args })
+        assertEquals("1,2M", BotOps.tokensNotices(1_200_000, 0).first().args.single())
+        // A run that reported nothing draws no line at all, rather than a dash.
+        assertTrue(BotOps.tokensNotices(0, 0).isEmpty())
     }
 
     @Test
@@ -193,7 +197,7 @@ class BotOpsJsonTest {
         assertEquals(2, rows.size)
         assertTrue(rows[0].hasTranscript)
         assertEquals("3f2a9b1c", rows[0].runId)
-        assertEquals("—", BotOps.runStateLabel(rows[0].state))
+        assertNull(BotOps.runStateNotice(rows[0].state))
         // No journal line means no start time: the row falls back on the file time.
         assertEquals(1793000600000L, rows[0].mtimeMs)
     }
@@ -218,11 +222,23 @@ class BotOpsJsonTest {
         val rows = BotOps.mergeRuns(runs, records)
 
         val failed = rows[1]
-        assertTrue(BotOps.runSubtitle(failed).contains("échec"))
-        assertTrue(BotOps.runSubtitle(failed).contains("18,5 s"))
-        assertTrue(BotOps.runDetail(failed).contains("erreur : provider timeout"))
-        assertTrue(BotOps.runDetail(failed).contains("3 outils"))
-        assertTrue(BotOps.runDetail(rows[0]).contains("51k entrée"))
+        assertEquals(NoticeKey.RUN_FAILED_STATE, BotOps.runStateNotice(failed.state)?.key)
+        assertTrue(BotOps.runSubtitle(failed, "échoué").contains("échoué"))
+        assertTrue(BotOps.runSubtitle(failed, "échoué").contains("18,5 s"))
+        assertEquals(NoticeKey.RUN_ERROR_LINE, BotOps.errorNotice(failed)?.key)
+        assertEquals("provider timeout", BotOps.errorNotice(failed)?.args?.single())
+        assertEquals(NoticeKey.RUN_TOOL_CALLS_MANY, BotOps.toolCallsNotice(failed)?.key)
+        assertEquals(listOf("3"), BotOps.toolCallsNotice(failed)?.args)
+        assertEquals(NoticeKey.RUN_TOOL_CALLS_ONE, BotOps.toolCallsNotice(rows[0].copy(toolCalls = 1))?.key)
+
+        val detail = BotOps.runDetail(
+            tokensText = "51k entrée · 2 sortie",
+            toolCallsText = "3 outils",
+            errorText = "erreur : provider timeout",
+        )
+        assertTrue(detail.contains("erreur : provider timeout"))
+        assertTrue(detail.contains("3 outils"))
+        assertTrue(detail.contains("51k entrée"))
     }
 
     @Test
@@ -234,9 +250,10 @@ class BotOpsJsonTest {
         assertEquals("Rédige le brief du jour", transcript.prompt)
         assertEquals("Brief écrit dans brief.md", transcript.output)
         assertEquals(2, transcript.trace.size)
-        assertEquals("✓ write_file brief.md", BotOps.traceLabel(transcript.trace[0]))
-        assertEquals("✗ read_file /work/old.md", BotOps.traceLabel(transcript.trace[1]))
-        assertTrue(BotOps.transcriptLine(transcript.record.state, transcript.record.startedAt, transcript.record.durationMs).contains("réussi"))
+        assertEquals("✓ write_file brief.md", BotOps.traceLabel(transcript.trace[0], "outil"))
+        assertEquals("✗ read_file /work/old.md", BotOps.traceLabel(transcript.trace[1], "outil"))
+        val line = BotOps.transcriptLine("réussi", transcript.record.startedAt, transcript.record.durationMs)
+        assertTrue(line.contains("réussi"))
     }
 
     @Test
@@ -250,12 +267,16 @@ class BotOpsJsonTest {
         assertEquals("dead", job.state)
         assertEquals("provider_rate_limit", job.reasonCode)
 
-        val subtitle = BotOps.incidentSubtitle(job)
+        assertEquals(NoticeKey.ATTEMPTS_MANY, BotOps.attemptsNotice(job).key)
+        assertEquals(listOf("2"), BotOps.attemptsNotice(job).args)
+        val subtitle = BotOps.incidentSubtitle(job, attemptsText = "2 tentatives", reasonText = "quota fournisseur")
         assertTrue(subtitle.startsWith("#7f3a2b10"))
         assertTrue(subtitle.contains("2 tentatives"))
         assertTrue(subtitle.contains("quota fournisseur"))
-        assertEquals("introuvable", BotOps.reasonLabel("not_found"))
-        assertEquals("not found", BotOps.reasonLabel("not found"))
+        assertEquals(NoticeKey.REASON_NOT_FOUND, BotOps.reasonNotice("not_found")?.key)
+        // A code this app does not know travels as its argument, spaces instead of underscores.
+        assertEquals(NoticeKey.REASON_OTHER, BotOps.reasonNotice("disk_full")?.key)
+        assertEquals("disk full", BotOps.reasonNotice("disk_full")?.args?.single())
     }
 
     @Test
@@ -276,11 +297,11 @@ class BotOpsJsonTest {
     @Test
     fun `ages and stamps never invent a date for epoch zero`() {
         val now = 1793000600000L
-        assertEquals("à l'instant", BotOps.ageLabel(now - 30_000, now))
-        assertEquals("il y a 2 min", BotOps.ageLabel(now - 120_000, now))
-        assertEquals("il y a 2 h", BotOps.ageLabel(now - 7_200_000, now))
-        assertEquals("il y a 3 j", BotOps.ageLabel(now - 3 * 86_400_000L, now))
-        assertEquals("—", BotOps.ageLabel(0, now))
+        assertEquals(NoticeKey.AGE_NOW, BotOps.ageNotice(now - 30_000, now)?.key)
+        assertEquals(listOf("2"), BotOps.ageNotice(now - 120_000, now)?.args)
+        assertEquals(NoticeKey.AGE_HOURS, BotOps.ageNotice(now - 7_200_000, now)?.key)
+        assertEquals(listOf("3"), BotOps.ageNotice(now - 3 * 86_400_000L, now)?.args)
+        assertNull(BotOps.ageNotice(0, now))
         assertEquals("—", BotOps.dateLabel(0))
     }
 
@@ -289,10 +310,11 @@ class BotOpsJsonTest {
         val page = json.decodeFromString(BotOutputsPage.serializer(), outputsPayload)
         val now = 1793000600000L
 
-        assertTrue(BotOps.outputSubtitle(page.outputs[0], now).startsWith("final"))
-        assertTrue(BotOps.outputSubtitle(page.outputs[1], now).startsWith("travail"))
-        assertTrue(BotOps.outputOrigin(page.outputs[0], "Veille", now).startsWith("Veille · final"))
+        assertEquals(NoticeKey.OUTPUT_FINAL, BotOps.scopeNotice(page.outputs[0]).key)
+        assertEquals(NoticeKey.OUTPUT_DRAFT, BotOps.scopeNotice(page.outputs[1]).key)
+        assertEquals("Veille", BotOps.originName(page.outputs[0], "Veille"))
         // A missing name falls back on the id rather than an empty prefix.
-        assertTrue(BotOps.outputOrigin(page.outputs[0], "", now).startsWith("veille · final"))
+        // The bot id stands in when the name is unknown.
+        assertEquals("veille", BotOps.originName(page.outputs[0], ""))
     }
 }

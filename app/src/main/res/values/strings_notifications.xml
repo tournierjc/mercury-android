@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_crew">Équipiers</string>
+    <string name="notification_channel_crew_desc">Un équipier a besoin de vous, ou a terminé son travail.</string>
+    <string name="notification_watch_title">Mercury — veille</string>
+    <string name="notification_watch_channel">Veille des équipiers</string>
+    <string name="notification_watch_channel_desc">La connexion au serveur reste ouverte pour vous alerter sans délai.</string>
+    <string name="notification_watch_stop">Arrêter</string>
+    <string name="picker_unreadable">Fichier illisible</string>
+    <string name="picker_too_heavy">%1$s dépasse 15 Mo</string>
+    <string name="picker_not_image">%1$s n\'est pas une image lisible</string>
+    <string name="bridge_no_address">&lt;ip-du-téléphone&gt;</string>
+    <string name="share_bundle_title">Partager le bundle</string>
+</resources>

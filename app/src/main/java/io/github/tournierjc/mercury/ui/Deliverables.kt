@@ -148,7 +148,11 @@ fun DeliverablesSection(
                             maxLines = 2,
                         )
                         Text(
-                            text = BotOps.outputSubtitle(output, now),
+                            text = listOfNotNull(
+                                noticeText(BotOps.scopeNotice(output)),
+                                BotOps.sizeLabel(output.bytes),
+                                BotOps.ageNotice(output.mtimeMs, now)?.let { noticeText(it) },
+                            ).joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.textSecondary,
                         )
@@ -282,7 +286,7 @@ fun OutputPreviewDialog(
                     }
 
                     else -> Text(
-                        text = state.note ?: stringResource(R.string.out_unavailable),
+                        text = state.note?.let { noticeText(it) } ?: stringResource(R.string.out_unavailable),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )

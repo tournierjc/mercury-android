@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,10 +50,16 @@ fun RunsSection(
             Text(text = emptyText, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
             return@CollapsibleSection
         }
+        val context = LocalContext.current
         runs.take(12).forEach { run ->
             ActionRow(
-                title = BotOps.runSubtitle(run),
-                subtitle = BotOps.runDetail(run).ifBlank { run.summary.take(140) },
+                title = BotOps.runSubtitle(run, BotOps.runStateNotice(run.state)?.let { noticeText(it) }.orEmpty()),
+                subtitle = BotOps.runDetail(
+                    tokensText = BotOps.tokensNotices(run.tokensIn, run.tokensOut)
+                        .joinToString(" · ") { noticeText(context, it) },
+                    toolCallsText = BotOps.toolCallsNotice(run)?.let { noticeText(it) }.orEmpty(),
+                    errorText = BotOps.errorNotice(run)?.let { noticeText(it) },
+                ).ifBlank { run.summary.take(140) },
                 trailing = if (run.hasTranscript) stringResource(R.string.run_details) else "",
                 enabled = run.hasTranscript,
                 onClick = if (run.hasTranscript) ({ onOpen(run) }) else null,
@@ -95,10 +102,19 @@ fun RunDetailDialog(
                     return@Column
                 }
                 val record = loaded.record
-                KeyValueRow(stringResource(R.string.run_state), BotOps.runStateLabel(record.state), highlight = !BotOps.runStateFailed(record.state))
+                val context = LocalContext.current
+                KeyValueRow(
+                    stringResource(R.string.run_state),
+                    BotOps.runStateNotice(record.state)?.let { noticeText(it) } ?: "—",
+                    highlight = !BotOps.runStateFailed(record.state),
+                )
                 KeyValueRow(stringResource(R.string.run_started), BotOps.dateLabel(record.startedAt))
                 KeyValueRow(stringResource(R.string.run_duration), BotOps.durationLabel(record.durationMs))
-                KeyValueRow(stringResource(R.string.run_tokens), BotOps.tokensLabel(record.tokensIn, record.tokensOut))
+                KeyValueRow(
+                    stringResource(R.string.run_tokens),
+                    BotOps.tokensNotices(record.tokensIn, record.tokensOut)
+                        .joinToString(" · ") { noticeText(context, it) }.ifBlank { "—" },
+                )
                 KeyValueRow(stringResource(R.string.run_trigger), record.trigger.ifBlank { "—" })
                 KeyValueRow(stringResource(R.string.run_tools), stringResource(R.string.run_tool_calls, record.toolCalls, record.steps))
                 record.outcome.takeIf { it.isNotBlank() }?.let { KeyValueRow(stringResource(R.string.run_result), it) }
@@ -125,7 +141,7 @@ fun RunDetailDialog(
                     )
                     loaded.trace.take(40).forEach { step ->
                         Text(
-                            text = BotOps.traceLabel(step),
+                            text = BotOps.traceLabel(step, stringResource(R.string.notice_tool_fallback)),
                             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                             color = if (step.ok) colors.textPrimary else colors.danger,
                         )
@@ -183,7 +199,11 @@ fun DlqSection(
         incidents.forEach { job ->
             ActionRow(
                 title = job.prompt.take(120).ifBlank { stringResource(R.string.run_job, job.id.take(8)) },
-                subtitle = BotOps.incidentSubtitle(job),
+                subtitle = BotOps.incidentSubtitle(
+                    job,
+                    attemptsText = noticeText(BotOps.attemptsNotice(job)),
+                    reasonText = BotOps.reasonNotice(job.reasonCode)?.let { noticeText(it) },
+                ),
                 trailing = stringResource(R.string.run_retry),
                 enabled = !busy,
                 onClick = { onReplay(job) },
