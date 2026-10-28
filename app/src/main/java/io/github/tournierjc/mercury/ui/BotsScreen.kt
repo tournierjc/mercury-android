@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Create
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.HideImage
@@ -549,6 +550,7 @@ private fun BotDetail(
     }
     var personaText by remember(state.personaLoaded, id) { mutableStateOf(state.persona) }
     var showAddCrew by remember { mutableStateOf(false) }
+    var showRename by remember { mutableStateOf(false) }
     var budgetText by remember(id) { mutableStateOf("") }
     var avatarError by remember(id) { mutableStateOf<String?>(null) }
 
@@ -624,6 +626,12 @@ private fun BotDetail(
                     tint = if (BotJson.enabled(bot)) colors.textPrimary else colors.accent,
                     enabled = !state.busy,
                     onClick = { viewModel.setEnabled(id, !BotJson.enabled(bot)) },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Create,
+                    label = stringResource(R.string.bots_action_rename),
+                    enabled = !state.busy,
+                    onClick = { showRename = true },
                 ),
                 QuickAction(
                     icon = Icons.Rounded.IosShare,
@@ -1075,6 +1083,47 @@ private fun BotDetail(
                 showNewCrew = true
             },
             onDismiss = { showAddCrew = false },
+        )
+    }
+    if (showRename) {
+        val current = BotJson.name(bot)
+        var draft by remember(id, showRename) { mutableStateOf(current) }
+        AlertDialog(
+            onDismissRequest = { showRename = false },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.bots_rename_title), color = colors.textPrimary) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        label = { Text(stringResource(R.string.bots_rename_field)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    // The one thing a rename must not be mistaken for: the id, the folders and the
+                    // journal entries keep pointing at the bot whoever it is called.
+                    Text(
+                        text = stringResource(R.string.bots_rename_id_notice, BotJson.id(bot)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = draft.isNotBlank() && !state.busy,
+                    onClick = { showRename = false; viewModel.rename(id, draft) },
+                ) {
+                    Text(stringResource(R.string.bots_rename_confirm), color = colors.accent)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRename = false }) {
+                    Text(stringResource(R.string.bots_rename_cancel), color = colors.textSecondary)
+                }
+            },
         )
     }
     if (showModelPicker) {

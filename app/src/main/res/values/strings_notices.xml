@@ -231,4 +231,6 @@
     <string name="notice_spotify_unknown_title">Titre inconnu</string>
     <string name="notice_spotify_free">Gratuit</string>
     <string name="notice_spotify_premium">Premium</string>
+    <string name="notice_teammate_renamed">Nom enregistré.</string>
+    <string name="notice_teammate_name_refused">Un nom vide n\'est pas un nom.</string>
 </resources>

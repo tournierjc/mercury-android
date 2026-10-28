@@ -161,4 +161,10 @@
         <item quantity="one"> · %1$d member</item>
         <item quantity="other"> · %1$d members</item>
     </plurals>
+    <string name="bots_action_rename">Rename</string>
+    <string name="bots_rename_title">Rename this bot</string>
+    <string name="bots_rename_field">Name</string>
+    <string name="bots_rename_id_notice">The id stays %1$s: folders, journal and teammates keep pointing at it.</string>
+    <string name="bots_rename_confirm">Rename</string>
+    <string name="bots_rename_cancel">Cancel</string>
 </resources>

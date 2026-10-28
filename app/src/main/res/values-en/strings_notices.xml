@@ -230,4 +230,6 @@
     <string name="notice_spotify_unknown_title">Unknown title</string>
     <string name="notice_spotify_free">Free</string>
     <string name="notice_spotify_premium">Premium</string>
+    <string name="notice_teammate_renamed">Name saved.</string>
+    <string name="notice_teammate_name_refused">A blank name is not a name.</string>
 </resources>

@@ -161,4 +161,10 @@
         <item quantity="one"> · %1$d équipier</item>
         <item quantity="other"> · %1$d équipiers</item>
     </plurals>
+    <string name="bots_action_rename">Renommer</string>
+    <string name="bots_rename_title">Renommer ce bot</string>
+    <string name="bots_rename_field">Nom</string>
+    <string name="bots_rename_id_notice">L\'identifiant reste %1$s : dossiers, journal et équipiers continuent de le désigner.</string>
+    <string name="bots_rename_confirm">Renommer</string>
+    <string name="bots_rename_cancel">Annuler</string>
 </resources>
