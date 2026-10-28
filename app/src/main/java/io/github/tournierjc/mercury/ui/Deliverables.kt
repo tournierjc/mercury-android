@@ -44,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -609,20 +610,43 @@ fun BotDeliverablesSheet(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 28.dp),
         ) {
-            Text(
-                text = stringResource(R.string.out_of_bot, botName),
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-            )
-            Text(
-                text = when (outputs.size) {
-                    0 -> stringResource(R.string.out_none_bot)
-                    1 -> stringResource(R.string.out_count_one)
-                    else -> stringResource(R.string.out_count_many, outputs.size)
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.textSecondary,
-            )
+            // The title and its refresh share one row: the button at the bottom of the sheet was
+            // below the list it reloads, so the further down the folder you had scrolled, the
+            // further the control was from the count it changes.
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.out_of_bot, botName),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = when (outputs.size) {
+                            0 -> stringResource(R.string.out_none_bot)
+                            1 -> stringResource(R.string.out_count_one)
+                            else -> stringResource(R.string.out_count_many, outputs.size)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                }
+                IconButton(onClick = onReload, enabled = !busy, modifier = Modifier.size(ComposerControlSize)) {
+                    if (busy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = colors.accent,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.Refresh,
+                            contentDescription = stringResource(R.string.out_refresh),
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(ComposerControlIcon),
+                        )
+                    }
+                }
+            }
             DeliverablesSection(
                 title = stringResource(R.string.out_files),
                 outputs = outputs,
@@ -633,15 +657,6 @@ fun BotDeliverablesSheet(
                 onPreview = onPreview,
                 onShare = onShare,
                 onDelete = onDelete,
-            )
-            IconActionBar(
-                listOf(
-                    QuickAction(
-                        icon = Icons.Rounded.Refresh,
-                        label = stringResource(R.string.out_refresh),
-                        onClick = onReload,
-                    ),
-                ),
             )
         }
     }
