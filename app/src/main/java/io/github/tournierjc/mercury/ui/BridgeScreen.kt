@@ -239,7 +239,7 @@ fun BridgeScreen(onBack: () -> Unit) {
         // password field keeps it, instead of doubling the row with « Afficher » / « Masquer ».
         var copiedUrl by remember { mutableStateOf(false) }
         var copiedToken by remember { mutableStateOf(false) }
-        val urlValue = BridgeAddress.url(prefs.port)
+        val urlValue = BridgeAddress.url(prefs.port, stringResource(R.string.bridge_no_address))
 
         CopyableField(
             label = stringResource(R.string.bridge_url_label),

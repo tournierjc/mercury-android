@@ -58,7 +58,7 @@ class DeviceReaders(private val context: Context) {
 
     fun calendar(fromIso: String?, toIso: String?, limit: Int): CalendarResponse {
         if (!has(Manifest.permission.READ_CALENDAR)) {
-            throw BridgeException("permission READ_CALENDAR non accordée")
+            throw BridgeException("READ_CALENDAR: permission not granted")
         }
         val from = parseInstant(fromIso) ?: startOfToday()
         val to = parseInstant(toIso) ?: from.plusSeconds(7 * 24 * 3600)
@@ -103,7 +103,7 @@ class DeviceReaders(private val context: Context) {
 
     fun contacts(query: String?, limit: Int): ContactsResponse {
         if (!has(Manifest.permission.READ_CONTACTS)) {
-            throw BridgeException("permission READ_CONTACTS non accordée")
+            throw BridgeException("READ_CONTACTS: permission not granted")
         }
         val search = query?.trim().orEmpty()
         val selection = if (search.isEmpty()) null else "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} LIKE ?"
@@ -132,7 +132,7 @@ class DeviceReaders(private val context: Context) {
 
     fun sms(limit: Int, address: String?): List<PhoneMessage> {
         if (!has(Manifest.permission.READ_SMS)) {
-            throw BridgeException("permission READ_SMS non accordée")
+            throw BridgeException("READ_SMS: permission not granted")
         }
         val messages = mutableListOf<PhoneMessage>()
         val selection = address?.takeIf { it.isNotBlank() }?.let { "${Telephony.Sms.ADDRESS} = ?" }

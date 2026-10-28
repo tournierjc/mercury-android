@@ -104,7 +104,7 @@ fun ThreadDrawer(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = BotJson.stateLabel(BotJson.state(bot)),
+                                text = noticeText(BotJson.stateNotice(BotJson.state(bot))),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.textSecondary,
                             )

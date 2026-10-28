@@ -1,5 +1,8 @@
 package io.github.tournierjc.mercury.bots
 
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+
 /**
  * The one line the persistent notification of the watch service carries.
  *
@@ -9,16 +12,21 @@ package io.github.tournierjc.mercury.bots
  */
 object WatchSummary {
 
-    const val TITLE = "Mercury — veille"
-
-    fun text(bots: Int, waiting: Int): String = when {
-        bots <= 0 -> "Aucun équipier — connexion au serveur en cours"
-        waiting <= 0 -> "${crew(bots)} · rien ne vous attend"
-        else -> "${crew(bots)} · ${waitingText(waiting)}"
+    /**
+     * The parts of the line, so the service can resolve them with the owner's language:
+     * `3 équipiers · 1 vous attend`, or `Aucun équipier — connexion au serveur en cours`.
+     */
+    fun notices(bots: Int, waiting: Int): List<Notice> = when {
+        bots <= 0 -> listOf(Notice(NoticeKey.CREW_NONE))
+        waiting <= 0 -> listOf(crew(bots), Notice(NoticeKey.CREW_WAITING_NONE))
+        else -> listOf(crew(bots), waitingNotice(waiting))
     }
 
-    private fun crew(count: Int): String = if (count == 1) "1 équipier" else "$count équipiers"
+    private fun crew(count: Int): Notice =
+        if (count == 1) Notice(NoticeKey.CREW_ONE)
+        else Notice(NoticeKey.CREW_MANY, args = listOf(count.toString()))
 
-    private fun waitingText(count: Int): String =
-        if (count == 1) "1 vous attend" else "$count vous attendent"
+    private fun waitingNotice(count: Int): Notice =
+        if (count == 1) Notice(NoticeKey.CREW_WAITING_ONE)
+        else Notice(NoticeKey.CREW_WAITING_MANY, args = listOf(count.toString()))
 }

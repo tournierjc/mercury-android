@@ -114,14 +114,14 @@ object BotJson {
         return hash % 360
     }
 
-    /** French label for a state, used by the roster chips. */
-    fun stateLabel(state: String): String = when (state) {
-        "running" -> "en cours"
-        "queued" -> "en file"
-        "paused" -> "en pause"
-        "disabled" -> "désactivé"
-        else -> "au repos"
-    }
+    /** The roster chip's word, as a key — the screens own both languages. */
+    fun stateNotice(state: String): Notice = when (state) {
+        "running" -> Notice(NoticeKey.BOT_STATE_RUNNING)
+        "queued" -> Notice(NoticeKey.BOT_STATE_QUEUED)
+        "paused" -> Notice(NoticeKey.BOT_STATE_PAUSED)
+        "disabled" -> Notice(NoticeKey.BOT_STATE_DISABLED)
+        else -> Notice(NoticeKey.BOT_STATE_RESTING)
+    }.asInfo()
 
     /**
      * Compares two rosters and returns what changed in a way worth a notification:

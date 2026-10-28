@@ -21,8 +21,8 @@ object BridgeAddress {
         return addresses.firstOrNull(::isTailnet) ?: addresses.firstOrNull()
     }
 
-    fun url(port: Int): String {
-        val host = localAddress() ?: "<ip-du-téléphone>"
+    fun url(port: Int, unknownHost: String = "0.0.0.0"): String {
+        val host = localAddress() ?: unknownHost
         return "http://$host:$port"
     }
 

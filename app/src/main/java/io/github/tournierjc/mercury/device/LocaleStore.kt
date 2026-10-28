@@ -21,12 +21,14 @@ object LocaleStore {
 
     /** What the picker offers. Empty tag = follow the phone. */
     val choices: List<Choice> = listOf(
-        Choice(tag = "", label = "Système"),
+        // Empty label = the screen draws its own word for "follow the phone"; the other two are
+        // a language's name in that language, which is not translated.
+        Choice(tag = ""),
         Choice(tag = "fr", label = "Français"),
         Choice(tag = "en", label = "English"),
     )
 
-    data class Choice(val tag: String, val label: String)
+    data class Choice(val tag: String, val label: String = "")
 
     fun tag(context: Context): String =
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY, "").orEmpty()

@@ -46,12 +46,13 @@ class BotJsonTest {
 
     @Test
     fun `state labels are french`() {
-        assertEquals("en cours", BotJson.stateLabel("running"))
-        assertEquals("en file", BotJson.stateLabel("queued"))
-        assertEquals("en pause", BotJson.stateLabel("paused"))
-        assertEquals("désactivé", BotJson.stateLabel("disabled"))
-        assertEquals("au repos", BotJson.stateLabel("idle"))
-        assertEquals("au repos", BotJson.stateLabel(""))
+        assertEquals(NoticeKey.BOT_STATE_RUNNING, BotJson.stateNotice("running").key)
+        assertEquals(NoticeKey.BOT_STATE_QUEUED, BotJson.stateNotice("queued").key)
+        assertEquals(NoticeKey.BOT_STATE_PAUSED, BotJson.stateNotice("paused").key)
+        assertEquals(NoticeKey.BOT_STATE_DISABLED, BotJson.stateNotice("disabled").key)
+        assertEquals(NoticeKey.BOT_STATE_RESTING, BotJson.stateNotice("idle").key)
+        // An empty state is the resting one, not an error.
+        assertEquals(NoticeKey.BOT_STATE_RESTING, BotJson.stateNotice("").key)
     }
 
     @Test

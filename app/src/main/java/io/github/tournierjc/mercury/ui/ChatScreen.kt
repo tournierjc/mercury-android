@@ -401,7 +401,7 @@ fun ChatScreen(
                 TopBar(
                     title = botName,
                     subtitle = listOfNotNull(
-                        bot?.let { BotJson.stateLabel(BotJson.state(it)) },
+                        bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) },
                         botLive?.takeIf { it.running }?.let { stringResource(R.string.chat_bot_writing) } ?: botWatch.activity[botId],
                     ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
                     onMenu = { scope.launch { drawerState.open() } },

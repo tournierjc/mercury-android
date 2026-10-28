@@ -1,5 +1,8 @@
 package io.github.tournierjc.mercury.openui
 
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -15,7 +18,7 @@ class OpenUiTest {
     private fun render(spec: String, partial: Boolean = false): OpenUiNode =
         (OpenUi.parse(spec, partial) as OpenUi.Result.Rendered).root
 
-    private fun refused(spec: String, partial: Boolean = false): List<String> =
+    private fun refused(spec: String, partial: Boolean = false): List<Notice> =
         (OpenUi.parse(spec, partial) as OpenUi.Result.Refused).errors
 
     private fun pending(spec: String): Boolean = OpenUi.parse(spec, partial = true) is OpenUi.Result.Pending
@@ -58,22 +61,23 @@ class OpenUiTest {
 
     @Test
     fun `a component outside the contract is refused, never drawn`() {
-        assertTrue(refused("root = Form({\"fields\": []})").first().contains("Form"))
+        assertEquals(listOf("Form"), refused("root = Form({\"fields\": []})").first().args.takeLast(1))
     }
 
     @Test
     fun `a prop that points at a URL is refused`() {
-        assertTrue(refused("root = Card({\"title\": \"x\", \"href\": \"https://example.com\"})").first().contains("href"))
+        assertEquals(listOf("href"), refused("root = Card({\"title\": \"x\", \"href\": \"https://example.com\"})").first().args.takeLast(1))
     }
 
     @Test
     fun `a prop that does not exist on the component is refused`() {
-        assertTrue(refused("root = Card({\"title\": \"x\", \"shadow\": \"2\"})").first().contains("shadow"))
+        // args = line, prop, component: the offending prop sits in the middle.
+        assertEquals("shadow", refused("root = Card({\"title\": \"x\", \"shadow\": \"2\"})").first().args[1])
     }
 
     @Test
     fun `a reference to something undefined is refused`() {
-        assertTrue(refused("root = Stack([ghost])").first().contains("ghost"))
+        assertEquals(listOf("ghost"), refused("root = Stack([ghost])").first().args.takeLast(1))
     }
 
     @Test
@@ -82,7 +86,7 @@ class OpenUiTest {
             root = Stack([a])
             a = Text({"text": "ok"})
             b = Text({"text": "cache-moi"})
-        """.trimIndent()).any { it.contains("b") })
+        """.trimIndent()).any { it.args.contains("b") })
     }
 
     @Test
@@ -95,7 +99,7 @@ class OpenUiTest {
 
     @Test
     fun `a spec without root is refused`() {
-        assertTrue(refused("a = Text({\"text\": \"x\"})").any { it.contains("root") })
+        assertTrue(refused("a = Text({\"text\": \"x\"})").any { it.key == NoticeKey.OPENUI_NO_ROOT })
     }
 
     @Test
@@ -201,7 +205,8 @@ class OpenUiTest {
             "root = Stack([a])\nnot a statement\na = Text({\"text\": \"x\"})\ntail = Tex",
             partial = true,
         )
-        assertTrue(errors.toString(), errors.any { it.contains("ligne 2") })
+        // The line number leads the arguments, so a reader can point at the statement.
+        assertTrue(errors.toString(), errors.any { it.args.firstOrNull() == "2" })
     }
 
     @Test
@@ -265,33 +270,33 @@ class OpenUiTest {
     @Test
     fun `a pie whose labels and values disagree is refused`() {
         val errors = refused("""root = Pie({"labels": ["a", "b"], "values": [1]})""")
-        assertTrue(errors.any { it.contains("libellés") })
+        assertTrue(errors.toString(), errors.any { it.key == NoticeKey.OPENUI_LABELS_VALUES })
     }
 
     @Test
     fun `a pie with a negative slice or a zero total is refused`() {
-        assertTrue(refused("""root = Pie({"labels": ["a", "b"], "values": [5, -1]})""").any { it.contains("négative") })
-        assertTrue(refused("""root = Pie({"labels": ["a"], "values": [0]})""").any { it.contains("zéro") })
+        assertTrue(refused("""root = Pie({"labels": ["a", "b"], "values": [5, -1]})""").any { it.key == NoticeKey.OPENUI_NEGATIVE_SHARE })
+        assertTrue(refused("""root = Pie({"labels": ["a"], "values": [0]})""").any { it.key == NoticeKey.OPENUI_ZERO_SHARES })
     }
 
     @Test
     fun `a pie is capped at twelve slices`() {
         val labels = (0 until 13).joinToString(", ") { "\"l$it\"" }
         val values = (0 until 13).joinToString(", ") { "1" }
-        assertTrue(refused("""root = Pie({"labels": [$labels], "values": [$values]})""").any { it.contains("12") })
+        assertTrue(refused("""root = Pie({"labels": [$labels], "values": [$values]})""").any { it.key == NoticeKey.OPENUI_LINE_TOO_MANY_SHARES })
     }
 
     @Test
     fun `kind is checked against the component that carries it`() {
-        assertTrue(refused("""root = Pie({"kind": "bar", "labels": ["a"], "values": [1]})""").any { it.contains("pie") })
+        assertTrue(refused("""root = Pie({"kind": "bar", "labels": ["a"], "values": [1]})""").any { it.key == NoticeKey.OPENUI_LINE_BAD_KIND && "pie" in it.args.last() })
         assertTrue(refused("""root = Stack([c])
-c = Chart({"kind": "donut", "labels": ["a"], "values": [1]})""").any { it.contains("bar") })
+c = Chart({"kind": "donut", "labels": ["a"], "values": [1]})""").any { it.key == NoticeKey.OPENUI_LINE_BAD_KIND && "bar" in it.args.last() })
     }
 
     @Test
     fun `a gauge value must be a number and its max positive`() {
-        assertTrue(refused("""root = Gauge({"value": "42"})""").any { it.contains("nombre") })
-        assertTrue(refused("""root = Gauge({"value": 1, "max": 0})""").any { it.contains("max") })
+        assertTrue(refused("""root = Gauge({"value": "42"})""").any { it.key == NoticeKey.OPENUI_NUMBER })
+        assertTrue(refused("""root = Gauge({"value": 1, "max": 0})""").any { it.key == NoticeKey.OPENUI_POSITIVE })
     }
 
     @Test

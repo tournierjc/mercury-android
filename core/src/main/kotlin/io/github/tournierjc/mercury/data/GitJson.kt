@@ -13,23 +13,26 @@ import io.github.tournierjc.mercury.data.dto.GitStatusDto
  */
 object GitJson {
 
-    /** `mapStatus()` on the daemon side, translated. Unknown codes stay verbatim. */
-    fun statusLabel(status: String): String = when (status.lowercase()) {
-        "modified" -> "modifié"
-        "added" -> "ajouté"
-        "deleted" -> "supprimé"
-        "renamed" -> "renommé"
-        "copied" -> "copié"
-        "unmerged" -> "non fusionné"
-        "untracked" -> "non suivi"
-        "ignored" -> "ignoré"
-        "" -> "modifié"
-        else -> status
+    /**
+     * `mapStatus()` on the daemon side, as a key: the words belong to the screen (two languages).
+     * A code this app does not know travels as the argument, verbatim, rather than being guessed.
+     */
+    fun statusNotice(status: String): Notice = when (status.lowercase()) {
+        "modified" -> Notice(NoticeKey.GIT_MODIFIED).asInfo()
+        "added" -> Notice(NoticeKey.GIT_ADDED).asInfo()
+        "deleted" -> Notice(NoticeKey.GIT_DELETED).asInfo()
+        "renamed" -> Notice(NoticeKey.GIT_RENAMED).asInfo()
+        "copied" -> Notice(NoticeKey.GIT_COPIED).asInfo()
+        "unmerged" -> Notice(NoticeKey.GIT_UNMERGED).asInfo()
+        "untracked" -> Notice(NoticeKey.GIT_UNTRACKED).asInfo()
+        "ignored" -> Notice(NoticeKey.GIT_IGNORED).asInfo()
+        "" -> Notice(NoticeKey.GIT_MODIFIED).asInfo()
+        else -> Notice(NoticeKey.GIT_OTHER, args = listOf(status)).asInfo()
     }
 
-    /** `indexé · modifié` — the side of the index plus what happened to the file. */
-    fun changeLabel(file: GitFileDto): String =
-        (if (file.staged) "indexé" else "non indexé") + " · " + statusLabel(file.status)
+    /** Which side of the index the row is on: `indexé` or `non indexé`. */
+    fun sideNotice(staged: Boolean): Notice =
+        Notice(if (staged) NoticeKey.GIT_STAGED else NoticeKey.GIT_UNSTAGED).asInfo()
 
     fun staged(status: GitStatusDto?): List<GitFileDto> =
         status?.files.orEmpty().filter { it.staged }.distinctBy { it.path }
@@ -49,24 +52,28 @@ object GitJson {
      * `2 à pousser · 1 à tirer`, `à jour` when the branch matches its upstream, and
      * `sans amont` when git tracks nothing — three different truths the card must not blur.
      */
-    fun syncLabel(ahead: Int, behind: Int): String {
+    fun syncNotices(ahead: Int, behind: Int): List<Notice> {
         val parts = buildList {
-            if (ahead > 0) add("$ahead à pousser")
-            if (behind > 0) add("$behind à tirer")
+            if (ahead > 0) add(Notice(NoticeKey.GIT_AHEAD, args = listOf(ahead.toString())).asInfo())
+            if (behind > 0) add(Notice(NoticeKey.GIT_BEHIND, args = listOf(behind.toString())).asInfo())
         }
-        return parts.joinToString(" · ").ifBlank { "à jour" }
+        return parts.ifEmpty { listOf(Notice(NoticeKey.GIT_UP_TO_DATE).asInfo()) }
     }
 
     /** One-line summary of the working tree, for the card header. */
-    fun summaryLabel(status: GitStatusDto?): String {
-        if (status == null) return "indisponible"
+    /** `arbre propre`, `3 modifié(s)`… as keys: the counts are arguments, the words resources. */
+    fun summaryNotice(status: GitStatusDto?): Notice {
+        if (status == null) return Notice(NoticeKey.GIT_UNAVAILABLE).asInfo()
         val stagedCount = staged(status).size
         val unstagedCount = unstaged(status).size
         return when {
-            stagedCount == 0 && unstagedCount == 0 -> "arbre propre"
-            stagedCount == 0 -> "$unstagedCount modifié(s)"
-            unstagedCount == 0 -> "$stagedCount indexé(s)"
-            else -> "$stagedCount indexé(s) · $unstagedCount modifié(s)"
+            stagedCount == 0 && unstagedCount == 0 -> Notice(NoticeKey.GIT_CLEAN).asInfo()
+            stagedCount == 0 -> Notice(NoticeKey.GIT_SUMMARY_UNSTAGED, args = listOf(unstagedCount.toString())).asInfo()
+            unstagedCount == 0 -> Notice(NoticeKey.GIT_SUMMARY_STAGED, args = listOf(stagedCount.toString())).asInfo()
+            else -> Notice(
+                NoticeKey.GIT_SUMMARY_BOTH,
+                args = listOf(stagedCount.toString(), unstagedCount.toString()),
+            ).asInfo()
         }
     }
 }

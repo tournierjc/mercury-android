@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.util
 
+import io.github.tournierjc.mercury.R
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -21,7 +23,7 @@ object ShareText {
             putExtra(Intent.EXTRA_SUBJECT, fileName)
             putExtra(Intent.EXTRA_TEXT, json)
         }
-        val chooser = Intent.createChooser(send, "Partager le bundle")
+        val chooser = Intent.createChooser(send, context.getString(R.string.share_bundle_title))
         if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(chooser) }
     }

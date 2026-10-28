@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.data
 
+import io.github.tournierjc.mercury.data.NoticeKey
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
@@ -69,7 +71,7 @@ class SpotifyJsonTest {
 
         assertEquals(2, devices.size)
         assertEquals("MacBook", devices[0].name)
-        assertEquals("Ordinateur · actif", devices[0].label)
+        assertEquals(NoticeKey.SPOTIFY_COMPUTER, devices[0].typeNotice.key)
         assertEquals(42, devices[0].volume)
         assertNull(devices[1].volume)
         assertEquals("abc", SpotifyJson.activeDevice(devices)?.id)
