@@ -29,12 +29,10 @@
     <string name="notice_bot_started">Teammate started</string>
     <string name="notice_bot_stopped">Teammate stopped</string>
     <string name="notice_run_requested">Run requested</string>
-    <string name="notice_teammate_deleted">Teammate deleted</string>
     <string name="notice_teammate_created">Teammate “%1$s” created</string>
     <string name="notice_output_deleted">Deliverable deleted</string>
     <string name="notice_job_restarted">Job restarted (%1$s)</string>
     <string name="notice_incidents_cleared">%1$s incident(s) cleared</string>
-    <string name="notice_teammate_enabled_toggled">Activation saved</string>
     <string name="notice_teammate_model_saved">Teammate model saved</string>
     <string name="notice_teammate_model_cleared">Teammate model cleared</string>
     <string name="notice_teammate_description_saved">Teammate description saved</string>
@@ -101,7 +99,7 @@
     <string name="notice_teammate_enabled">Teammate %1$s enabled</string>
     <string name="notice_teammate_disabled">Teammate %1$s disabled</string>
     <string name="notice_teammate_deleted_named">Teammate %1$s deleted</string>
-    <string name="notice_restart_requested">Restart accepted — the runtime returns in a few seconds</string>
+    <string name="notice_daemon_restart_requested">Restart accepted — the runtime returns in a few seconds</string>
     <string name="notice_shutdown_accepted">Shutdown accepted (pid %1$s) — the daemon is stopping</string>
     <string name="notice_shutdown_refused">Shutdown refused by the daemon</string>
     <string name="notice_crew_import_nothing">Nothing imported — %1$s teammate(s) already there</string>
