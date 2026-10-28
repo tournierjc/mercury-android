@@ -66,7 +66,7 @@ fun ProvidersScreen(onBack: () -> Unit) {
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
-        CollapsibleSection(stringResource(R.string.configure_providers_title), defaultOpen = true) {
+        CollapsibleSection(stringResource(R.string.configure_providers_section), defaultOpen = true) {
             if (state.providers.isEmpty()) {
                 EmptyLine(state.loading, R.string.configure_providers_empty, ConfigureSlice.Providers in state.failed)
             }
@@ -103,7 +103,7 @@ fun SkillsScreen(onBack: () -> Unit) {
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
-        CollapsibleSection(stringResource(R.string.configure_skills_title), defaultOpen = true) {
+        CollapsibleSection(stringResource(R.string.configure_skills_section), defaultOpen = true) {
             if (state.skills.isEmpty()) {
                 EmptyLine(state.loading, R.string.configure_skills_empty, ConfigureSlice.Skills in state.failed)
             }
@@ -153,7 +153,7 @@ fun McpScreen(onBack: () -> Unit) {
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
-        CollapsibleSection(stringResource(R.string.configure_mcp_title), defaultOpen = true) {
+        CollapsibleSection(stringResource(R.string.configure_mcp_section), defaultOpen = true) {
             when {
                 !state.mcpAvailable -> Text(
                     text = stringResource(R.string.configure_mcp_unavailable),
@@ -207,7 +207,7 @@ fun PluginsScreen(onBack: () -> Unit) {
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
-        CollapsibleSection(stringResource(R.string.configure_plugins_title), defaultOpen = true) {
+        CollapsibleSection(stringResource(R.string.configure_plugins_section), defaultOpen = true) {
             if (state.plugins.isEmpty()) {
                 EmptyLine(state.loading, R.string.configure_plugins_empty, ConfigureSlice.Plugins in state.failed)
             }
@@ -334,7 +334,7 @@ fun SchedulesScreen(onBack: () -> Unit) {
         error = state.error,
         onDismissError = viewModel::clearBanner,
     ) {
-        CollapsibleSection(stringResource(R.string.configure_schedules_title), defaultOpen = true) {
+        CollapsibleSection(stringResource(R.string.configure_schedules_section), defaultOpen = true) {
             if (state.schedules.isEmpty()) {
                 EmptyLine(state.loading, R.string.configure_schedules_empty, ConfigureSlice.Schedules in state.failed)
             }

@@ -179,4 +179,9 @@
     <string name="cron_day_thursday">Thursday</string>
     <string name="cron_day_friday">Friday</string>
     <string name="cron_day_saturday">Saturday</string>
+    <string name="configure_providers_section">Configured</string>
+    <string name="configure_skills_section">Installed</string>
+    <string name="configure_mcp_section">Servers</string>
+    <string name="configure_plugins_section">Installed</string>
+    <string name="configure_schedules_section">Scheduled</string>
 </resources>
