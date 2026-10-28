@@ -6,7 +6,6 @@
     <string name="settings_title">Settings</string>
     <string name="settings_active">active</string>
     <string name="settings_model_title">Model</string>
-    <string name="settings_loading">Loading…</string>
     <string name="settings_no_model">The runtime exposes no model.</string>
     <string name="settings_change">change</string>
     <string name="settings_tools_title">Tool approval</string>

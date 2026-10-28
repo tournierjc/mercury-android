@@ -1,5 +1,10 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,14 +42,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.automirrored.rounded.Chat
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Cable
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Group
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.SpaceDashboard
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ThreadDto
+import io.github.tournierjc.mercury.ui.icons.GraphGlyph
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.serialization.json.JsonObject
 
@@ -55,27 +79,26 @@ fun ThreadDrawer(
     onNewChat: () -> Unit,
     onOpenThread: (ThreadDto) -> Unit,
     onDeleteThread: (ThreadDto) -> Unit,
-    onOpenBridge: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenConsole: () -> Unit,
-    onOpenMemory: () -> Unit,
-    onOpenBoards: () -> Unit,
-    onOpenBots: () -> Unit,
-    onOpenDeliverables: () -> Unit,
+    onOpenBot: (String) -> Unit = {},
+    onSignOut: () -> Unit,
+    /** The screen on top, so the drawer marks where the owner is. */
+    current: AppScreen = AppScreen.Chat,
+    /** The drawer's whole navigation goes through here — one callback, nineteen screens. */
+    onOpen: (AppScreen) -> Unit = {},
     /** The fleet, listed at the top: talking to a teammate is one tap from anywhere. */
     bots: List<JsonObject> = emptyList(),
     avatars: Map<String, ByteArray> = emptyMap(),
     activeBotId: String? = null,
-    onOpenBot: (String) -> Unit = {},
-    onSignOut: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
+    val needsYou = stringResource(R.string.drawer_needs_you)
     var pendingDelete by remember { mutableStateOf<ThreadDto?>(null) }
 
-    val rows = remember(bots, threads) {
+    val rows = remember(bots, threads, current) {
         drawerRows(
             botIds = bots.map { BotJson.id(it) },
             threadIds = threads.map { it.id },
+            current = current,
         )
     }
     val botsById = remember(bots) { bots.associateBy { BotJson.id(it) } }
@@ -106,7 +129,7 @@ fun ThreadDrawer(
                 when (row) {
                     is DrawerRow.CrewHeader -> Text(
                         text = stringResource(R.string.drawer_section_crew),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
                         modifier = Modifier.padding(bottom = 6.dp),
                     )
@@ -120,7 +143,7 @@ fun ThreadDrawer(
                                 .fillMaxWidth()
                                 .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable { onOpenBot(row.id) }
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
                         ) {
                             BotFace(bot, avatars[row.id], small = true)
                             Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
@@ -138,7 +161,15 @@ fun ThreadDrawer(
                                 )
                             }
                             if (BotJson.needsYou(bot)) {
-                                Text("⚠", color = colors.danger, style = MaterialTheme.typography.labelSmall)
+                                // A dot with a name, not a bare "⚠" in a Text: the core icon set has
+                                // no warning glyph, and a literal has no accessible label.
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.danger)
+                                        .semantics { contentDescription = needsYou },
+                                )
                             }
                         }
                     }
@@ -151,8 +182,8 @@ fun ThreadDrawer(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(MaterialTheme.shapes.extraSmall)
-                            .clickable { onOpenBots() }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .clickable { onOpen(AppScreen.Bots) }
+                            .padding(horizontal = 8.dp, vertical = 16.dp),
                     ) {
                         Icon(
                             Icons.Rounded.SmartToy,
@@ -173,7 +204,7 @@ fun ThreadDrawer(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.drawer_section_sessions),
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleSmall,
                                 color = colors.textPrimary,
                                 modifier = Modifier.weight(1f),
                             )
@@ -234,49 +265,36 @@ fun ThreadDrawer(
                         }
                     }
 
+                    // The webapp's three groups, named: a flat list of nineteen entries would be
+                    // a phone book, and the groups are what makes the order learnable.
+                    // A group outranks the sections inside it: capitals over a rule, no indent, and
+                    // more air above than a section ever gets.
+                    is DrawerRow.SectionHeader -> Column(modifier = Modifier.padding(top = 22.dp)) {
+                        HorizontalDivider(color = colors.hairline)
+                        Text(
+                            text = stringResource(
+                                when (row.section) {
+                                    DrawerSection.Work -> R.string.nav_section_work
+                                    DrawerSection.SecondBrain -> R.string.nav_section_second_brain
+                                    DrawerSection.Configure -> R.string.nav_section_configure
+                                },
+                            ).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 10.dp, bottom = 6.dp),
+                        )
+                    }
+
+                    is DrawerRow.Screen -> DrawerEntry(
+                        label = stringResource(screenLabel(row.screen)),
+                        icon = screenIcon(row.screen),
+                        onClick = { onOpen(row.screen) },
+                        accent = row.current,
+                    )
+
                     is DrawerRow.NavDivider ->
                         HorizontalDivider(color = colors.hairline, modifier = Modifier.padding(vertical = 10.dp))
 
-                    is DrawerRow.Deliverables -> DrawerEntry(
-                        label = stringResource(R.string.drawer_deliverables),
-                        icon = Icons.Rounded.FolderOpen,
-                        onClick = onOpenDeliverables,
-                    )
-
-                    is DrawerRow.Boards -> DrawerEntry(
-                        label = stringResource(R.string.drawer_boards),
-                        icon = Icons.Rounded.ViewKanban,
-                        onClick = onOpenBoards,
-                    )
-
-                    is DrawerRow.Memory -> DrawerEntry(
-                        label = stringResource(R.string.drawer_memory),
-                        icon = Icons.Rounded.Psychology,
-                        onClick = onOpenMemory,
-                    )
-
-                    is DrawerRow.Console -> DrawerEntry(
-                        label = stringResource(R.string.drawer_console),
-                        icon = Icons.Rounded.Terminal,
-                        onClick = onOpenConsole,
-                    )
-
-                    is DrawerRow.Bridge -> DrawerEntry(
-                        label = stringResource(R.string.drawer_bridge),
-                        icon = Icons.Rounded.PhoneAndroid,
-                        onClick = onOpenBridge,
-                    )
-
-                    // Settings last, where a settings entry is looked for: it used to sit between
-                    // Console and the bridge, i.e. in the middle of the work screens.
-                    is DrawerRow.Settings -> DrawerEntry(
-                        label = stringResource(R.string.drawer_settings),
-                        icon = Icons.Rounded.Settings,
-                        onClick = onOpenSettings,
-                    )
-
-                    // Sign-out used to be a hand-drawn row whose label was dead: only the trailing
-                    // icon carried the click. Same shape as the entries above, whole row is the target.
                     is DrawerRow.SignOut -> DrawerEntry(
                         label = stringResource(R.string.drawer_sign_out),
                         icon = Icons.AutoMirrored.Rounded.Logout,
@@ -318,6 +336,8 @@ private fun DrawerEntry(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
+    /** The screen on top: same row, accent tint, so the drawer says where the owner is. */
+    accent: Boolean = false,
     /** A quiet entry (sign-out): same shape and tap target, text and icon toned down. */
     muted: Boolean = false,
 ) {
@@ -330,12 +350,77 @@ private fun DrawerEntry(
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
+        // One meaning for the accent: this is where you are. A 2 dp bar carries it, so colour is not
+        // the only signal and the eye finds it among identical rows.
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .height(18.dp)
+                .background(if (accent) colors.accent else Color.Transparent),
+        )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (muted) colors.textSecondary else colors.textPrimary,
-            modifier = Modifier.weight(1f),
+            color = when {
+                accent -> colors.accent
+                muted -> colors.textSecondary
+                else -> colors.textPrimary
+            },
+            modifier = Modifier.weight(1f).padding(start = 10.dp),
         )
-        Icon(icon, contentDescription = null, tint = colors.textSecondary)
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (accent) colors.accent else colors.textSecondary,
+        )
     }
+}
+
+/** The label of every destination, one place, so the drawer and the screens cannot disagree. */
+private fun screenLabel(screen: AppScreen): Int = when (screen) {
+    AppScreen.Status -> R.string.nav_status
+    AppScreen.Chat -> R.string.nav_chat
+    AppScreen.Bots -> R.string.nav_bots
+    AppScreen.Tasks -> R.string.nav_tasks
+    AppScreen.Boards -> R.string.nav_boards
+    AppScreen.Workspace -> R.string.nav_workspace
+    AppScreen.Memory -> R.string.nav_memory
+    AppScreen.Persons -> R.string.nav_persons
+    AppScreen.Goals -> R.string.nav_goals
+    AppScreen.Graph -> R.string.nav_graph
+    AppScreen.Providers -> R.string.nav_providers
+    AppScreen.Skills -> R.string.nav_skills
+    AppScreen.Mcp -> R.string.nav_mcp
+    AppScreen.Plugins -> R.string.nav_plugins
+    AppScreen.Permissions -> R.string.nav_permissions
+    AppScreen.Schedules -> R.string.nav_schedules
+    AppScreen.Usage -> R.string.nav_usage
+    AppScreen.Deliverables -> R.string.nav_deliverables
+    AppScreen.Bridge -> R.string.nav_bridge
+    AppScreen.Console -> R.string.nav_console
+    AppScreen.Settings -> R.string.nav_settings
+}
+
+private fun screenIcon(screen: AppScreen): ImageVector = when (screen) {
+    AppScreen.Status -> Icons.Rounded.SpaceDashboard
+    AppScreen.Chat -> Icons.AutoMirrored.Rounded.Chat
+    AppScreen.Bots -> Icons.Rounded.SmartToy
+    AppScreen.Tasks -> Icons.Rounded.Checklist
+    AppScreen.Boards -> Icons.Rounded.ViewKanban
+    AppScreen.Workspace -> Icons.Rounded.Code
+    AppScreen.Memory -> Icons.Rounded.Psychology
+    AppScreen.Persons -> Icons.Rounded.Group
+    AppScreen.Goals -> Icons.Rounded.Flag
+    AppScreen.Graph -> GraphGlyph
+    AppScreen.Providers -> Icons.Rounded.Memory
+    AppScreen.Skills -> Icons.Rounded.Extension
+    AppScreen.Mcp -> Icons.Rounded.Cable
+    AppScreen.Plugins -> Icons.Rounded.Widgets
+    AppScreen.Permissions -> Icons.Rounded.Shield
+    AppScreen.Schedules -> Icons.Rounded.Schedule
+    AppScreen.Usage -> Icons.Rounded.BarChart
+    AppScreen.Deliverables -> Icons.Rounded.FolderOpen
+    AppScreen.Bridge -> Icons.Rounded.PhoneAndroid
+    AppScreen.Console -> Icons.Rounded.Terminal
+    AppScreen.Settings -> Icons.Rounded.Settings
 }

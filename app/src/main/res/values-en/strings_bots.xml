@@ -33,7 +33,6 @@
     <string name="bots_empty_roster">No teammates. The + at the top right creates one.</string>
     <string name="bots_lead_badge">"  lead"</string>
     <string name="bots_lead_crew_count">" · %1$d running"</string>
-    <string name="bots_crew_of">crew of %1$s</string>
 
     <!-- BotsScreen: bot sheet -->
     <string name="bots_section_preview">Overview</string>

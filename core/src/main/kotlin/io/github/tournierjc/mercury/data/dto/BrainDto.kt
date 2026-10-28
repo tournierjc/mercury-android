@@ -77,9 +77,10 @@ data class BeliefDto(
     val statement: String = "",
     val detail: String? = null,
     val context: String = "",
-    val support: Int = 0,
-    val against: Int = 0,
-    val supportSessions: Int = 0,
+    /** A weighted belief count: the server sends 4.5, not 4 — an Int here threw the whole page away. */
+    val support: Double = 0.0,
+    val against: Double = 0.0,
+    val supportSessions: Double = 0.0,
     val timescale: String = "",
     val status: String = "",
     val ownerStated: Boolean = false,
@@ -89,7 +90,7 @@ data class BeliefDto(
     val lastSupportedAt: Long = 0,
 ) {
     /** Support minus contradiction, the number the dashboard sorts on. */
-    val netSupport: Int get() = support - against
+    val netSupport: Double get() = support - against
 }
 
 @Serializable

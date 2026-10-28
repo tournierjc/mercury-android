@@ -28,6 +28,11 @@ data class MercuryColors(
     val hairline: Color,
     /** The line around a field: one step brighter than a divider, so a rounded box reads as a box. */
     val hairlineStrong: Color,
+    /**
+     * The links of the belief graph. `hairline` is 1,26:1 against the canvas — fine as a divider,
+     * invisible as the only thing that says two ideas are connected (WCAG 1.4.11 asks for 3:1).
+     */
+    val graphEdge: Color,
 )
 
 val DarkColors = MercuryColors(
@@ -41,6 +46,7 @@ val DarkColors = MercuryColors(
     danger = Color(0xFFFF6B6B),
     hairline = Color(0xFF1E1E1E),
     hairlineStrong = Color(0xFF2E2E2C),
+    graphEdge = Color(0xFF5A5A5A),
 )
 
 val LightColors = MercuryColors(
@@ -54,6 +60,7 @@ val LightColors = MercuryColors(
     danger = Color(0xFFC0392B),
     hairline = Color(0xFFE4E4E0),
     hairlineStrong = Color(0xFFD3D3CE),
+    graphEdge = Color(0xFF8A8A84),
 )
 
 val LocalMercuryColors = staticCompositionLocalOf { DarkColors }

@@ -8,12 +8,7 @@
     <string name="drawer_new_session">Nouvelle session</string>
     <string name="drawer_no_session">Aucune session pour l\'instant.</string>
     <string name="drawer_delete_session">Supprimer la session</string>
-    <string name="drawer_deliverables">Livrables</string>
-    <string name="drawer_boards">Plateaux</string>
-    <string name="drawer_memory">Mémoire</string>
-    <string name="drawer_console">Console</string>
     <string name="drawer_settings">Réglages</string>
-    <string name="drawer_bridge">Pont appareil</string>
     <string name="drawer_delete_session_title">Supprimer la session ?</string>
     <string name="drawer_delete">Supprimer</string>
     <string name="drawer_cancel">Annuler</string>
@@ -21,7 +16,6 @@
 
     <!-- Pont appareil -->
     <string name="bridge_title">Pont appareil</string>
-    <string name="bridge_back">Retour</string>
     <string name="bridge_calendar">Calendrier</string>
     <string name="bridge_read_events">lire les événements</string>
     <string name="bridge_contacts">Contacts</string>
@@ -54,7 +48,6 @@
     <string name="run_details">détail</string>
     <string name="run_older">… %1$d run(s) plus ancien(s)</string>
     <string name="run_detail_title">Détail du run</string>
-    <string name="run_loading">Chargement…</string>
     <string name="run_state">État</string>
     <string name="run_started">Démarré</string>
     <string name="run_duration">Durée</string>
@@ -92,7 +85,6 @@
     <string name="out_cancel">Annuler</string>
     <string name="out_kind_final">final</string>
     <string name="out_kind_work">travail</string>
-    <string name="out_loading">Chargement…</string>
     <string name="out_empty_file">(fichier vide)</string>
     <string name="out_truncated">Aperçu tronqué aux 64 premiers ko — partagez le fichier pour le lire en entier.</string>
     <string name="out_unavailable">Aperçu indisponible.</string>

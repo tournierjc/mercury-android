@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MemoryScreen: the webapp's four sections -->
+    <string name="brain_onglet_conscient">Conscious</string>
+    <string name="brain_onglet_subconscient">Subconscious</string>
+    <string name="brain_onglet_apprises">Learned</string>
+    <string name="brain_onglet_quarantaine">Quarantined</string>
+    <string name="brain_sous_seuil_titre">Below the threshold</string>
+    <string name="brain_sous_seuil_intro">These memories do not surface on their own: the brain recalls them by association when a conversation touches them.</string>
+    <string name="brain_conscient_intro">What the brain keeps at hand and brings back without effort.</string>
+
+    <!-- PersonsScreen -->
+    <string name="brain_personnes_rechercher">Search people</string>
+    <string name="brain_personnes_indisponible">This instance does not expose its people: this is not an empty list, the route answered nothing.</string>
+    <plurals name="brain_nb_personnes">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d people</item>
+    </plurals>
+
+    <!-- GoalsScreen -->
+    <string name="brain_objectifs_projets">Goals and projects</string>
+    <string name="brain_objectifs">Goals</string>
+    <string name="brain_projets">Projects</string>
+    <string name="brain_objectif_nouveau">New goal</string>
+    <string name="brain_projet_nouveau">New project</string>
+    <string name="brain_objectif_vide">No goal in memory.</string>
+    <string name="brain_projet_vide">No project in memory.</string>
+    <string name="brain_modifier_webapp">Detail and importance are edited in the webapp; here you add and delete.</string>
+    <string name="brain_supprimer">Delete</string>
+    <plurals name="brain_nb_objectifs">
+        <item quantity="one">%1$d goal</item>
+        <item quantity="other">%1$d goals</item>
+    </plurals>
+    <plurals name="brain_nb_projets">
+        <item quantity="one">%1$d project</item>
+        <item quantity="other">%1$d projects</item>
+    </plurals>
+
+    <!-- GraphScreen -->
+    <string name="brain_graphe_vide">No connections yet: the brain has not brought two memories together.</string>
+    <string name="brain_graphe_indisponible">This instance does not expose the graph.</string>
+    <string name="brain_graphe_aide">Pinch to zoom, drag to pan, tap a node to read it whole.</string>
+    <string name="brain_graphe_comptes">%1$s · %2$s</string>
+    <string name="brain_noeud_fermer">Close the detail</string>
+    <plurals name="brain_nb_noeuds">
+        <item quantity="one">%1$d node</item>
+        <item quantity="other">%1$d nodes</item>
+    </plurals>
+    <plurals name="brain_nb_liens">
+        <item quantity="one">%1$d link</item>
+        <item quantity="other">%1$d links</item>
+    </plurals>
+    <string name="memory_forget_title">Forget this memory?</string>
+    <string name="memory_forget_cancel">Keep</string>
+    <!-- A graph node: its kind, then its weight. The space before % is French. -->
+    <string name="graph_node_meta">%1$s · %2$d%%</string>
+</resources>

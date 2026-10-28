@@ -104,7 +104,7 @@ fun RunDetailDialog(
             ) {
                 val loaded = transcript
                 if (loading || loaded == null) {
-                    Text(stringResource(R.string.run_loading), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                    Text(stringResource(R.string.common_loading), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
                     return@Column
                 }
                 val record = loaded.record

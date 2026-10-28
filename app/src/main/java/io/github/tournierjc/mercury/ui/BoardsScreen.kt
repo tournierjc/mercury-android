@@ -415,7 +415,7 @@ private fun BoardList(
         if (state.boards.isEmpty()) {
             Text(
                 text = if (state.loading) {
-                    stringResource(R.string.boards_chargement)
+                    stringResource(R.string.common_loading)
                 } else {
                     stringResource(R.string.boards_aucun_plateau)
                 },

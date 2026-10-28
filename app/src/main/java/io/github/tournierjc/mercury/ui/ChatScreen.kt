@@ -94,7 +94,6 @@ import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class Screen { Chat, Bridge, Settings, Console, Deliverables, Memory, Boards, Bots }
 
 
 
@@ -124,7 +123,7 @@ fun ChatScreen(
     syncing: Boolean = false,
 ) {
     val colors = LocalMercuryColors.current
-    var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
+    var screen by rememberSaveable { mutableStateOf(AppScreen.Chat) }
     var botToOpen by remember { mutableStateOf<String?>(null) }
     // Seeded from the notification, not set afterwards: the Mercury conversation used to be the
     // first frame of a cold start, so tapping a notification showed it, then jumped.
@@ -140,48 +139,51 @@ fun ChatScreen(
             // nonce makes a second tap on the same bot a new event rather than a no-op.
             if (botChat != openBotId) botChat = openBotId
             cameFromBots = false
-            screen = Screen.Chat
+            screen = AppScreen.Chat
             onOpenBotConsumed()
         }
     }
 
     // Back closes what is on top; it never leaves the app while something is open. The
     // screens each drew their own back arrow, but the system button is the one a thumb finds.
-    BackHandler(enabled = screen != Screen.Chat) {
-        screen = Screen.Chat
+    BackHandler(enabled = screen != AppScreen.Chat) {
+        screen = AppScreen.Chat
         botToOpen = null
     }
 
     when (screen) {
-        Screen.Bridge -> {
-            BridgeScreen(onBack = { screen = Screen.Chat })
+        AppScreen.Bridge -> {
+            BridgeScreen(onBack = { screen = AppScreen.Chat })
             return
         }
 
-        Screen.Settings -> {
-            SettingsScreen(onBack = { screen = Screen.Chat }, onChangeServer = onChangeServer)
+        AppScreen.Settings -> {
+            SettingsScreen(onBack = { screen = AppScreen.Chat }, onChangeServer = onChangeServer)
             return
         }
 
-        Screen.Console -> {
-            ConsoleScreen(onBack = { screen = Screen.Chat })
+        AppScreen.Status -> {
+            StatusScreen(onBack = { screen = AppScreen.Chat })
             return
         }
 
-        Screen.Memory -> {
-            MemoryScreen(onBack = { screen = Screen.Chat })
+        // The screens the app already had, kept reachable: the second brain's memory, the boards,
+        // the roster, the share sheet, and the console — the webapp folded the console's counters
+        // into Status and Usage, the app still owns the terminal view.
+        AppScreen.Memory -> {
+            MemoryScreen(onBack = { screen = AppScreen.Chat })
             return
         }
 
-        Screen.Boards -> {
-            BoardsScreen(onBack = { screen = Screen.Chat })
+        AppScreen.Boards -> {
+            BoardsScreen(onBack = { screen = AppScreen.Chat })
             return
         }
 
-        Screen.Bots -> {
+        AppScreen.Bots -> {
             BotsScreen(
                 onBack = {
-                    screen = Screen.Chat
+                    screen = AppScreen.Chat
                     botToOpen = null
                 },
                 initialBotId = botToOpen,
@@ -192,18 +194,83 @@ fun ChatScreen(
                 onOpenChat = { id ->
                     botChat = id
                     cameFromBots = true
-                    screen = Screen.Chat
+                    screen = AppScreen.Chat
                 },
             )
             return
         }
 
-        Screen.Deliverables -> {
-            DeliverablesScreen(onBack = { screen = Screen.Chat })
+        AppScreen.Deliverables -> {
+            DeliverablesScreen(onBack = { screen = AppScreen.Chat })
             return
         }
 
-        Screen.Chat -> Unit
+        AppScreen.Console -> {
+            ConsoleScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Tasks -> {
+            TasksScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Workspace -> {
+            WorkspaceScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Persons -> {
+            PersonsScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Goals -> {
+            GoalsScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Graph -> {
+            GraphScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Providers -> {
+            ProvidersScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Skills -> {
+            SkillsScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Mcp -> {
+            McpScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Plugins -> {
+            PluginsScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Permissions -> {
+            PermissionsScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Schedules -> {
+            SchedulesScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Usage -> {
+            UsageScreen(onBack = { screen = AppScreen.Chat })
+            return
+        }
+
+        AppScreen.Chat -> Unit
     }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -224,7 +291,7 @@ fun ChatScreen(
             // Opened from the roster: Back returns to it, with the same bot still selected.
             cameFromBots = false
             botToOpen = botsState.selectedId
-            screen = Screen.Bots
+            screen = AppScreen.Bots
         }
     }
 
@@ -310,32 +377,10 @@ fun ChatScreen(
                     onOpenThread(thread)
                     scope.launch { drawerState.close() }
                 },
-                onOpenBridge = {
-                    screen = Screen.Bridge
-                    scope.launch { drawerState.close() }
-                },
-                onOpenSettings = {
-                    screen = Screen.Settings
-                    scope.launch { drawerState.close() }
-                },
-                onOpenConsole = {
-                    screen = Screen.Console
-                    scope.launch { drawerState.close() }
-                },
-                onOpenMemory = {
-                    screen = Screen.Memory
-                    scope.launch { drawerState.close() }
-                },
-                onOpenBoards = {
-                    screen = Screen.Boards
-                    scope.launch { drawerState.close() }
-                },
-                onOpenBots = {
-                    screen = Screen.Bots
-                    scope.launch { drawerState.close() }
-                },
-                onOpenDeliverables = {
-                    screen = Screen.Deliverables
+                current = if (botChat != null) AppScreen.Chat else screen,
+                onOpen = { destination ->
+                    botChat = null
+                    screen = destination
                     scope.launch { drawerState.close() }
                 },
                 bots = botWatch.bots,
@@ -344,7 +389,7 @@ fun ChatScreen(
                 onOpenBot = { id ->
                     botChat = id
                     cameFromBots = false
-                    screen = Screen.Chat
+                    screen = AppScreen.Chat
                     scope.launch { drawerState.close() }
                 },
                 onDeleteThread = { thread ->
@@ -427,7 +472,7 @@ fun ChatScreen(
                         }
                         IconButton(onClick = {
                             botToOpen = botId
-                            screen = Screen.Bots
+                            screen = AppScreen.Bots
                         }) {
                             Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.chat_bot_settings, botName), tint = colors.textSecondary)
                         }

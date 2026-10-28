@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Status screen: the instance's dashboard. -->
+
+    <!-- Daemon -->
+    <string name="status_section_daemon">Daemon</string>
+    <string name="status_label_state">State</string>
+    <string name="status_state_running">running</string>
+    <string name="status_state_idle">idle</string>
+    <string name="status_state_stopped">stopped</string>
+    <string name="status_state_starting">starting</string>
+    <string name="status_state_paused">paused</string>
+    <string name="status_daemon_unavailable">Daemon state unavailable.</string>
+    <string name="status_label_uptime">Uptime</string>
+
+    <!-- App and instance -->
+    <string name="status_section_instance">App</string>
+    <string name="status_label_version">Version</string>
+    <string name="status_label_server">Server</string>
+
+    <!-- Providers -->
+    <string name="status_section_providers">Providers</string>
+    <plurals name="status_providers_ready">
+        <item quantity="one">%d provider ready</item>
+        <item quantity="other">%d providers ready</item>
+    </plurals>
+    <string name="status_providers_none">No provider enabled with a key.</string>
+    <string name="status_provider_key_present">key present</string>
+
+    <!-- Second brain -->
+    <string name="status_section_brain">Brain</string>
+    <string name="status_brain_unavailable">Second brain unavailable.</string>
+    <string name="status_label_memories">Memories</string>
+    <string name="status_label_subconscious">Subconscious</string>
+    <string name="status_memories_empty">No memory stored.</string>
+    <string name="status_label_learning">Learning</string>
+    <string name="status_learning_active">active</string>
+    <string name="status_learning_paused">paused</string>
+
+    <!-- Tokens today -->
+    <string name="status_section_usage">Tokens today</string>
+    <string name="status_usage_unavailable">Usage unavailable.</string>
+    <string name="status_label_remaining">Remaining</string>
+    <string name="status_unlimited">unlimited</string>
+
+    <!-- Agent: the facts the Memory "About" tab carried. -->
+    <string name="status_section_agent">Agent</string>
+    <string name="status_agent_unavailable">Agent configuration unavailable.</string>
+    <string name="status_label_agent_name">Name</string>
+    <string name="status_label_owner">Owner</string>
+    <string name="status_label_default_provider">Default provider</string>
+    <string name="status_label_token_budget">Token budget</string>
+    <string name="status_label_heartbeat">Heartbeat</string>
+    <string name="status_heartbeat_minutes">every %1$s min</string>
+    <string name="status_label_second_brain">Second brain</string>
+    <string name="status_label_telegram">Telegram</string>
+    <string name="status_on">on</string>
+    <string name="status_off">off</string>
+
+    <!-- Configure screens: one capability per screen, read-only. -->
+
+    <!-- Providers -->
+    <string name="configure_providers_title">Providers</string>
+    <plurals name="configure_providers_count">
+        <item quantity="one">%d provider</item>
+        <item quantity="other">%d providers</item>
+    </plurals>
+    <string name="configure_providers_empty">No provider configured.</string>
+    <string name="configure_providers_edit_note">Keys, models and URLs are changed in Settings; a change only applies at the next start.</string>
+
+    <!-- Skills -->
+    <string name="configure_skills_title">Skills</string>
+    <plurals name="configure_skills_count">
+        <item quantity="one">%d skill installed</item>
+        <item quantity="other">%d skills installed</item>
+    </plurals>
+    <string name="configure_skills_empty">No skill installed.</string>
+    <plurals name="configure_skills_tools">
+        <item quantity="one">%d tool allowed</item>
+        <item quantity="other">%d tools allowed</item>
+    </plurals>
+    <string name="configure_skills_scripts">scripts</string>
+    <string name="configure_skills_references">references</string>
+    <string name="configure_active">active</string>
+    <string name="configure_inactive">inactive</string>
+    <string name="configure_version">v%1$s</string>
+
+    <!-- MCP servers -->
+    <string name="configure_mcp_title">MCP servers</string>
+    <plurals name="configure_mcp_servers">
+        <item quantity="one">%d server</item>
+        <item quantity="other">%d servers</item>
+    </plurals>
+    <string name="configure_mcp_empty">No MCP server.</string>
+    <string name="configure_mcp_unavailable">MCP is not exposed by this runtime.</string>
+    <string name="configure_mcp_unnamed">Unnamed server</string>
+    <plurals name="configure_mcp_tools">
+        <item quantity="one">%d tool</item>
+        <item quantity="other">%d tools</item>
+    </plurals>
+    <string name="configure_mcp_connected">connected</string>
+    <string name="configure_mcp_connecting">connecting</string>
+    <string name="configure_mcp_reconnecting">reconnecting</string>
+    <string name="configure_mcp_failed">failed</string>
+    <string name="configure_mcp_disabled">disabled</string>
+    <string name="configure_mcp_unknown">unknown</string>
+
+    <!-- Plugins -->
+    <string name="configure_plugins_title">Plugins</string>
+    <plurals name="configure_plugins_count">
+        <item quantity="one">%d plugin</item>
+        <item quantity="other">%d plugins</item>
+    </plurals>
+    <string name="configure_plugins_empty">No plugin.</string>
+    <string name="configure_plugin_enabled">enabled</string>
+    <string name="configure_plugin_available">available</string>
+    <string name="configure_plugin_disabled">disabled</string>
+    <string name="configure_plugin_failed">failed</string>
+    <string name="configure_plugin_unknown">unknown</string>
+    <plurals name="configure_plugin_renderers">
+        <item quantity="one">%d renderer</item>
+        <item quantity="other">%d renderers</item>
+    </plurals>
+
+    <!-- Permissions -->
+    <string name="configure_permissions_title">Permissions</string>
+    <string name="configure_permissions_unavailable">Permissions unavailable.</string>
+    <string name="configure_permissions_filesystem">Filesystem</string>
+    <string name="configure_permissions_enabled">Access</string>
+    <string name="configure_permissions_no_scope">No scope declared.</string>
+    <string name="configure_permissions_read">read</string>
+    <string name="configure_permissions_write">write</string>
+    <string name="configure_permissions_none">none</string>
+    <string name="configure_permissions_shell">Shell</string>
+    <string name="configure_permissions_blocked_label">Blocked commands</string>
+    <plurals name="configure_permissions_blocked">
+        <item quantity="one">%d command refused</item>
+        <item quantity="other">%d commands refused</item>
+    </plurals>
+    <string name="configure_permissions_readonly">Read-only: these rights are changed on the host, not from the phone.</string>
+
+    <!-- Schedules -->
+    <string name="configure_schedules_title">Schedules</string>
+    <plurals name="configure_schedules_count">
+        <item quantity="one">%d schedule</item>
+        <item quantity="other">%d schedules</item>
+    </plurals>
+    <string name="configure_schedules_empty">No scheduled automation.</string>
+    <string name="configure_schedules_mercury">Mercury</string>
+    <string name="configure_schedules_next">next %1$s</string>
+    <string name="configure_schedules_created">created %1$s</string>
+
+    <!-- Usage -->
+    <string name="configure_usage_title">Usage</string>
+    <string name="configure_usage_today">Today</string>
+    <string name="configure_usage_unavailable">Usage unavailable.</string>
+    <string name="configure_usage_unlimited">unlimited</string>
+    <string name="configure_usage_percent">%1$d%% of budget</string>
+    <string name="configure_usage_share">%1$d%%</string>
+    <string name="configure_usage_remaining">Remaining</string>
+    <string name="configure_usage_reset">Last reset</string>
+    <string name="configure_usage_by_model">By model</string>
+    <string name="configure_usage_by_channel">By channel</string>
+    <string name="configure_usage_recent">Recent requests</string>
+    <string name="configure_usage_no_requests">No logged request.</string>
+    <string name="configure_usage_counts">input %1$s · output %2$s</string>
+    <string name="configure_unavailable">The server did not answer — this route is not exposed by this version of the daemon.</string>
+    <string name="cron_every_minutes">every %1$d min</string>
+    <string name="cron_hourly">hourly</string>
+    <string name="cron_every_hours">every %1$d h</string>
+    <string name="cron_daily">every day at %1$s</string>
+    <string name="cron_weekdays">Monday to Friday at %1$s</string>
+    <string name="cron_weekly">every %1$s at %2$s</string>
+    <string name="cron_monthly">the %1$d of each month at %2$s</string>
+    <string name="cron_day_sunday">Sunday</string>
+    <string name="cron_day_monday">Monday</string>
+    <string name="cron_day_tuesday">Tuesday</string>
+    <string name="cron_day_wednesday">Wednesday</string>
+    <string name="cron_day_thursday">Thursday</string>
+    <string name="cron_day_friday">Friday</string>
+    <string name="cron_day_saturday">Saturday</string>
+</resources>
