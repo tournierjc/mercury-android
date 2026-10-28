@@ -62,4 +62,6 @@
         <item quantity="one">%1$d memory</item>
         <item quantity="other">%1$d memories</item>
     </plurals>
+    <string name="brain_graphe_rechercher">Search a node</string>
+    <string name="brain_noeud_illisible">The memory behind this node did not answer.</string>
 </resources>

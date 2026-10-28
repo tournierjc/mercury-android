@@ -62,4 +62,6 @@
         <item quantity="one">%1$d mémoire</item>
         <item quantity="other">%1$d mémoires</item>
     </plurals>
+    <string name="brain_graphe_rechercher">Chercher un nœud</string>
+    <string name="brain_noeud_illisible">Le souvenir derrière ce nœud n\'a pas répondu.</string>
 </resources>
