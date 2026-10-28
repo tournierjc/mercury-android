@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -483,6 +484,23 @@ private fun DrawerBotRow(
             // The indent carries the tree, so a crew member never reads as the lead's sibling.
             .padding(start = if (under) 26.dp else 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
     ) {
+        // The arrow is left of the face — the tree's own edge, and the same place it sits in the
+        // Équipiers screen. A row with nothing to fold keeps the slot so the faces line up.
+        when {
+            onToggleCrew != null -> IconButton(onClick = onToggleCrew, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (open == true) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (open == true) {
+                        stringResource(R.string.drawer_fold_crew, name)
+                    } else {
+                        stringResource(R.string.drawer_unfold_crew, name)
+                    },
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            crew != null -> Spacer(Modifier.width(36.dp))
+        }
         BotFace(bot, face, small = true)
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
             Text(
@@ -494,7 +512,7 @@ private fun DrawerBotRow(
             )
             Text(
                 text = if (folded) {
-                    pluralStringResource(R.plurals.bots_lead_crew_members, crew, crew)
+                    pluralStringResource(R.plurals.bots_crew_folded, crew, crew)
                 } else {
                     noticeText(BotJson.stateNotice(BotJson.state(bot)))
                 },
@@ -512,20 +530,6 @@ private fun DrawerBotRow(
                     .background(colors.danger)
                     .semantics { contentDescription = needsYou },
             )
-        }
-        if (onToggleCrew != null) {
-            IconButton(onClick = onToggleCrew) {
-                Icon(
-                    imageVector = if (open == true) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = if (open == true) {
-                        stringResource(R.string.drawer_fold_crew, name)
-                    } else {
-                        stringResource(R.string.drawer_unfold_crew, name)
-                    },
-                    tint = colors.textSecondary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
         }
     }
 }
