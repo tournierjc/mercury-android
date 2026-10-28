@@ -51,6 +51,11 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.OUTPUT_DELETED -> R.string.notice_output_deleted
     NoticeKey.JOB_RESTARTED -> R.string.notice_job_restarted
     NoticeKey.INCIDENTS_CLEARED -> R.string.notice_incidents_cleared
+    NoticeKey.TEAMMATE_ENABLED_TOGGLED -> R.string.notice_teammate_enabled_toggled
+    NoticeKey.TEAMMATE_MODEL_SAVED -> R.string.notice_teammate_model_saved
+    NoticeKey.TEAMMATE_MODEL_CLEARED -> R.string.notice_teammate_model_cleared
+    NoticeKey.TEAMMATE_DESCRIPTION_SAVED -> R.string.notice_teammate_description_saved
+    NoticeKey.TEAMMATE_BUDGET_SAVED -> R.string.notice_teammate_budget_saved
     NoticeKey.SAVED -> R.string.notice_saved
     NoticeKey.MEMORY_ADDED -> R.string.notice_memory_added
     NoticeKey.MEMORY_FORGOTTEN -> R.string.notice_memory_forgotten
@@ -67,7 +72,6 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.MEMORY_RESTORED -> R.string.notice_memory_restored
     NoticeKey.BYPASS_APPROVED -> R.string.notice_bypass_approved
     NoticeKey.BYPASS_ASKED -> R.string.notice_bypass_asked
-
 
 }
 

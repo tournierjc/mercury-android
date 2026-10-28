@@ -12,7 +12,7 @@
     <string name="notice_dispatch_refused">Refused</string>
     <string name="notice_name_required">A name is required</string>
     <string name="notice_restart_refused">Restart refused</string>
-    <string name="notice_attachment_too_large">%1$s is over %2$d MB</string>
+    <string name="notice_attachment_too_large">%1$s is over %2$s MB</string>
     <string name="notice_server_warning">Server warning</string>
     <string name="notice_session_expired">Session expired — sign in again</string>
     <string name="notice_request_refused">Request refused</string>
@@ -32,7 +32,12 @@
     <string name="notice_teammate_created">Teammate “%1$s” created</string>
     <string name="notice_output_deleted">Deliverable deleted</string>
     <string name="notice_job_restarted">Job restarted (%1$s)</string>
-    <string name="notice_incidents_cleared">%1$d incident(s) cleared</string>
+    <string name="notice_incidents_cleared">%1$s incident(s) cleared</string>
+    <string name="notice_teammate_enabled_toggled">Activation saved</string>
+    <string name="notice_teammate_model_saved">Teammate model saved</string>
+    <string name="notice_teammate_model_cleared">Teammate model cleared</string>
+    <string name="notice_teammate_description_saved">Teammate description saved</string>
+    <string name="notice_teammate_budget_saved">Daily budget saved</string>
     <string name="notice_saved">Saved</string>
     <string name="notice_memory_added">Memory added</string>
     <string name="notice_memory_forgotten">Memory forgotten</string>

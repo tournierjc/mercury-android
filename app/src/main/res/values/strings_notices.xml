@@ -13,7 +13,7 @@
     <string name="notice_dispatch_refused">Refusé</string>
     <string name="notice_name_required">Un nom est nécessaire</string>
     <string name="notice_restart_refused">Relance refusée</string>
-    <string name="notice_attachment_too_large">%1$s dépasse %2$d Mo</string>
+    <string name="notice_attachment_too_large">%1$s dépasse %2$s Mo</string>
     <string name="notice_server_warning">Avertissement du serveur</string>
     <string name="notice_session_expired">Session expirée — reconnecte-toi</string>
     <string name="notice_request_refused">Requête refusée</string>
@@ -33,7 +33,12 @@
     <string name="notice_teammate_created">Équipier « %1$s » créé</string>
     <string name="notice_output_deleted">Livrable supprimé</string>
     <string name="notice_job_restarted">Job relancé (%1$s)</string>
-    <string name="notice_incidents_cleared">%1$d incident(s) effacé(s)</string>
+    <string name="notice_incidents_cleared">%1$s incident(s) effacé(s)</string>
+    <string name="notice_teammate_enabled_toggled">Activation enregistrée</string>
+    <string name="notice_teammate_model_saved">Modèle de l\'équipier enregistré</string>
+    <string name="notice_teammate_model_cleared">Modèle de l\'équipier effacé</string>
+    <string name="notice_teammate_description_saved">Description de l\'équipier enregistrée</string>
+    <string name="notice_teammate_budget_saved">Budget quotidien enregistré</string>
     <string name="notice_saved">Enregistré</string>
     <string name="notice_memory_added">Souvenir ajouté</string>
     <string name="notice_memory_forgotten">Souvenir oublié</string>

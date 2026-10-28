@@ -50,6 +50,26 @@ class NoticeStringsTest {
     }
 
     @Test
+    fun `no notice asks for a number`() {
+        // `Notice.args` is a List<String>, so a numeric placeholder throws at format time instead of
+        // printing. An oversized attachment hit exactly that — String.format("%2$d", "10") raises
+        // IllegalFormatConversionException — before this test existed. The two specifiers are built
+        // from characters because a literal "$d" (or "%1$d") in Kotlin is a string template or an
+        // escape; here only the resource text is under test.
+        val dollar = 36.toChar()
+        val numeric = listOf("%" + "d", "%1" + dollar + "d", "%2" + dollar + "d", "%3" + dollar + "d")
+
+        val offenders = listOf("values", "values-en").flatMap { locale ->
+            strings(locale)
+                .filterValues { text -> numeric.any { it in text } }
+                .keys
+                .map { "$locale:$it" }
+        }
+
+        assertEquals("placeholders expecting an Int: $offenders", emptyList<String>(), offenders)
+    }
+
+    @Test
     fun `no string outlives its key, in either locale`() {
         val known = NoticeKey.entries.map { "notice_" + it.name.lowercase() }.toSet()
         // Checking `values` alone let an orphan that only existed in `values-en` through.
