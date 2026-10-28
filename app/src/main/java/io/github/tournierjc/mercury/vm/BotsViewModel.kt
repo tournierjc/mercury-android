@@ -10,6 +10,7 @@ import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.BotAutonomy
 import kotlinx.serialization.json.put
+import io.github.tournierjc.mercury.data.BotConfigPatch
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
 import io.github.tournierjc.mercury.data.MercuryApi
@@ -89,6 +90,11 @@ data class BotsUiState(
     val models: List<io.github.tournierjc.mercury.data.dto.ModelRef> = emptyList(),
     /** Tier catalogue — `readonly`, `builder`, `operator`, `full` with their deny lists. */
     val tiers: List<io.github.tournierjc.mercury.data.dto.BotTierDto> = emptyList(),
+    /**
+     * The roster as the selection last saw it: the memory section picks the bots a teammate may
+     * read from this list, and it only receives the state.
+     */
+    val roster: List<JsonObject> = emptyList(),
     /** Filled by the bundle download, consumed by the share sheet, then cleared. */
     val bundle: String? = null,
     val bundleFor: String = "",
@@ -180,7 +186,7 @@ class BotsViewModel(
             runCatching { api.bots() }
                 .onSuccess { roster ->
                     watcher.ingest(roster)
-                    _state.update { s -> s.copy(refreshing = false, error = null) }
+                    _state.update { s -> s.copy(refreshing = false, error = null, roster = roster.bots) }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(refreshing = false, error = e.readable()) } }
         }
@@ -218,6 +224,10 @@ class BotsViewModel(
         }
         viewModelScope.launch {
             val detail = runCatching { api.botDetail(id) }.getOrNull()
+            // The live feed usually carries the roster already; the sheet's cross-bot list must
+            // not be empty on a cold start, and one read of `/api/bots` is cheaper than a
+            // section that silently offers nothing.
+            val roster = watcher.state.value.bots.ifEmpty { runCatching { api.bots() }.getOrNull()?.bots.orEmpty() }
             val persona = runCatching { api.botPersona(id) }.getOrNull()
             val permissions = runCatching { api.botPermissions(id) }.getOrNull()
             val crew = runCatching { api.botCrew(id) }.getOrNull()
@@ -255,6 +265,7 @@ class BotsViewModel(
                     messages = BotThread.build(last, prompts, answers),
                     pending = emptyList(),
                     dlq = dlq?.dlq.orEmpty(),
+                    roster = roster,
                     detailLoading = false,
                 )
             }
@@ -473,6 +484,69 @@ class BotsViewModel(
 
     fun setDailyBudget(id: String, tokens: Int) =
         setAutonomyLimit(id, BotAutonomy.DAILY_TOKENS, tokens)
+
+    // -------------------------------------------------------------------
+    // Memory, comms and retention: three manifest objects the daemon
+    // replaces whole, so each write carries the object back complete
+    // -------------------------------------------------------------------
+
+    /**
+     * Writes one top-level object of a bot's manifest.
+     *
+     * `PATCH /api/bots/:id` replaces every object it is sent, so [value] is never a partial one:
+     * it comes from [BotConfigPatch], merged from the manifest the sheet already holds. No
+     * banner — the section redraws from the manifest the write re-reads, and a failure still
+     * lands in the error slot above it.
+     */
+    fun setBotConfig(id: String, key: String, value: JsonObject) {
+        val body = buildJsonObject { put(key, value) }
+        patch(id, body, success = null)
+    }
+
+    /**
+     * The `memory` object, written whole.
+     *
+     * The fields this edit does not name are read back from the manifest and travel with it: a
+     * null here means "the manifest does not hold it either", which removes nothing that existed.
+     */
+    private fun writeMemory(id: String, scope: String? = null, learn: Boolean? = null, recall: List<String>? = null) {
+        val manifest = _state.value.manifest
+        val value = BotConfigPatch.memory(
+            manifest,
+            scope = scope ?: BotConfigPatch.text(manifest, BotConfigPatch.MEMORY, BotConfigPatch.SCOPE),
+            learn = learn ?: BotConfigPatch.flag(manifest, BotConfigPatch.MEMORY, BotConfigPatch.LEARN),
+            recall = recall ?: BotConfigPatch.strings(manifest, BotConfigPatch.MEMORY, BotConfigPatch.ALLOW_CROSS_BOT_RECALL),
+        )
+        setBotConfig(id, BotConfigPatch.MEMORY, value)
+    }
+
+    fun setMemoryScope(id: String, scope: String) = writeMemory(id, scope = scope)
+
+    fun setMemoryLearn(id: String, learn: Boolean) = writeMemory(id, learn = learn)
+
+    /** The bots whose learned context this one may re-read; an empty list clears the grant. */
+    fun setMemoryRecall(id: String, ids: List<String>) = writeMemory(id, recall = ids)
+
+    /** The roster the bot is told it may write to, as the prompt shows it. */
+    fun setComms(id: String, canMessage: List<String>) =
+        setBotConfig(id, BotConfigPatch.COMMS, BotConfigPatch.comms(_state.value.manifest, canMessage))
+
+    /** One retention number; a blank field (null) or 0 hands the key back to the daemon's default. */
+    fun setRetentionLimit(id: String, key: String, value: Long?) = setBotConfig(
+        id,
+        BotConfigPatch.RETENTION,
+        BotConfigPatch.retention(_state.value.manifest, mapOf(key to value)),
+    )
+
+    /** The sandbox janitor: its switch and its two durations, merged as one sub-object. */
+    fun setSandboxJanitor(id: String, enabled: Boolean, hotDays: Long?, archiveDays: Long?) = setBotConfig(
+        id,
+        BotConfigPatch.RETENTION,
+        BotConfigPatch.retention(
+            _state.value.manifest,
+            janitor = BotConfigPatch.Janitor(enabled = enabled, hotDays = hotDays, archiveDays = archiveDays),
+        ),
+    )
 
     fun savePersona(text: String) {
         val id = _state.value.selectedId ?: return
@@ -772,18 +846,18 @@ class BotsViewModel(
         }
     }
 
-    private fun patch(id: String, patchJson: String, success: Notice) {
+    private fun patch(id: String, patchJson: String, success: Notice?) {
         patch(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject, success)
     }
 
-    private fun patch(id: String, body: JsonObject, success: Notice) {
+    private fun patch(id: String, body: JsonObject, success: Notice?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
             runCatching {
                 api.patchBot(id, body)
             }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = success) }
+                    _state.update { s -> s.copy(busy = false, message = success ?: s.message) }
                     // The sheet's rows read the model from the manifest: without this the row
                     // kept the old label until the bot was reopened, which looked like the
                     // change had not been applied.

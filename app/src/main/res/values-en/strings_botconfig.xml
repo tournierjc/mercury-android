@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A bot's sheet, continued: what it remembers (memory), who it may write to (comms), what it
+     keeps (retention) and how many turns it runs at once. -->
+<resources>
+    <!-- Memory section -->
+    <string name="bots_section_memory">Memory</string>
+    <string name="bots_memory_hint">What the teammate keeps from one turn to the next.</string>
+    <string name="bots_memory_scope_none">None</string>
+    <string name="bots_memory_scope_own">Its own</string>
+    <string name="bots_memory_scope_shared">Shared</string>
+    <string name="bots_memory_scope_none_verb">Nothing is kept between turns: every task starts from scratch.</string>
+    <string name="bots_memory_scope_own_verb">It remembers its own turns, and nothing else.</string>
+    <string name="bots_memory_scope_shared_verb">It also re-reads the context other teammates have learned.</string>
+    <string name="bots_memory_learn">Learn from productive turns</string>
+    <string name="bots_memory_learn_hint">It keeps what a turn produced, not only what was said.</string>
+    <string name="bots_memory_recall">Re-read the context of</string>
+    <string name="bots_memory_recall_hint">Only the teammates ticked here are readable. It never re-reads itself.</string>
+    <string name="bots_memory_recall_empty">No other teammate on this instance.</string>
+
+    <!-- Retention section -->
+    <string name="bots_section_retention">Retention</string>
+    <string name="bots_retention_hint">What the daemon keeps, and for how long. An empty field follows its default.</string>
+    <string name="bots_config_default">daemon default</string>
+    <string name="bots_label_transcript_runs">Turns kept</string>
+    <string name="bots_hint_transcript_runs">Transcripts kept for this teammate.</string>
+    <string name="bots_label_journal_rotate">Journal rotation (bytes)</string>
+    <string name="bots_hint_journal_rotate">Size reached before the journal rotates.</string>
+    <string name="bots_label_journal_keep">Rotations kept</string>
+    <string name="bots_hint_journal_keep">Old journals kept after a rotation.</string>
+    <string name="bots_label_mailbox_ttl">Messages kept (hours)</string>
+    <string name="bots_hint_mailbox_ttl">Lifetime of a message in the mailbox.</string>
+    <string name="bots_label_dlq_cap">Failures kept</string>
+    <string name="bots_hint_dlq_cap">Jobs in the dead letter queue before it is purged.</string>
+    <string name="bots_label_artifact_quota">Deliverable quota (bytes)</string>
+    <string name="bots_hint_artifact_quota">Space for the files the teammate produces.</string>
+    <string name="bots_label_janitor">Sandbox janitor</string>
+    <string name="bots_hint_janitor">It archives, then deletes what turns leave in the sandbox.</string>
+    <string name="bots_label_janitor_hot">Hot days</string>
+    <string name="bots_hint_janitor_hot">Files kept as they are.</string>
+    <string name="bots_label_janitor_archive">Archive days</string>
+    <string name="bots_hint_janitor_archive">Files compressed before deletion.</string>
+
+    <!-- Model and budget section: the fifth limit -->
+    <string name="bots_label_max_concurrent">Concurrent runs</string>
+    <string name="bots_hint_max_concurrent">Turns run in parallel on one teammate.</string>
+</resources>
