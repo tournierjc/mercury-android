@@ -9,6 +9,7 @@ import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.dto.GraphNode
+import io.github.tournierjc.mercury.data.dto.MemoryDto
 import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.ui.graph.GraphEdge
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +33,8 @@ data class GraphUiState(
     val error: Notice? = null,
     /** The node whose memory is being read, empty when no panel is open. */
     val detailId: String = "",
-    val detailText: String = "",
-    val detailDetail: String = "",
+    /** The memory behind the open panel: the panel shows what the record says, not a summary of it. */
+    val detailMemory: MemoryDto? = null,
     val detailLoading: Boolean = false,
     val detailFailed: Boolean = false,
     /** What the search field holds: the drawn graph is filtered by it. */
@@ -87,7 +88,7 @@ class GraphViewModel(private val api: MercuryApi) : ViewModel() {
      */
     fun selectNode(id: String) {
         _state.update {
-            it.copy(detailId = id, detailText = "", detailDetail = "", detailLoading = true, detailFailed = false)
+            it.copy(detailId = id, detailMemory = null, detailLoading = true, detailFailed = false)
         }
         viewModelScope.launch {
             runCatching { api.memory(id) }
@@ -96,11 +97,7 @@ class GraphViewModel(private val api: MercuryApi) : ViewModel() {
                         if (it.detailId != id) {
                             it
                         } else {
-                            it.copy(
-                                detailLoading = false,
-                                detailText = memory.summary,
-                                detailDetail = memory.detail.orEmpty(),
-                            )
+                            it.copy(detailLoading = false, detailMemory = memory)
                         }
                     }
                 }
@@ -111,7 +108,7 @@ class GraphViewModel(private val api: MercuryApi) : ViewModel() {
     }
 
     fun clearSelection() {
-        _state.update { it.copy(detailId = "", detailText = "", detailDetail = "", detailLoading = false, detailFailed = false) }
+        _state.update { it.copy(detailId = "", detailMemory = null, detailLoading = false, detailFailed = false) }
     }
 
     fun search(query: String) {

@@ -53,7 +53,6 @@
     <string name="memory_forget_title">Forget this memory?</string>
     <string name="memory_forget_cancel">Keep</string>
     <!-- A graph node: its kind, then its weight. The space before % is French. -->
-    <string name="graph_node_meta">%1$s · %2$d%%</string>
     <string name="brain_personne_deplier">Open this person\'s details</string>
     <string name="brain_personne_replier">Close this person\'s details</string>
     <string name="brain_personne_detail_echoue">This person\'s details did not answer.</string>
@@ -64,4 +63,15 @@
     </plurals>
     <string name="brain_graphe_rechercher">Search a node</string>
     <string name="brain_noeud_illisible">The memory behind this node did not answer.</string>
+    <string name="graph_meta_scope">SCOPE</string>
+    <string name="graph_meta_importance">IMPORTANCE</string>
+    <string name="graph_meta_confidence">CONFIDENCE</string>
+    <string name="graph_meta_evidence">EVIDENCE</string>
+    <string name="graph_meta_connections">CONNECTIONS</string>
+    <string name="graph_meta_source">SOURCE</string>
+    <string name="graph_meta_created">CREATED</string>
+    <string name="graph_meta_updated">UPDATED</string>
+    <string name="graph_meta_seen">LAST SEEN</string>
+    <string name="graph_meta_id">ID</string>
+    <string name="graph_meta_percent">%1$d%%</string>
 </resources>
