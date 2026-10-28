@@ -17,8 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -139,7 +143,19 @@ fun BoardsScreen(onBack: () -> Unit) {
             onBack = { if (state.openBoardId == null) onBack() else viewModel.close() },
             onRefresh = viewModel::refresh,
             refreshing = state.loading,
-        )
+        ) {
+            // One « + » in the bar while the list is what you are looking at: creating a board was a
+            // full-width labelled button at the top of the page, which is a form, not a screen.
+            if (state.openBoardId == null && state.available != false) {
+                IconButton(onClick = { showCreateBoard = true }) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.boards_nouveau_plateau),
+                        tint = colors.accent,
+                    )
+                }
+            }
+        }
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
@@ -154,7 +170,6 @@ fun BoardsScreen(onBack: () -> Unit) {
                     state,
                     onOpen = viewModel::open,
                     onDelete = viewModel::deleteBoard,
-                    onCreate = { showCreateBoard = true },
                     onRetry = viewModel::refresh,
                     onSetActive = { id, active -> viewModel.setBoardActive(id, active) },
                 )

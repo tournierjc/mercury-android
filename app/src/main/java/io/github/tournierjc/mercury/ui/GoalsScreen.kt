@@ -18,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -77,7 +79,23 @@ fun GoalsScreen(onBack: () -> Unit) {
             onBack = onBack,
             onRefresh = viewModel::refresh,
             refreshing = state.loading,
-        )
+        ) {
+            // The only write this screen owns belongs in the bar: a lone labelled button under the
+            // list turned the empty state into a form, and the bar is where every other screen
+            // keeps its one « + ».
+            IconButton(onClick = { showAdd = true }) {
+                Icon(
+                    Icons.Rounded.Add,
+                    contentDescription = stringResource(
+                        when (state.tab) {
+                            GoalTab.Goals -> R.string.brain_objectif_nouveau
+                            GoalTab.Projects -> R.string.brain_projet_nouveau
+                        },
+                    ),
+                    tint = colors.accent,
+                )
+            }
+        }
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
@@ -123,16 +141,6 @@ fun GoalsScreen(onBack: () -> Unit) {
                         onForget = { viewModel.forget(memory.id) },
                     )
                 }
-                IconActionBar(
-                    listOf(
-                        QuickAction(
-                            icon = Icons.Rounded.Add,
-                            label = stringResource(R.string.memory_ajouter),
-                            tint = colors.accent,
-                            onClick = { showAdd = true },
-                        ),
-                    ),
-                )
             }
             Text(
                 text = stringResource(R.string.brain_modifier_webapp),
