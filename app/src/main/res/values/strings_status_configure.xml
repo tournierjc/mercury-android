@@ -72,7 +72,7 @@
     <string name="configure_providers_edit_note">Les clés, les modèles et les URL se modifient dans Réglages ; un changement ne s\'applique qu\'au prochain démarrage.</string>
 
     <!-- Skills -->
-    <string name="configure_skills_title">Skills</string>
+    <string name="configure_skills_title">Compétences</string>
     <plurals name="configure_skills_count">
         <item quantity="one">%d skill installé</item>
         <item quantity="other">%d skills installés</item>
@@ -145,7 +145,7 @@
     <string name="configure_permissions_readonly">Lecture seule : ces droits se modifient sur l\'hôte, pas depuis le téléphone.</string>
 
     <!-- Automatisations -->
-    <string name="configure_schedules_title">Automatisations</string>
+    <string name="configure_schedules_title">Planifications</string>
     <plurals name="configure_schedules_count">
         <item quantity="one">%d automatisation</item>
         <item quantity="other">%d automatisations</item>

@@ -79,7 +79,9 @@ fun TasksScreen(onBack: () -> Unit) {
                     ).joinToString(" · "),
                     trailing = "",
                     actions = emptyList(),
-                    onClick = {},
+                    // No handler: the task page of the webapp has nothing to open yet, and a row
+                    // that answers the finger while doing nothing is a lie.
+                    onClick = null,
                 )
             }
         }

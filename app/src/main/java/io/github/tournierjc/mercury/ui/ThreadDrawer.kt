@@ -1,5 +1,10 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +42,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.rounded.Chat
@@ -82,6 +90,7 @@ fun ThreadDrawer(
     activeBotId: String? = null,
 ) {
     val colors = LocalMercuryColors.current
+    val needsYou = stringResource(R.string.drawer_needs_you)
     var pendingDelete by remember { mutableStateOf<ThreadDto?>(null) }
 
     val rows = remember(bots, threads, current) {
@@ -119,7 +128,7 @@ fun ThreadDrawer(
                 when (row) {
                     is DrawerRow.CrewHeader -> Text(
                         text = stringResource(R.string.drawer_section_crew),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
                         modifier = Modifier.padding(bottom = 6.dp),
                     )
@@ -133,7 +142,7 @@ fun ThreadDrawer(
                                 .fillMaxWidth()
                                 .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable { onOpenBot(row.id) }
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
                         ) {
                             BotFace(bot, avatars[row.id], small = true)
                             Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
@@ -151,7 +160,15 @@ fun ThreadDrawer(
                                 )
                             }
                             if (BotJson.needsYou(bot)) {
-                                Text("⚠", color = colors.danger, style = MaterialTheme.typography.labelSmall)
+                                // A dot with a name, not a bare "⚠" in a Text: the core icon set has
+                                // no warning glyph, and a literal has no accessible label.
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.danger)
+                                        .semantics { contentDescription = needsYou },
+                                )
                             }
                         }
                     }
@@ -165,7 +182,7 @@ fun ThreadDrawer(
                             .fillMaxWidth()
                             .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { onOpen(AppScreen.Bots) }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(horizontal = 8.dp, vertical = 14.dp),
                     ) {
                         Icon(
                             Icons.Rounded.SmartToy,
@@ -186,7 +203,7 @@ fun ThreadDrawer(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.drawer_section_sessions),
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleSmall,
                                 color = colors.textPrimary,
                                 modifier = Modifier.weight(1f),
                             )
@@ -249,17 +266,23 @@ fun ThreadDrawer(
 
                     // The webapp's three groups, named: a flat list of nineteen entries would be
                     // a phone book, and the groups are what makes the order learnable.
-                    is DrawerRow.SectionHeader -> Text(
-                        text = stringResource(
-                            when (row.section) {
-                                DrawerSection.SecondBrain -> R.string.nav_section_second_brain
-                                DrawerSection.Configure -> R.string.nav_section_configure
-                            },
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.textSecondary,
-                        modifier = Modifier.padding(top = 14.dp, bottom = 4.dp, start = 12.dp),
-                    )
+                    // A group outranks the sections inside it: capitals over a rule, no indent, and
+                    // more air above than a section ever gets.
+                    is DrawerRow.SectionHeader -> Column(modifier = Modifier.padding(top = 22.dp)) {
+                        HorizontalDivider(color = colors.hairline)
+                        Text(
+                            text = stringResource(
+                                when (row.section) {
+                                    DrawerSection.Work -> R.string.nav_section_work
+                                    DrawerSection.SecondBrain -> R.string.nav_section_second_brain
+                                    DrawerSection.Configure -> R.string.nav_section_configure
+                                },
+                            ).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 10.dp, bottom = 6.dp),
+                        )
+                    }
 
                     is DrawerRow.Screen -> DrawerEntry(
                         label = stringResource(screenLabel(row.screen)),
@@ -326,6 +349,14 @@ private fun DrawerEntry(
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
+        // One meaning for the accent: this is where you are. A 2 dp bar carries it, so colour is not
+        // the only signal and the eye finds it among identical rows.
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .height(18.dp)
+                .background(if (accent) colors.accent else Color.Transparent),
+        )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
@@ -334,7 +365,7 @@ private fun DrawerEntry(
                 muted -> colors.textSecondary
                 else -> colors.textPrimary
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).padding(start = 10.dp),
         )
         Icon(
             icon,

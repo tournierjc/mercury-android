@@ -71,7 +71,7 @@ class DrawerItemsTest {
     }
 
     @Test
-    fun `the second brain and the configure group are both complete and in order`() {
+    fun `the three groups are complete and in the webapp's order`() {
         val all = screens()
         val secondBrain = all.subList(all.indexOf(AppScreen.Memory), all.indexOf(AppScreen.Graph) + 1)
         assertEquals(listOf(AppScreen.Memory, AppScreen.Persons, AppScreen.Goals, AppScreen.Graph), secondBrain)
@@ -89,9 +89,23 @@ class DrawerItemsTest {
             ),
             configure,
         )
+        val work = all.subList(all.indexOf(AppScreen.Status), all.indexOf(AppScreen.Workspace) + 1)
+        assertEquals(
+            listOf(
+                AppScreen.Status,
+                AppScreen.Chat,
+                AppScreen.Bots,
+                AppScreen.Tasks,
+                AppScreen.Boards,
+                AppScreen.Workspace,
+            ),
+            work,
+        )
+        // Every group is named: a headerless block of six screens behind a divider was the drawer
+        // reading as an undifferentiated list.
         val headings = drawerRows(emptyList(), emptyList()).filterIsInstance<DrawerRow.SectionHeader>()
         assertEquals(
-            listOf(DrawerSection.SecondBrain, DrawerSection.Configure),
+            listOf(DrawerSection.Work, DrawerSection.SecondBrain, DrawerSection.Configure),
             headings.map { it.section },
         )
     }

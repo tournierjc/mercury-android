@@ -29,4 +29,6 @@
     <string name="tasks_file_titre">Task queue</string>
     <string name="tasks_file_corps">The task queue is not exposed by the API yet: the webapp\'s Tasks page shows the same "coming soon". Here as there, what really runs are the agents above and the schedules.</string>
     <string name="nav_console">Console</string>
+    <string name="nav_section_work">Work</string>
+    <string name="drawer_needs_you">Needs you</string>
 </resources>

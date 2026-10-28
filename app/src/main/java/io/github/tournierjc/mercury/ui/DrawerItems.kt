@@ -33,7 +33,7 @@ sealed interface DrawerRow {
 }
 
 /** The webapp's three sidebar groups. */
-enum class DrawerSection { SecondBrain, Configure }
+enum class DrawerSection { Work, SecondBrain, Configure }
 
 /**
  * The drawer's rows, top to bottom: crew, sessions, then the screens. Pure, so the order and the
@@ -52,9 +52,8 @@ fun drawerRows(
     }
     add(DrawerRow.SessionHeader)
     if (threadIds.isEmpty()) add(DrawerRow.NoSession) else threadIds.forEach { add(DrawerRow.Thread(it)) }
-    add(DrawerRow.NavDivider)
-
-    // The work, in the webapp's order.
+    // The work, in the webapp's order — one named group, not a headerless block behind a rule.
+    add(DrawerRow.SectionHeader(DrawerSection.Work))
     listOf(
         AppScreen.Status,
         AppScreen.Chat,

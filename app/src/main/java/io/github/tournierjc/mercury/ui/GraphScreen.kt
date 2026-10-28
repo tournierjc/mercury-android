@@ -118,17 +118,26 @@ fun GraphScreen(onBack: () -> Unit) {
                 color = colors.textSecondary,
                 modifier = Modifier.padding(horizontal = 18.dp),
             )
-            GraphCanvas(
-                state = state,
-                onSelect = { node -> selected = node },
+            // The panel used to be a sibling, so opening it shrank the canvas and the layout was
+            // recomputed under the finger that had just picked a node. It floats now.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            )
-        }
-
-        shown?.let { node ->
-            NodePanel(node = node, onClose = { selected = null })
+            ) {
+                GraphCanvas(
+                    state = state,
+                    onSelect = { node -> selected = node },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                shown?.let { node ->
+                    NodePanel(
+                        node = node,
+                        onClose = { selected = null },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+            }
         }
     }
 }
@@ -169,9 +178,11 @@ private fun GraphCanvas(
             node.id to with(density) { node.size.toFloat().coerceIn(MIN_RADIUS, MAX_RADIUS).dp.toPx() }
         }
     }
-    // Only the most important few get words: eight labels on a phone already overlap.
-    val labelled = remember(state.nodes) {
-        state.nodes.sortedByDescending { it.importance }.take(MAX_LABELS).map { it.id }.toHashSet()
+    // Only the most important few get words, and how few depends on the width: eight 19-character
+    // labels never fit a 360 dp phone, five do. The room is measured, not assumed.
+    val labelRoom = with(density) { (canvas.width / labelWidth.toPx()).toInt().coerceIn(2, MAX_LABELS) }
+    val labelled = remember(state.nodes, labelRoom) {
+        state.nodes.sortedByDescending { it.importance }.take(labelRoom).map { it.id }.toHashSet()
     }
     val touchSlop = with(density) { TOUCH_SLOP.toPx() }
 
@@ -228,7 +239,7 @@ private fun GraphCanvas(
                     val from = points[edge.source] ?: continue
                     val to = points[edge.target] ?: continue
                     drawLine(
-                        color = colors.hairline,
+                        color = colors.graphEdge,
                         start = Offset(from.x, from.y),
                         end = Offset(to.x, to.y),
                         strokeWidth = HAIRLINE.toPx(),
@@ -250,7 +261,7 @@ private fun GraphCanvas(
                     text = byId[point.id]?.label.orEmpty(),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.textSecondary,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
@@ -270,11 +281,11 @@ private fun GraphCanvas(
 
 /** The sentence behind a dot, at the bottom, where a thumb can read it. */
 @Composable
-private fun NodePanel(node: GraphNode, onClose: () -> Unit) {
+private fun NodePanel(node: GraphNode, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalMercuryColors.current
     Row(
         verticalAlignment = Alignment.Top,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .background(colors.surface, MaterialTheme.shapes.extraSmall)
@@ -331,17 +342,30 @@ private fun clampPan(pan: Offset, scale: Float, size: IntSize): Offset {
 private fun nodeColor(hex: String?, fallback: Color): Color {
     val digits = hex?.trim()?.removePrefix("#") ?: return fallback
     val value = digits.toLongOrNull(16) ?: return fallback
-    return when (digits.length) {
+    val parsed = when (digits.length) {
         6 -> Color(0xFF000000L or value)
         8 -> Color(value)
-        else -> fallback
+        else -> return fallback
     }
+    // The colour comes from the server, and a `#333333` belief is 1,7:1 on a black canvas: an
+    // invisible node. Lift the dark ones towards white until they read.
+    val luminance = 0.2126 * parsed.red + 0.7152 * parsed.green + 0.0722 * parsed.blue
+    return if (luminance >= MIN_LUMINANCE) parsed else lerp(parsed, Color.White, 0.45f)
 }
+
+private fun lerp(from: Color, to: Color, t: Float): Color = Color(
+    red = from.red + (to.red - from.red) * t,
+    green = from.green + (to.green - from.green) * t,
+    blue = from.blue + (to.blue - from.blue) * t,
+    alpha = from.alpha,
+)
 
 private const val MIN_RADIUS = 4f
 private const val MAX_RADIUS = 16f
 private const val MAX_SCALE = 6f
 private const val MAX_LABELS = 8
+/** Below this relative luminance a node colour is not visible on either canvas. */
+private const val MIN_LUMINANCE = 0.22
 private val NODE_SPACING = 40.dp
 private val TOUCH_SLOP = 12.dp
 private val HAIRLINE = 1.dp

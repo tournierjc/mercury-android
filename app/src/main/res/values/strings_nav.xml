@@ -29,4 +29,6 @@
     <string name="tasks_file_titre">File de tâches</string>
     <string name="tasks_file_corps">La file de tâches n\'est pas encore exposée par l\'API : la page Tâches de la webapp affiche le même « bientôt ». Ici comme là, ce qui tourne vraiment, ce sont les agents ci-dessus et les planifications.</string>
     <string name="nav_console">Console</string>
+    <string name="nav_section_work">Travail</string>
+    <string name="drawer_needs_you">À traiter</string>
 </resources>
