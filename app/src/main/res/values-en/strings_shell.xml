@@ -126,5 +126,7 @@
 
     <!-- openui rendering -->
     <string name="openui_not_rendered">not rendered</string>
+    <!-- How many further faults the spec had: the card only prints the first one. -->
+    <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">in %1$s</string>
 </resources>

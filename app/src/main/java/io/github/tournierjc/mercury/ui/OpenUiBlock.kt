@@ -96,7 +96,19 @@ private fun RefusedSpec(spec: String, errors: List<Notice>, modifier: Modifier) 
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("openui", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
-            Text(stringResource(R.string.openui_not_rendered), style = MaterialTheme.typography.labelSmall, color = colors.danger)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.openui_not_rendered), style = MaterialTheme.typography.labelSmall, color = colors.danger)
+                // The parse stops at nothing, so a spec can carry more faults than fit here:
+                // the count says how many were left unsaid.
+                if (errors.size > 1) {
+                    Text(
+                        text = stringResource(R.string.openui_more_faults, errors.size - 1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
         SelectionContainer {

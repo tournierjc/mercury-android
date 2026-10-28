@@ -1,5 +1,8 @@
 package io.github.tournierjc.mercury.ui
 
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -53,7 +56,8 @@ fun RunsSection(
         val context = LocalContext.current
         runs.take(12).forEach { run ->
             ActionRow(
-                title = BotOps.runSubtitle(run, BotOps.runStateNotice(run.state)?.let { noticeText(it) }.orEmpty()),
+                title = BotOps.runSubtitle(run, BotOps.runStateNotice(run.state)?.let { noticeText(it) }.orEmpty())
+                    .ifBlank { run.summary.take(140) },
                 subtitle = BotOps.runDetail(
                     tokensText = BotOps.tokensNotices(run.tokensIn, run.tokensOut)
                         .joinToString(" · ") { noticeText(context, it) },
@@ -141,7 +145,7 @@ fun RunDetailDialog(
                     )
                     loaded.trace.take(40).forEach { step ->
                         Text(
-                            text = BotOps.traceLabel(step, stringResource(R.string.notice_tool_fallback)),
+                            text = BotOps.traceLabel(step, noticeText(Notice(NoticeKey.TOOL_FALLBACK))),
                             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                             color = if (step.ok) colors.textPrimary else colors.danger,
                         )

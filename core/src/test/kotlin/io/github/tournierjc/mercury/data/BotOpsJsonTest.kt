@@ -116,15 +116,18 @@ class BotOpsJsonTest {
 
     @Test
     fun `sizes and durations read like a phone header`() {
-        assertEquals("512 o", BotOps.sizeLabel(512))
-        assertEquals("2 ko", BotOps.sizeLabel(2048))
-        assertEquals("11,7 ko", BotOps.sizeLabel(12000))
-        assertEquals("3,2 Mo", BotOps.sizeLabel(3_355_443))
-        assertEquals("—", BotOps.sizeLabel(-1))
+        assertEquals(listOf("512"), BotOps.sizeNotice(512)?.args)
+        assertEquals(NoticeKey.SIZE_BYTES, BotOps.sizeNotice(512)?.key)
+        assertEquals(NoticeKey.SIZE_KB, BotOps.sizeNotice(2048)?.key)
+        assertEquals(listOf("11.7"), BotOps.sizeNotice(12000)?.args)
+        assertEquals(NoticeKey.SIZE_MB, BotOps.sizeNotice(3_355_443)?.key)
+        assertEquals(listOf("3.2"), BotOps.sizeNotice(3_355_443)?.args)
+        // A negative size is not a size: the row falls back to a dash.
+        assertNull(BotOps.sizeNotice(-1))
 
         assertEquals("—", BotOps.durationLabel(0))
         assertEquals("820 ms", BotOps.durationLabel(820))
-        assertEquals("12,3 s", BotOps.durationLabel(12_300))
+        assertEquals("12.3 s", BotOps.durationLabel(12_300))
         assertEquals("3 min 05 s", BotOps.durationLabel(185_000))
     }
 
@@ -140,8 +143,8 @@ class BotOpsJsonTest {
 
         val short = BotOps.tokensNotices(4200, 800)
         assertEquals(listOf(NoticeKey.TOKENS_IN, NoticeKey.TOKENS_OUT), short.map { it.key })
-        assertEquals(listOf("4,2k", "800"), short.flatMap { it.args })
-        assertEquals("1,2M", BotOps.tokensNotices(1_200_000, 0).first().args.single())
+        assertEquals(listOf("4.2k", "800"), short.flatMap { it.args })
+        assertEquals("1.2M", BotOps.tokensNotices(1_200_000, 0).first().args.single())
         // A run that reported nothing draws no line at all, rather than a dash.
         assertTrue(BotOps.tokensNotices(0, 0).isEmpty())
     }
@@ -224,7 +227,7 @@ class BotOpsJsonTest {
         val failed = rows[1]
         assertEquals(NoticeKey.RUN_FAILED_STATE, BotOps.runStateNotice(failed.state)?.key)
         assertTrue(BotOps.runSubtitle(failed, "échoué").contains("échoué"))
-        assertTrue(BotOps.runSubtitle(failed, "échoué").contains("18,5 s"))
+        assertTrue(BotOps.runSubtitle(failed, "échoué").contains("18.5 s"))
         assertEquals(NoticeKey.RUN_ERROR_LINE, BotOps.errorNotice(failed)?.key)
         assertEquals("provider timeout", BotOps.errorNotice(failed)?.args?.single())
         assertEquals(NoticeKey.RUN_TOOL_CALLS_MANY, BotOps.toolCallsNotice(failed)?.key)
@@ -275,7 +278,7 @@ class BotOpsJsonTest {
         assertTrue(subtitle.contains("quota fournisseur"))
         assertEquals(NoticeKey.REASON_NOT_FOUND, BotOps.reasonNotice("not_found")?.key)
         // A code this app does not know travels as its argument, spaces instead of underscores.
-        assertEquals(NoticeKey.REASON_OTHER, BotOps.reasonNotice("disk_full")?.key)
+        assertEquals(NoticeKey.UNKNOWN_CODE, BotOps.reasonNotice("disk_full")?.key)
         assertEquals("disk full", BotOps.reasonNotice("disk_full")?.args?.single())
     }
 

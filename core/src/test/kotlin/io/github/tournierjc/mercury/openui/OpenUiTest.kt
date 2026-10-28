@@ -318,4 +318,20 @@ c = Chart({"kind": "donut", "labels": ["a"], "values": [1]})""").any { it.key ==
         assertFalse(OpenUi.looksLikeSpec("""puts "Table(1)" """))
         assertFalse(OpenUi.looksLikeSpec(""))
     }
+
+    @Test
+    fun `a spec with several faults reports every one of them`() {
+        // The card prints the first and a count of the rest: the list must not stop at the first
+        // fault, or the count would always be zero.
+        val errors = refused(
+            """
+            root = Stack([a, b])
+            a = Card({"href": "https://example.com"})
+            b = Gauge({"value": "42"})
+            """.trimIndent(),
+        )
+        assertTrue(errors.toString(), errors.size >= 2)
+        assertEquals(NoticeKey.OPENUI_LINE_FORBIDDEN_PROP, errors[0].key)
+        assertEquals(NoticeKey.OPENUI_NUMBER, errors[1].key)
+    }
 }
