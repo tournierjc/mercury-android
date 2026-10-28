@@ -16,6 +16,12 @@ data class BotMessage(
     val at: Long,
     val state: String = "",
     val streaming: Boolean = false,
+    /**
+     * The text is the journal's summary, not the transcript: the daemon cuts it at 300
+     * characters, which lands in the middle of a fenced block — an `openui` answer comes back
+     * as half a spec, and half a spec is not a layout. The screen says so instead of showing it.
+     */
+    val truncated: Boolean = false,
 )
 
 /**
@@ -65,11 +71,12 @@ object BotThread {
                 // A streaming turn has an answer in progress: the journal summary is either
                 // absent or stale, so the live tail is what the owner should be reading.
                 val streaming = liveRunning && liveJobId != null && record.runId == liveJobId && liveTail.isNotBlank()
+                val full = outputs[record.runId]?.takeIf { it.isNotBlank() }
                 val reply = when {
                     streaming -> liveTail
                     // The journal truncates `summary` to 300 characters; the transcript keeps
                     // the whole answer, which is what a conversation must show.
-                    outputs[record.runId]?.isNotBlank() == true -> outputs.getValue(record.runId)
+                    full != null -> full
                     record.summary.isNotBlank() -> record.summary
                     record.error.isNotBlank() -> record.error
                     // A run that produced neither a summary nor an error was still a turn: say
@@ -83,6 +90,8 @@ object BotThread {
                     at = record.startedAt + record.durationMs,
                     state = record.state,
                     streaming = streaming,
+                    // Only a summary can be cut: an error line and an empty turn are what they are.
+                    truncated = !streaming && full == null && record.summary.isNotBlank(),
                 )
             }
         // A job that has not reached the journal yet: the optimistic turn, streaming or not.

@@ -148,4 +148,6 @@
     <string name="out_showing">%1$d sur %2$d fichiers</string>
     <string name="out_fold_group">Replier les fichiers de %1$s</string>
     <string name="out_unfold_group">Déplier les fichiers de %1$s</string>
+    <string name="chat_answer_truncated">Réponse tronquée · charger la complète</string>
+    <string name="openui_partial">Bloc incomplet : dessiné jusqu\'à la coupure.</string>
 </resources>

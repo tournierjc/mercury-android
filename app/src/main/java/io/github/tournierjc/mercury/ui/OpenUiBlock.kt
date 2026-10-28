@@ -81,7 +81,25 @@ fun OpenUiBlock(spec: String, streaming: Boolean = false, modifier: Modifier = M
             modifier = modifier.padding(top = 2.dp, bottom = 2.dp),
         )
 
-        is OpenUi.Result.Refused -> RefusedSpec(spec, result.errors, modifier)
+        // A spec that was cut — the daemon's 300-character summary, a message trimmed by a
+        // proxy — still holds whole nodes before the cut. Draw those, and say they are a part:
+        // losing the layout entirely is the worse answer to "this is incomplete".
+        is OpenUi.Result.Refused -> {
+            val salvaged = if (!streaming) remember(spec) { OpenUi.parse(spec, partial = true) } else null
+            if (salvaged is OpenUi.Result.Rendered) {
+                Column(modifier = modifier.fillMaxWidth()) {
+                    NodeView(salvaged.root)
+                    Text(
+                        text = stringResource(R.string.openui_partial),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = LocalMercuryColors.current.textSecondary,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            } else {
+                RefusedSpec(spec, result.errors, modifier)
+            }
+        }
     }
 }
 

@@ -287,6 +287,32 @@ class BotsViewModel(
         return runCatching { api.botRun(id, runId) }.getOrNull()
     }
 
+    /**
+     * Loads one run's full answer, for a bubble that only had the journal's summary.
+     *
+     * The transcript is the only place the whole answer lives: the summary is cut at 300
+     * characters, which is where a fenced `openui` block stops being a layout. The answer is
+     * merged into the map the thread is built from, so the bubble redraws instead of the screen
+     * reloading twelve runs to gain one.
+     */
+    fun loadAnswer(runId: String) {
+        val id = _state.value.selectedId ?: return
+        if (runId.isBlank() || _state.value.answers[runId]?.isNotBlank() == true) return
+        viewModelScope.launch {
+            val transcript = runCatching { api.botRun(id, runId) }.getOrNull() ?: return@launch
+            if (_state.value.selectedId != id) return@launch
+            _state.update { state ->
+                val answers = state.answers + (runId to transcript.output)
+                val prompts = if (transcript.prompt.isNotBlank()) state.prompts + (runId to transcript.prompt) else state.prompts
+                state.copy(
+                    answers = answers,
+                    prompts = prompts,
+                    messages = BotThread.build(state.records, prompts, answers),
+                )
+            }
+        }
+    }
+
     fun reloadConversation(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch {

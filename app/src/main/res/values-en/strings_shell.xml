@@ -146,4 +146,6 @@
     <string name="out_showing">%1$d of %2$d files</string>
     <string name="out_fold_group">Fold %1$s\'s files</string>
     <string name="out_unfold_group">Unfold %1$s\'s files</string>
+    <string name="chat_answer_truncated">Truncated answer · load the full one</string>
+    <string name="openui_partial">Incomplete block: drawn up to the cut.</string>
 </resources>
