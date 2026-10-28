@@ -13,6 +13,11 @@ data class ChatMessage(
      * are drawn as a block, where live steps are a row of chips.
      */
     val toolTrace: Boolean = false,
+    /**
+     * The text is a summary the daemon cut short (see BotThread), not the answer: the screen offers
+     * to load the rest instead of pretending this is all there was.
+     */
+    val truncated: Boolean = false,
 ) {
     enum class Role { User, Assistant }
 }

@@ -43,6 +43,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -515,6 +516,7 @@ fun ChatScreen(
                                 }
                             },
                             streaming = message.streaming,
+                            truncated = message.truncated,
                         )
                     }
                 }
@@ -566,6 +568,7 @@ fun ChatScreen(
                             // A bot conversation is its own list: switching to it from the
                             // roster must not animate through Mercury's messages.
                             conversationKey = "bot:$botId",
+                            onLoadFull = { key -> botsVm.loadAnswer(key.substringBeforeLast("-bot")) },
                         )
                     }
                 }
@@ -912,6 +915,11 @@ internal fun MessageList(
      * history on the way.
      */
     conversationKey: String = "mercury",
+    /**
+     * Called with the message id when the owner asks for the rest of a truncated answer. Null
+     * hides the affordance: Mercury's own thread always has its text in full.
+     */
+    onLoadFull: (String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val lastLength = messages.lastOrNull()?.text?.length ?: 0
@@ -975,6 +983,7 @@ internal fun MessageList(
                         onLongPress = {
                             if (selecting == null) menuFor = message.id
                         },
+                        onLoadFull = if (message.truncated) ({ onLoadFull(message.id) }) else null,
                     )
                     DropdownMenu(
                         expanded = menuFor == message.id,
@@ -1035,6 +1044,8 @@ internal fun MessageItem(
     message: ChatMessage,
     selecting: Boolean = false,
     onLongPress: (() -> Unit)? = null,
+    /** Offered under a bubble whose text is a cut summary; null when there is nothing to load. */
+    onLoadFull: (() -> Unit)? = null,
 ) {
     val colors = LocalMercuryColors.current
     val parsed = remember(message.text) { QuoteReply.parse(message.text) }
@@ -1092,6 +1103,31 @@ internal fun MessageItem(
                             color = colors.accent,
                         )
                     }
+                }
+            }
+            // The journal cuts an answer at 300 characters, which is inside a fenced block as
+            // often as not: the bubble says its text is a summary, and offers the rest.
+            if (message.truncated && onLoadFull != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(top = 4.dp, start = 4.dp)
+                        .clip(RoundedCornerShape(50))
+                        .clickable { onLoadFull() }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Icon(
+                        Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        tint = colors.accent,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.chat_answer_truncated),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.accent,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
                 }
             }
         }
