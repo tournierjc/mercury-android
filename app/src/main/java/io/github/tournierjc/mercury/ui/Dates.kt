@@ -27,3 +27,11 @@ fun formatWhen(iso: String?, zone: ZoneId = ZoneId.systemDefault(), locale: Loca
         instant.atZone(zone).format(formatter)
     }.getOrNull()
 }
+
+/** `1793148728902` → `28/10/2026 14:52`, the shape the web app prints, in the device's zone. */
+private val dayThenTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+
+fun formatStamp(ms: Long?, zone: ZoneId = ZoneId.systemDefault()): String? {
+    val stamp = ms?.takeIf { it > 0 } ?: return null
+    return runCatching { Instant.ofEpochMilli(stamp).atZone(zone).format(dayThenTime) }.getOrNull()
+}

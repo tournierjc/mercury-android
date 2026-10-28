@@ -53,7 +53,6 @@
     <string name="memory_forget_title">Oublier ce souvenir ?</string>
     <string name="memory_forget_cancel">Garder</string>
     <!-- A graph node: its kind, then its weight. The space before % is French. -->
-    <string name="graph_node_meta">%1$s · %2$d %%</string>
     <string name="brain_personne_deplier">Ouvrir la fiche de la personne</string>
     <string name="brain_personne_replier">Refermer la fiche de la personne</string>
     <string name="brain_personne_detail_echoue">La fiche de cette personne n\'a pas répondu.</string>
@@ -64,4 +63,17 @@
     </plurals>
     <string name="brain_graphe_rechercher">Chercher un nœud</string>
     <string name="brain_noeud_illisible">Le souvenir derrière ce nœud n\'a pas répondu.</string>
+    <!-- Le panneau d'un nœud : ce que la fiche du souvenir dit, dans l'ordre où le web le montre. -->
+    <string name="graph_meta_scope">PORTÉE</string>
+    <string name="graph_meta_importance">IMPORTANCE</string>
+    <string name="graph_meta_confidence">CONFIANCE</string>
+    <string name="graph_meta_evidence">PREUVES</string>
+    <string name="graph_meta_connections">LIENS</string>
+    <string name="graph_meta_source">SOURCE</string>
+    <string name="graph_meta_created">CRÉÉ</string>
+    <string name="graph_meta_updated">MIS À JOUR</string>
+    <string name="graph_meta_seen">VU</string>
+    <string name="graph_meta_id">IDENTIFIANT</string>
+    <!-- Un pourcentage : l'espace avant % est français. -->
+    <string name="graph_meta_percent">%1$d %%</string>
 </resources>

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -47,6 +49,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -55,6 +58,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.dto.GraphNode
+import io.github.tournierjc.mercury.ui.graph.nodeBody
+import io.github.tournierjc.mercury.ui.graph.NodeFacts
+import io.github.tournierjc.mercury.ui.graph.factsOf
+import io.github.tournierjc.mercury.data.dto.MemoryDto
 import io.github.tournierjc.mercury.ui.graph.GraphLayout
 import io.github.tournierjc.mercury.ui.graph.PlacedNode
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -157,8 +164,8 @@ fun GraphScreen(onBack: () -> Unit) {
                 shown?.let { node ->
                     NodePanel(
                         node = node,
-                        text = state.detailText,
-                        detail = state.detailDetail,
+                        memory = state.detailMemory,
+                        connections = state.edges.count { it.source == node.id || it.target == node.id },
                         loading = state.detailLoading,
                         failed = state.detailFailed,
                         onClose = viewModel::clearSelection,
@@ -355,8 +362,8 @@ private fun Legend(nodes: List<GraphNode>) {
 @Composable
 private fun NodePanel(
     node: GraphNode,
-    text: String,
-    detail: String,
+    memory: MemoryDto?,
+    connections: Int,
     loading: Boolean,
     failed: Boolean,
     onClose: () -> Unit,
@@ -379,12 +386,10 @@ private fun NodePanel(
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
+            // The kind alone: the weight has its own row in the facts grid below, and printing the
+            // same number in two places is the kind of duplication this panel was just rid of.
             Text(
-                text = if (node.importance > 0.0) {
-                    stringResource(R.string.graph_node_meta, rawLabel(node.type), (node.importance * 100).toInt())
-                } else {
-                    rawLabel(node.type)
-                },
+                text = rawLabel(node.type),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 4.dp),
@@ -404,25 +409,24 @@ private fun NodePanel(
                     modifier = Modifier.padding(top = 8.dp),
                 )
 
+                memory == null -> Unit
+
                 else -> {
-                    text.takeIf { it.isNotBlank() }?.let { summary ->
-                        Text(
-                            text = summary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textPrimary,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                    detail.takeIf { it.isNotBlank() }?.let { body ->
-                        Text(
-                            text = body,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                            modifier = Modifier.padding(top = 4.dp),
-                            maxLines = 6,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    // The title already is the summary on this fleet, so the body only prints what
+                    // the title does not say: otherwise the sentence appeared twice.
+                    nodeBody(node.fullLabel.ifBlank { node.label }, memory.summary, memory.detail)
+                        .forEachIndexed { index, line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (index == 0) colors.textPrimary else colors.textSecondary,
+                                modifier = Modifier.padding(top = if (index == 0) 8.dp else 4.dp),
+                            )
+                        }
+                    NodeFactsGrid(
+                        facts = factsOf(memory, connections),
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
                 }
             }
         }
@@ -433,6 +437,60 @@ private fun NodePanel(
                     contentDescription = stringResource(R.string.brain_noeud_fermer),
                     tint = colors.textSecondary,
                     modifier = Modifier.size(19.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The facts the web app shows for a node, in the same order: the phone was showing the sentence and
+ * a weight while the browser showed scope, evidence, source and the dates.
+ *
+ * Rows with nothing to say are left out rather than filled with zeros, and the block scrolls: a
+ * memory with every field set is taller than the strip the panel may take over the canvas.
+ */
+@Composable
+private fun NodeFactsGrid(facts: NodeFacts, modifier: Modifier = Modifier) {
+    val colors = LocalMercuryColors.current
+    val rows = buildList<Pair<Int, String>> {
+        facts.scope?.let { add(R.string.graph_meta_scope to it) }
+        facts.importancePercent?.let { add(R.string.graph_meta_importance to stringResource(R.string.graph_meta_percent, it)) }
+        facts.confidencePercent?.let { add(R.string.graph_meta_confidence to stringResource(R.string.graph_meta_percent, it)) }
+        facts.evidence?.let { add(R.string.graph_meta_evidence to it.toString()) }
+        add(R.string.graph_meta_connections to facts.connections.toString())
+        facts.source?.let { add(R.string.graph_meta_source to it) }
+        formatStamp(facts.created)?.let { add(R.string.graph_meta_created to it) }
+        formatStamp(facts.updated)?.let { add(R.string.graph_meta_updated to it) }
+        formatStamp(facts.lastSeen)?.let { add(R.string.graph_meta_seen to it) }
+        add(R.string.graph_meta_id to facts.id)
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = 200.dp)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        rows.forEach { (label, value) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+            ) {
+                Text(
+                    text = stringResource(label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 10.dp),
                 )
             }
         }
