@@ -311,17 +311,6 @@ fun BridgeScreen(onBack: () -> Unit) {
     }
 }
 
-@Composable
-private fun SectionTitle(text: String) {
-    val colors = LocalMercuryColors.current
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = colors.textSecondary,
-        modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-    )
-}
-
 /**
  * A value you can copy by tapping it.
  *

@@ -109,18 +109,6 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-@Composable
-fun CardBlock(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val colors = LocalMercuryColors.current
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(20.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        content = content,
-    )
-}
-
 /**
  * A titled block that folds away.
  *
@@ -136,10 +124,12 @@ fun CardBlock(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 fun CollapsibleSection(
     title: String,
     defaultOpen: Boolean = false,
+    /** Save key when the title itself moves (a status heading carrying its card count). */
+    stateKey: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    var open by rememberSaveable(title) { mutableStateOf(defaultOpen) }
+    var open by rememberSaveable(stateKey ?: title) { mutableStateOf(defaultOpen) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -291,10 +281,16 @@ fun ActionRow(
     trailing: String? = null,
     selected: Boolean = false,
     enabled: Boolean = true,
+    /** Verbs for the row, drawn as a glyph column on the right — the beliefs/memories shape. */
+    actions: List<QuickAction> = emptyList(),
     onClick: (() -> Unit)? = null,
 ) {
     val colors = LocalMercuryColors.current
-    Column(
+    // One card shape per screen: text breathes on the left, verbs live in a column on the right.
+    // A row of text buttons under the last line reads as a footnote, and a second list drawn the
+    // other way makes the screen look like two designs.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
@@ -302,35 +298,55 @@ fun ActionRow(
             .then(if (onClick != null && enabled) Modifier.clickable { onClick() } else Modifier)
             .padding(horizontal = 10.dp, vertical = 9.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = when {
-                    !enabled -> colors.textSecondary.copy(alpha = 0.5f)
-                    selected -> colors.accent
-                    else -> colors.textPrimary
-                },
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            if (trailing != null) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = trailing,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = when {
+                        !enabled -> colors.textSecondary.copy(alpha = 0.5f)
+                        selected -> colors.accent
+                        else -> colors.textPrimary
+                    },
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (trailing != null) {
+                    Text(
+                        text = trailing,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        if (!subtitle.isNullOrBlank()) {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        if (actions.isNotEmpty()) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                actions.forEach { action ->
+                    IconButton(
+                        onClick = action.onClick,
+                        enabled = action.enabled,
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Icon(
+                            imageVector = action.icon,
+                            contentDescription = action.label,
+                            tint = action.tint ?: colors.textSecondary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }

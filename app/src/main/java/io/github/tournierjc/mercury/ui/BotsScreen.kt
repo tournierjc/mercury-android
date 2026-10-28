@@ -215,8 +215,7 @@ fun BotsScreen(
                 FleetBlock(viewModel, watch, avatars, onSelect = viewModel::select)
                 RosterList(watch, onSelect = viewModel::select, onOpenChat = onOpenChat, avatars = avatars)
                 if (watch.recent.isNotEmpty()) {
-                    SectionTitle(stringResource(R.string.bots_section_recent_activity))
-                    CardBlock {
+                    CollapsibleSection(stringResource(R.string.bots_section_recent_activity)) {
                         watch.recent.take(12).forEach { line ->
                             val bot = watch.bots.firstOrNull { BotJson.id(it) == line.botId }
                             KeyValueRow(
@@ -374,8 +373,7 @@ private fun RosterList(
     val colors = LocalMercuryColors.current
     val needsYou = watch.needsYou()
     if (needsYou.isNotEmpty()) {
-        SectionTitle(stringResource(R.string.bots_section_waiting, needsYou.size))
-        CardBlock {
+        CollapsibleSection(stringResource(R.string.bots_section_waiting, needsYou.size), defaultOpen = true) {
             needsYou.forEach { bot ->
                 ActionRow(
                     title = BotJson.name(bot),
@@ -387,15 +385,14 @@ private fun RosterList(
         }
     }
 
-    SectionTitle(stringResource(R.string.bots_section_teammates))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.bots_section_teammates), defaultOpen = true) {
         if (watch.bots.isEmpty()) {
             Text(
                 text = stringResource(R.string.bots_empty_roster),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         watch.bots.forEach { bot ->
             val id = BotJson.id(bot)

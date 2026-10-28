@@ -18,6 +18,17 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.InsertDriveFile
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.ViewKanban
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -165,8 +176,7 @@ fun BoardsScreen(onBack: () -> Unit) {
                     onNewCard = { showNewCard = true },
                 )
                 if (state.plan.isNotEmpty()) {
-                    SectionTitle(stringResource(R.string.boards_plan_titre))
-                    CardBlock {
+                    CollapsibleSection(stringResource(R.string.boards_plan_titre), defaultOpen = true) {
                         state.plan.forEachIndexed { index, batch ->
                             KeyValueRow(stringResource(R.string.boards_lot, index + 1), batch.joinToString(" · "))
                         }
@@ -343,8 +353,7 @@ private fun BoardList(
     onCreate: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.boards_titre_plateaux))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.boards_titre_plateaux), defaultOpen = true) {
         if (state.boards.isEmpty()) {
             Text(
                 text = if (state.loading) {
@@ -367,13 +376,31 @@ private fun BoardList(
                     if (BoardJson.boolField(board, "active") == true) stringResource(R.string.boards_actif) else null,
                 ).joinToString(" · "),
                 trailing = stringResource(R.string.boards_action_ouvrir),
+                actions = if (id.isBlank()) {
+                    emptyList()
+                } else {
+                    listOf(
+                        QuickAction(
+                            icon = Icons.Rounded.DeleteOutline,
+                            label = stringResource(R.string.boards_supprimer),
+                            tint = colors.danger,
+                            onClick = { onDelete(id) },
+                        ),
+                    )
+                },
                 onClick = { if (id.isNotBlank()) onOpen(id) },
             )
-            if (id.isNotBlank()) {
-                ButtonRow { TextButton(onClick = { onDelete(id) }) { Text(stringResource(R.string.boards_supprimer), color = colors.danger) } }
-            }
         }
-        ButtonRow { TextButton(onClick = onCreate) { Text(stringResource(R.string.boards_nouveau_plateau)) } }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.Add,
+                    label = stringResource(R.string.boards_nouveau_plateau),
+                    tint = colors.accent,
+                    onClick = onCreate,
+                ),
+            ),
+        )
     }
 }
 
@@ -390,25 +417,56 @@ private fun BoardActions(
     onClearDone: () -> Unit,
     onGenerate: () -> Unit,
 ) {
-    SectionTitle(stringResource(R.string.boards_execution))
-    CardBlock {
+    val colors = LocalMercuryColors.current
+    CollapsibleSection(stringResource(R.string.boards_execution)) {
         val active = BoardJson.boolField(state.board, "active") == true
         KeyValueRow(
             stringResource(R.string.boards_etat),
             if (active) stringResource(R.string.boards_actif) else stringResource(R.string.boards_inactif),
             highlight = active,
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            FilterChip(selected = false, onClick = { if (active) onDeactivate() else onActivate() }, label = {
-                Text(if (active) stringResource(R.string.boards_desactiver) else stringResource(R.string.boards_activer))
-            })
-            FilterChip(selected = false, onClick = onRunAll, label = { Text(stringResource(R.string.boards_tout_lancer)) })
-            FilterChip(selected = false, onClick = onHaltAll, label = { Text(stringResource(R.string.boards_tout_arreter)) })
-            FilterChip(selected = false, onClick = onPlan, label = { Text(stringResource(R.string.boards_plan)) })
-            FilterChip(selected = false, onClick = onContext, label = { Text(stringResource(R.string.boards_contexte)) })
-            FilterChip(selected = false, onClick = onClearDone, label = { Text(stringResource(R.string.boards_nettoyer)) })
-            FilterChip(selected = false, onClick = onGenerate, label = { Text(stringResource(R.string.boards_generer)) })
-        }
+        // Glyphs with a word underneath, not seven identical chips: the same vocabulary as the
+        // console and the bot sheet.
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.PowerSettingsNew,
+                    label = if (active) stringResource(R.string.boards_desactiver) else stringResource(R.string.boards_activer),
+                    tint = if (active) colors.textPrimary else colors.accent,
+                    onClick = { if (active) onDeactivate() else onActivate() },
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.PlayArrow,
+                    label = stringResource(R.string.boards_tout_lancer),
+                    onClick = onRunAll,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.Stop,
+                    label = stringResource(R.string.boards_tout_arreter),
+                    onClick = onHaltAll,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.ViewKanban,
+                    label = stringResource(R.string.boards_plan),
+                    onClick = onPlan,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.InsertDriveFile,
+                    label = stringResource(R.string.boards_contexte),
+                    onClick = onContext,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.CleaningServices,
+                    label = stringResource(R.string.boards_nettoyer),
+                    onClick = onClearDone,
+                ),
+                QuickAction(
+                    icon = Icons.Rounded.AutoAwesome,
+                    label = stringResource(R.string.boards_generer),
+                    onClick = onGenerate,
+                ),
+            ),
+        )
     }
 }
 
@@ -424,20 +482,27 @@ private fun CardColumns(
 ) {
     val colors = LocalMercuryColors.current
     if (state.grouped.isEmpty()) {
-        SectionTitle(stringResource(R.string.boards_cartes))
-        CardBlock {
+        CollapsibleSection(stringResource(R.string.boards_cartes), defaultOpen = true) {
             Text(
                 text = stringResource(R.string.boards_aucune_carte),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            ButtonRow { TextButton(onClick = onNewCard) { Text(stringResource(R.string.boards_nouvelle_carte)) } }
+            IconActionBar(
+                listOf(
+                    QuickAction(
+                        icon = Icons.Rounded.Add,
+                        label = stringResource(R.string.boards_nouvelle_carte),
+                        tint = colors.accent,
+                        onClick = onNewCard,
+                    ),
+                ),
+            )
         }
         return
     }
     state.grouped.forEach { (status, cards) ->
-        SectionTitle("$status · ${cards.size}")
-        CardBlock {
+        CollapsibleSection("$status · ${cards.size}", stateKey = "board-status-$status") {
             cards.forEach { card ->
                 val cardId = BoardJson.id(card)
                 ActionRow(
@@ -448,20 +513,50 @@ private fun CardColumns(
                         BoardJson.intField(card, "tokenBudget")?.let { stringResource(R.string.boards_tokens, it) },
                     ).joinToString(" · "),
                     trailing = stringResource(R.string.boards_action_details),
+                    // The verbs of a card live in a column on the right, exactly like a belief or a
+                    // souvenir: a row of text buttons under the title read as a footnote to it.
+                    actions = if (cardId.isBlank()) {
+                        emptyList()
+                    } else {
+                        listOf(
+                            QuickAction(
+                                icon = Icons.Rounded.PlayArrow,
+                                label = stringResource(R.string.boards_lancer),
+                                onClick = { onRun(cardId) },
+                            ),
+                            QuickAction(
+                                icon = Icons.Rounded.Stop,
+                                label = stringResource(R.string.boards_arreter),
+                                onClick = { onHalt(cardId) },
+                            ),
+                            QuickAction(
+                                icon = Icons.Rounded.Layers,
+                                label = stringResource(R.string.boards_cascade),
+                                onClick = { onCascade(cardId) },
+                            ),
+                            QuickAction(
+                                icon = Icons.Rounded.DeleteOutline,
+                                label = stringResource(R.string.boards_suppr),
+                                tint = colors.danger,
+                                onClick = { onDelete(cardId) },
+                            ),
+                        )
+                    },
                     onClick = { if (cardId.isNotBlank()) onOpen(cardId) },
                 )
-                if (cardId.isNotBlank()) {
-                    ButtonRow {
-                        TextButton(onClick = { onRun(cardId) }) { Text(stringResource(R.string.boards_lancer)) }
-                        TextButton(onClick = { onHalt(cardId) }) { Text(stringResource(R.string.boards_arreter)) }
-                        TextButton(onClick = { onCascade(cardId) }) { Text(stringResource(R.string.boards_cascade)) }
-                        TextButton(onClick = { onDelete(cardId) }) { Text(stringResource(R.string.boards_suppr), color = colors.danger) }
-                    }
-                }
             }
         }
     }
-    ButtonRow { TextButton(onClick = onNewCard) { Text(stringResource(R.string.boards_nouvelle_carte)) } }
+    IconActionBar(
+        listOf(
+            QuickAction(
+                icon = Icons.Rounded.Add,
+                label = stringResource(R.string.boards_nouvelle_carte),
+                tint = colors.accent,
+                onClick = onNewCard,
+            ),
+        ),
+    )
 }
 
 @Composable
@@ -498,7 +593,7 @@ private fun CardDetailDialog(
                 KeyValueRow(stringResource(R.string.boards_etiquettes), detail.labels.size.toString())
                 KeyValueRow(stringResource(R.string.boards_dependances), detail.dependencies.size.toString())
 
-                SectionTitle(stringResource(R.string.boards_commentaires))
+                CollapsibleSection(stringResource(R.string.boards_commentaires), defaultOpen = true) {
                 detail.comments.forEach { entry ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -525,8 +620,9 @@ private fun CardDetailDialog(
                         comment = ""
                     }
                 }
+                }
 
-                SectionTitle(stringResource(R.string.boards_etiquettes))
+                CollapsibleSection(stringResource(R.string.boards_etiquettes)) {
                 detail.labels.forEach { label ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -558,8 +654,9 @@ private fun CardDetailDialog(
                         labelName = ""
                     }
                 }
+                }
 
-                SectionTitle(stringResource(R.string.boards_pieces_jointes))
+                CollapsibleSection(stringResource(R.string.boards_pieces_jointes)) {
                 detail.attachments.forEach { attachment ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -601,8 +698,9 @@ private fun CardDetailDialog(
                         attachmentPath = ""
                     }
                 }
+                }
 
-                SectionTitle(stringResource(R.string.boards_dependances))
+                CollapsibleSection(stringResource(R.string.boards_dependances)) {
                 detail.dependencies.forEach { dependency ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -629,6 +727,8 @@ private fun CardDetailDialog(
                         dependencyId = ""
                     }
                 }
+                }
+
                 PromptRow(
                     value = parentId,
                     onValue = { parentId = it },

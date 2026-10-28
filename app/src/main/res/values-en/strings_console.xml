@@ -198,4 +198,5 @@
     <string name="console_restart_dialog_body">Turns in progress are interrupted, the container is back in a few seconds.</string>
     <string name="console_restart">Restart</string>
     <string name="console_cancel">Cancel</string>
+    <string name="console_section_git">Git</string>
 </resources>
