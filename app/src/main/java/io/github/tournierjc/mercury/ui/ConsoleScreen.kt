@@ -158,8 +158,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             WorkspaceSection(state, viewModel)
             MusicSection(state, viewModel)
 
-            SectionTitle(stringResource(R.string.console_section_system))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.console_section_system), defaultOpen = true) {
                 Text(
                     text = stringResource(R.string.console_restart_required_note),
                     style = MaterialTheme.typography.bodyMedium,
@@ -240,13 +239,12 @@ fun ConsoleScreen(onBack: () -> Unit) {
 
 @Composable
 private fun RuntimeSection(state: ConsoleUiState) {
-    SectionTitle(stringResource(R.string.console_section_runtime))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_runtime), defaultOpen = true) {
         val status = state.status
         val health = state.health
         if (status == null) {
             Text(stringResource(R.string.console_status_unavailable), style = MaterialTheme.typography.bodyMedium, color = LocalMercuryColors.current.textSecondary)
-            return@CardBlock
+            return@CollapsibleSection
         }
         KeyValueRow(stringResource(R.string.console_label_state), status.state.ifBlank { if (status.running) stringResource(R.string.console_active) else stringResource(R.string.console_stopped) }, highlight = status.running)
         KeyValueRow(stringResource(R.string.console_label_uptime), formatUptime(status.uptime))
@@ -264,8 +262,7 @@ private fun RuntimeSection(state: ConsoleUiState) {
 @Composable
 private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     val code = state.code ?: return
-    SectionTitle(stringResource(R.string.console_section_programming_mode))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_programming_mode)) {
         Text(
             text = code.statusText.ifBlank { code.state },
             style = MaterialTheme.typography.bodyLarge,
@@ -297,8 +294,7 @@ private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TasksSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    SectionTitle(stringResource(R.string.console_section_background_tasks))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_background_tasks)) {
         state.tasks.forEach { task ->
             val id = (task["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
             ActionRow(
@@ -322,8 +318,7 @@ private fun TasksSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
 @Composable
 private fun SchedulesSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    SectionTitle(stringResource(R.string.console_section_schedules))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_schedules)) {
         state.schedules.forEach { schedule ->
             val id = (schedule["id"] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull.orEmpty()
             ActionRow(
@@ -346,8 +341,7 @@ private fun SchedulesSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
 @Composable
 private fun AgentsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     if (state.agents.isEmpty()) return
-    SectionTitle(stringResource(R.string.console_section_agents))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_agents)) {
         state.agents.forEach { agent ->
             ActionRow(title = agent.titleHint(), subtitle = agent.detailHint())
         }
@@ -366,8 +360,7 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     var installRegistry by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle(stringResource(R.string.console_section_skills))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_skills)) {
         state.skills.forEach { skill ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -514,8 +507,7 @@ private fun SkillsSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 @Composable
 private fun PluginsSection(state: ConsoleUiState) {
     if (state.plugins.isEmpty()) return
-    SectionTitle(stringResource(R.string.console_section_plugins))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_plugins)) {
         state.plugins.forEach { plugin ->
             ActionRow(
                 title = plugin.name.ifBlank { plugin.id },
@@ -531,8 +523,7 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
     val workspace = state.workspace ?: return
     val colors = LocalMercuryColors.current
     var changing by remember { mutableStateOf(false) }
-    SectionTitle(stringResource(R.string.console_section_workspace))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_workspace)) {
         KeyValueRow(stringResource(R.string.console_label_folder), workspace.cwd.ifBlank { "—" })
         KeyValueRow(stringResource(R.string.console_label_project), workspace.projectName.ifBlank { "—" })
         KeyValueRow("Git", if (workspace.isGit) workspace.branch.ifBlank { stringResource(R.string.console_repository) } else stringResource(R.string.console_none))
@@ -583,8 +574,7 @@ private fun WorkspaceSection(state: ConsoleUiState, viewModel: ConsoleViewModel)
 @Composable
 private fun CostSection(state: ConsoleUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.console_section_cost))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_cost)) {
         val cost = state.cost
         if (cost == null) {
             Text(
@@ -592,7 +582,7 @@ private fun CostSection(state: ConsoleUiState) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         KeyValueRow(stringResource(R.string.console_label_window), stringResource(R.string.console_window_days, cost.days))
         KeyValueRow(stringResource(R.string.console_label_tokens_used), formatTokens(cost.windowTokens))
@@ -632,8 +622,7 @@ private fun CostSection(state: ConsoleUiState) {
 @Composable
 private fun StorageSection(state: ConsoleUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.console_section_storage))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_storage)) {
         val storage = state.storage
         if (storage == null) {
             Text(
@@ -641,7 +630,7 @@ private fun StorageSection(state: ConsoleUiState) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         KeyValueRow(stringResource(R.string.console_label_total), formatBytes(storage.totalBytes))
         KeyValueRow(
@@ -683,8 +672,7 @@ private fun mcpStateLabel(state: String): String = when (state) {
 @Composable
 private fun McpSection(state: ConsoleUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.console_section_mcp))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_mcp)) {
         val mcp = state.mcp
         if (mcp == null) {
             Text(
@@ -692,7 +680,7 @@ private fun McpSection(state: ConsoleUiState) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         if (!mcp.available) {
             Text(
@@ -700,7 +688,7 @@ private fun McpSection(state: ConsoleUiState) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         if (mcp.servers.isEmpty()) {
             Text(
@@ -708,7 +696,7 @@ private fun McpSection(state: ConsoleUiState) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         mcp.servers.forEach { server ->
             KeyValueRow(
@@ -1048,8 +1036,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     var confirm by remember { mutableStateOf<GitConfirm?>(null) }
     val git = state.git
 
-    SectionTitle("Git")
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_git)) {
         if (git == null) {
             Text(
                 text = stringResource(R.string.console_no_repository),
@@ -1057,7 +1044,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 color = colors.textSecondary,
             )
             TextButton(onClick = viewModel::refreshGit) { Text(stringResource(R.string.console_check_again)) }
-            return@CardBlock
+            return@CollapsibleSection
         }
 
         KeyValueRow(stringResource(R.string.console_label_branch), git.branch.ifBlank { "—" }, highlight = true)
@@ -1319,15 +1306,14 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
     }
     var shuffle by remember { mutableStateOf(false) }
 
-    SectionTitle(stringResource(R.string.console_section_music))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.console_section_music)) {
         if (music == null || !music.available) {
             Text(
                 text = stringResource(R.string.console_spotify_not_configured),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
         if (!music.connected) {
             Text(
@@ -1335,7 +1321,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CardBlock
+            return@CollapsibleSection
         }
 
         KeyValueRow(

@@ -104,8 +104,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp),
         ) {
-            SectionTitle(stringResource(R.string.settings_language_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_language_title), defaultOpen = true) {
                 // The label of each choice is its own name, never translated: an English speaker
                 // looking for French has to recognise « Français » in any UI language.
                 val current = LocaleStore.tag(context)
@@ -133,8 +132,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 }
             }
 
-            SectionTitle(stringResource(R.string.settings_model_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_model_title)) {
                 val current = state.models?.current
                 // The four rows were the runtime's whole catalogue printed on top of the two places
                 // that already choose a model (the conversation, and each bot). One row that opens
@@ -149,8 +147,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 )
             }
 
-            SectionTitle(stringResource(R.string.settings_tools_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_tools_title)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -194,8 +191,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 }
             }
 
-            SectionTitle(stringResource(R.string.settings_background_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_background_title)) {
                 // Réglage purement local (aucune route Mercury) : la vérification de fond
                 // interroge le roster toutes les N minutes quand l'app est fermée.
                 val attention = remember { AttentionPrefs(context) }
@@ -335,8 +331,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 }
             }
 
-            SectionTitle(stringResource(R.string.settings_budget_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_budget_title)) {
                 val usage = state.usage
                 if (usage == null) {
                     Text(
@@ -363,8 +358,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 }
             }
 
-            SectionTitle(stringResource(R.string.settings_providers_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_providers_title)) {
                 // The only place a provider is described: Console used to carry a second copy with
                 // the actions, and Réglages a read-only list of the same six rows.
                 if (state.providers.isEmpty()) {
@@ -394,8 +388,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 )
             }
 
-            SectionTitle(stringResource(R.string.settings_server_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_server_title), defaultOpen = true) {
                 ActionRow(
                     title = stringResource(R.string.settings_server_address),
                     subtitle = container.serverUrl.ifBlank { stringResource(R.string.settings_server_unset) },
@@ -410,8 +403,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 )
             }
 
-            SectionTitle(stringResource(R.string.settings_account_title))
-            CardBlock {
+            CollapsibleSection(stringResource(R.string.settings_account_title)) {
                 ActionRow(
                     title = stringResource(R.string.settings_account_username),
                     subtitle = container.lastUsername.ifBlank { "—" },

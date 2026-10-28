@@ -198,4 +198,5 @@
     <string name="console_restart_dialog_body">Les tours en cours sont interrompus, le conteneur revient en quelques secondes.</string>
     <string name="console_restart">Redémarrer</string>
     <string name="console_cancel">Annuler</string>
+    <string name="console_section_git">Git</string>
 </resources>

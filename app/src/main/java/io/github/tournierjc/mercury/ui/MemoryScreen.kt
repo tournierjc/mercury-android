@@ -178,8 +178,7 @@ private fun MemoriesTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd:
             .fillMaxWidth()
             .padding(top = 10.dp),
     )
-    SectionTitle(stringResource(R.string.memory_souvenirs))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.memory_souvenirs), defaultOpen = true) {
         if (state.memories.isEmpty()) {
             Text(
                 text = if (state.loading) {
@@ -269,8 +268,7 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
 @Composable
 private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorrect: (String) -> Unit) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.memory_croyances))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.memory_croyances), defaultOpen = true) {
         if (state.beliefs.isEmpty()) {
             Text(
                 text = stringResource(R.string.memory_aucune_croyance),
@@ -352,8 +350,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
 @Composable
 private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.memory_quarantaine_titre))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.memory_quarantaine_titre)) {
         Text(
             text = stringResource(R.string.memory_quarantaine_intro),
             style = MaterialTheme.typography.bodyMedium,
@@ -419,8 +416,7 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
 @Composable
 private fun AboutTab(state: MemoryUiState) {
     val colors = LocalMercuryColors.current
-    SectionTitle(stringResource(R.string.memory_runtime))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.memory_runtime)) {
         val config = state.config
         if (config == null) {
             Text(
@@ -452,8 +448,7 @@ private fun AboutTab(state: MemoryUiState) {
             )
         }
     }
-    SectionTitle(stringResource(R.string.memory_graphe))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.memory_graphe)) {
         val graph = state.graph
         if (graph == null) {
             Text(
@@ -469,8 +464,7 @@ private fun AboutTab(state: MemoryUiState) {
             }
         }
     }
-    SectionTitle(stringResource(R.string.memory_personnes))
-    CardBlock {
+    CollapsibleSection(stringResource(R.string.memory_personnes)) {
         if (state.persons.isEmpty()) {
             Text(
                 text = stringResource(R.string.memory_aucune_personne),
