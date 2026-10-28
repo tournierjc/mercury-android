@@ -129,4 +129,20 @@
         <item quantity="one">%1$d plateau</item>
         <item quantity="other">%1$d plateaux</item>
     </plurals>
+    <!-- Le board : le bandeau de chiffres, le menu d'actions, les couloirs et les cartes. -->
+    <string name="boards_metric_running">%1$d en cours</string>
+    <string name="boards_metric_pending">%1$d en attente</string>
+    <string name="boards_metric_done">%1$d terminées</string>
+    <string name="boards_metric_failed">%1$d en échec</string>
+    <string name="boards_menu_actions">Actions du plateau</string>
+    <string name="boards_lane_vide">Rien ici.</string>
+    <string name="boards_reessayer">Réessayer</string>
+    <string name="boards_prio_basse">BASSE</string>
+    <string name="boards_prio_moyenne">MOY.</string>
+    <string name="boards_prio_haute">HAUTE</string>
+    <string name="boards_prio_critique">CRIT.</string>
+    <plurals name="boards_attente_reponse">
+        <item quantity="one">%1$d carte attend ta réponse</item>
+        <item quantity="other">%1$d cartes attendent ta réponse</item>
+    </plurals>
 </resources>

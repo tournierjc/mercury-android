@@ -16,20 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CleaningServices
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.InsertDriveFile
-import androidx.compose.material.icons.rounded.Layers
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.PowerSettingsNew
-import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.ViewKanban
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -52,12 +39,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BoardJson
+import io.github.tournierjc.mercury.data.BoardMetricsOf
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.AttachmentFiles
 import io.github.tournierjc.mercury.vm.AttachmentExport
@@ -168,28 +155,42 @@ fun BoardsScreen(onBack: () -> Unit) {
                     onDelete = viewModel::deleteBoard,
                     onCreate = { showCreateBoard = true },
                     onRetry = viewModel::refresh,
+                    onSetActive = { id, active -> viewModel.setBoardActive(id, active) },
                 )
             } else {
-                BoardActions(
+                val metrics = BoardMetricsOf.of(state.cards)
+                BoardMetricsStrip(metrics)
+                BoardToolbar(
                     state = state,
-                    onActivate = viewModel::activate,
-                    onDeactivate = viewModel::deactivate,
+                    onSetActive = { active -> viewModel.setActive(active) },
                     onRunAll = viewModel::runAll,
                     onHaltAll = viewModel::haltAll,
                     onPlan = { viewModel.loadPlan(); showPlan = true },
                     onContext = { viewModel.loadContext(); showContext = true },
                     onClearDone = viewModel::clearDone,
                     onGenerate = { viewModel.generate(null) },
-                )
-                CardColumns(
-                    state = state,
-                    onRun = viewModel::runCard,
-                    onHalt = viewModel::haltCard,
-                    onCascade = viewModel::cascadeCard,
-                    onDelete = viewModel::deleteCard,
-                    onOpen = viewModel::openCard,
                     onNewCard = { showNewCard = true },
                 )
+                if (metrics.needsInput > 0) {
+                    AttentionBanner(metrics.needsInput)
+                }
+                state.grouped.forEach { (status, cards) ->
+                    StatusLane(
+                        status = status,
+                        cards = cards,
+                        onRun = viewModel::runCard,
+                        onHalt = viewModel::haltCard,
+                        onOpen = viewModel::openCard,
+                        onDelete = viewModel::deleteCard,
+                    )
+                }
+                if (state.grouped.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.boards_aucune_carte),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = LocalMercuryColors.current.textSecondary,
+                    )
+                }
                 if (state.plan.isNotEmpty()) {
                     CollapsibleSection(stringResource(R.string.boards_plan_titre), defaultOpen = true) {
                         state.plan.forEachIndexed { index, batch ->
@@ -365,258 +366,6 @@ private fun AttachmentDialog(
  * the API key never reaches the screen, except when the status is one Mercury does not know yet: it
  * then keeps its raw key, which is the only exploitable fact about it (SPECS/111 §1.5).
  */
-@Composable
-private fun statusLabel(status: String): String = when (status) {
-    "pending" -> stringResource(R.string.boards_statut_pending)
-    "paused" -> stringResource(R.string.boards_statut_paused)
-    "question" -> stringResource(R.string.boards_statut_question)
-    "running" -> stringResource(R.string.boards_statut_running)
-    "done" -> stringResource(R.string.boards_statut_done)
-    "failed" -> stringResource(R.string.boards_statut_failed)
-    else -> status
-}
-
-@Composable
-private fun BoardList(
-    state: BoardsUiState,
-    onOpen: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onCreate: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    val colors = LocalMercuryColors.current
-    CollapsibleSection(stringResource(R.string.boards_titre_plateaux), defaultOpen = true) {
-        if (state.available == false) {
-            // A service that did not start is not an empty list: saying "aucun plateau" would tell
-            // the owner his task queue is clear when it is merely unreadable.
-            Text(
-                text = stringResource(R.string.boards_indisponible_titre),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.textPrimary,
-            )
-            Text(
-                text = stringResource(R.string.boards_indisponible_corps),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            IconActionBar(
-                listOf(
-                    QuickAction(
-                        icon = Icons.Rounded.Refresh,
-                        label = stringResource(R.string.boards_indisponible_reessayer),
-                        tint = colors.accent,
-                        onClick = onRetry,
-                    ),
-                ),
-            )
-            return@CollapsibleSection
-        }
-        if (state.boards.isEmpty()) {
-            Text(
-                text = if (state.loading) {
-                    stringResource(R.string.common_loading)
-                } else {
-                    stringResource(R.string.boards_aucun_plateau)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-        state.boards.forEach { board ->
-            val id = BoardJson.id(board)
-            ActionRow(
-                title = BoardJson.title(board),
-                subtitle = listOfNotNull(
-                    BoardJson.intField(board, "cardCount")?.let { pluralStringResource(R.plurals.boards_nb_cartes, it, it) },
-                    BoardJson.intField(board, "pendingCount")?.let { stringResource(R.string.boards_en_attente, it) },
-                    BoardJson.intField(board, "runningCount")?.takeIf { it > 0 }?.let { stringResource(R.string.boards_en_cours, it) },
-                    if (BoardJson.boolField(board, "active") == true) stringResource(R.string.boards_actif) else null,
-                ).joinToString(" · "),
-                trailing = stringResource(R.string.boards_action_ouvrir),
-                actions = if (id.isBlank()) {
-                    emptyList()
-                } else {
-                    listOf(
-                        QuickAction(
-                            icon = Icons.Rounded.DeleteOutline,
-                            label = stringResource(R.string.boards_supprimer),
-                            tint = colors.danger,
-                            onClick = { onDelete(id) },
-                        ),
-                    )
-                },
-                onClick = { if (id.isNotBlank()) onOpen(id) },
-            )
-        }
-        IconActionBar(
-            listOf(
-                QuickAction(
-                    icon = Icons.Rounded.Add,
-                    label = stringResource(R.string.boards_nouveau_plateau),
-                    tint = colors.accent,
-                    onClick = onCreate,
-                ),
-            ),
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun BoardActions(
-    state: BoardsUiState,
-    onActivate: () -> Unit,
-    onDeactivate: () -> Unit,
-    onRunAll: () -> Unit,
-    onHaltAll: () -> Unit,
-    onPlan: () -> Unit,
-    onContext: () -> Unit,
-    onClearDone: () -> Unit,
-    onGenerate: () -> Unit,
-) {
-    val colors = LocalMercuryColors.current
-    CollapsibleSection(stringResource(R.string.boards_execution)) {
-        val active = BoardJson.boolField(state.board, "active") == true
-        KeyValueRow(
-            stringResource(R.string.boards_etat),
-            if (active) stringResource(R.string.boards_actif) else stringResource(R.string.boards_inactif),
-            highlight = active,
-        )
-        // Glyphs with a word underneath, not seven identical chips: the same vocabulary as the
-        // console and the bot sheet.
-        IconActionBar(
-            listOf(
-                QuickAction(
-                    icon = Icons.Rounded.PowerSettingsNew,
-                    label = if (active) stringResource(R.string.boards_desactiver) else stringResource(R.string.boards_activer),
-                    tint = if (active) colors.textPrimary else colors.accent,
-                    onClick = { if (active) onDeactivate() else onActivate() },
-                ),
-                QuickAction(
-                    icon = Icons.Rounded.PlayArrow,
-                    label = stringResource(R.string.boards_tout_lancer),
-                    onClick = onRunAll,
-                ),
-                QuickAction(
-                    icon = Icons.Rounded.Stop,
-                    label = stringResource(R.string.boards_tout_arreter),
-                    onClick = onHaltAll,
-                ),
-                QuickAction(
-                    icon = Icons.Rounded.ViewKanban,
-                    label = stringResource(R.string.boards_plan),
-                    onClick = onPlan,
-                ),
-                QuickAction(
-                    icon = Icons.Rounded.InsertDriveFile,
-                    label = stringResource(R.string.boards_contexte),
-                    onClick = onContext,
-                ),
-                QuickAction(
-                    icon = Icons.Rounded.CleaningServices,
-                    label = stringResource(R.string.boards_nettoyer),
-                    onClick = onClearDone,
-                ),
-                QuickAction(
-                    icon = Icons.Rounded.AutoAwesome,
-                    label = stringResource(R.string.boards_generer),
-                    onClick = onGenerate,
-                ),
-            ),
-        )
-    }
-}
-
-@Composable
-private fun CardColumns(
-    state: BoardsUiState,
-    onRun: (String) -> Unit,
-    onHalt: (String) -> Unit,
-    onCascade: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    onOpen: (String) -> Unit,
-    onNewCard: () -> Unit,
-) {
-    val colors = LocalMercuryColors.current
-    if (state.grouped.isEmpty()) {
-        CollapsibleSection(stringResource(R.string.boards_cartes), defaultOpen = true) {
-            Text(
-                text = stringResource(R.string.boards_aucune_carte),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-            IconActionBar(
-                listOf(
-                    QuickAction(
-                        icon = Icons.Rounded.Add,
-                        label = stringResource(R.string.boards_nouvelle_carte),
-                        tint = colors.accent,
-                        onClick = onNewCard,
-                    ),
-                ),
-            )
-        }
-        return
-    }
-    state.grouped.forEach { (status, cards) ->
-        CollapsibleSection("${statusLabel(status)} · ${cards.size}", defaultOpen = true, stateKey = "board-status-$status") {
-            cards.forEach { card ->
-                val cardId = BoardJson.id(card)
-                ActionRow(
-                    title = BoardJson.title(card),
-                    subtitle = listOfNotNull(
-                        BoardJson.priority(card).takeIf { it.isNotBlank() }?.let { stringResource(R.string.boards_priorite, it) },
-                        BoardJson.labels(card).size.takeIf { it > 0 }?.let { stringResource(R.string.boards_etapes, it) },
-                        BoardJson.intField(card, "tokenBudget")?.let { stringResource(R.string.boards_tokens, it) },
-                    ).joinToString(" · "),
-                    trailing = stringResource(R.string.boards_action_details),
-                    // The verbs of a card live in a column on the right, exactly like a belief or a
-                    // souvenir: a row of text buttons under the title read as a footnote to it.
-                    actions = if (cardId.isBlank()) {
-                        emptyList()
-                    } else {
-                        listOf(
-                            QuickAction(
-                                icon = Icons.Rounded.PlayArrow,
-                                label = stringResource(R.string.boards_lancer),
-                                onClick = { onRun(cardId) },
-                            ),
-                            QuickAction(
-                                icon = Icons.Rounded.Stop,
-                                label = stringResource(R.string.boards_arreter),
-                                onClick = { onHalt(cardId) },
-                            ),
-                            QuickAction(
-                                icon = Icons.Rounded.Layers,
-                                label = stringResource(R.string.boards_cascade),
-                                onClick = { onCascade(cardId) },
-                            ),
-                            QuickAction(
-                                icon = Icons.Rounded.DeleteOutline,
-                                label = stringResource(R.string.boards_suppr),
-                                tint = colors.danger,
-                                onClick = { onDelete(cardId) },
-                            ),
-                        )
-                    },
-                    onClick = { if (cardId.isNotBlank()) onOpen(cardId) },
-                )
-            }
-        }
-    }
-    IconActionBar(
-        listOf(
-            QuickAction(
-                icon = Icons.Rounded.Add,
-                label = stringResource(R.string.boards_nouvelle_carte),
-                tint = colors.accent,
-                onClick = onNewCard,
-            ),
-        ),
-    )
-}
-
 @Composable
 private fun CardDetailDialog(
     state: BoardsUiState,

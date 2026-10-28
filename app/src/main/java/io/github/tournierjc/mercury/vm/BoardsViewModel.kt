@@ -257,6 +257,21 @@ class BoardsViewModel(
 
     fun activate() = actOnBoard(Notice(NoticeKey.BOARD_ACTIVATED)) { api.activateBoard(it) }
 
+    /** The open board's switch, as the toolbar draws it. */
+    fun setActive(active: Boolean) =
+        actOnBoard(Notice(if (active) NoticeKey.BOARD_ACTIVATED else NoticeKey.BOARD_DEACTIVATED)) {
+            if (active) api.activateBoard(it) else api.deactivateBoard(it)
+        }
+
+    /**
+     * A board's switch in the list, where the board is *not* open: the web app's Active pill works
+     * from the list, and the phone's list said `actif` without offering the tap.
+     */
+    fun setBoardActive(boardId: String, active: Boolean) =
+        act(Notice(if (active) NoticeKey.BOARD_ACTIVATED else NoticeKey.BOARD_DEACTIVATED)) {
+            if (active) api.activateBoard(boardId) else api.deactivateBoard(boardId)
+        }
+
     fun deactivate() = actOnBoard(Notice(NoticeKey.BOARD_DEACTIVATED)) { api.deactivateBoard(it) }
 
     fun addCard(task: String, priority: String?) {

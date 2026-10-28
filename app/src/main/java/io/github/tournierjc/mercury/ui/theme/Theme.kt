@@ -33,6 +33,12 @@ data class MercuryColors(
      * invisible as the only thing that says two ideas are connected (WCAG 1.4.11 asks for 3:1).
      */
     val graphEdge: Color,
+    /** What ended well — the board's Done lane, and nothing else so far. */
+    val success: Color,
+    /** What waits on a decision: a high priority, a paused card. */
+    val warning: Color,
+    /** What waits on the owner's answer: the board's `question` status. */
+    val attention: Color,
 )
 
 val DarkColors = MercuryColors(
@@ -47,6 +53,9 @@ val DarkColors = MercuryColors(
     hairline = Color(0xFF1E1E1E),
     hairlineStrong = Color(0xFF2E2E2C),
     graphEdge = Color(0xFF5A5A5A),
+    success = Color(0xFF4ADE80),
+    warning = Color(0xFFFBBF24),
+    attention = Color(0xFFA78BFA),
 )
 
 val LightColors = MercuryColors(
@@ -61,6 +70,9 @@ val LightColors = MercuryColors(
     hairline = Color(0xFFE4E4E0),
     hairlineStrong = Color(0xFFD3D3CE),
     graphEdge = Color(0xFF8A8A84),
+    success = Color(0xFF15803D),
+    warning = Color(0xFFB45309),
+    attention = Color(0xFF7C3AED),
 )
 
 val LocalMercuryColors = staticCompositionLocalOf { DarkColors }

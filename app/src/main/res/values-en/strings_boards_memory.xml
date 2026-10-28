@@ -129,4 +129,19 @@
         <item quantity="one">%1$d board</item>
         <item quantity="other">%1$d boards</item>
     </plurals>
+    <string name="boards_metric_running">%1$d running</string>
+    <string name="boards_metric_pending">%1$d pending</string>
+    <string name="boards_metric_done">%1$d done</string>
+    <string name="boards_metric_failed">%1$d failed</string>
+    <string name="boards_menu_actions">Board actions</string>
+    <string name="boards_lane_vide">Nothing here.</string>
+    <string name="boards_reessayer">Retry</string>
+    <string name="boards_prio_basse">LOW</string>
+    <string name="boards_prio_moyenne">MED</string>
+    <string name="boards_prio_haute">HIGH</string>
+    <string name="boards_prio_critique">CRIT</string>
+    <plurals name="boards_attente_reponse">
+        <item quantity="one">%1$d card needs your answer</item>
+        <item quantity="other">%1$d cards need your answer</item>
+    </plurals>
 </resources>

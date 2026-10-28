@@ -50,3 +50,25 @@ fun formatBytes(bytes: Long): String {
     val tenths = (value * 10).toLong()
     return "${tenths / 10},${tenths % 10} ${units[index]}"
 }
+
+/**
+ * A dollar estimate as the board prints it: `$0,47`, `$12`, `<$0,001`.
+ *
+ * A cost that is not zero but rounds to zero must not print as zero: `$0,000` reads as free, so
+ * anything under a tenth of a cent says so. Whole dollars lose their cents (`$12`), and the decimal
+ * separator is the app's comma, unlike the web app's dot.
+ */
+fun formatCost(usd: Double): String {
+    if (usd <= 0.0) return "$0"
+    if (usd < 0.001) return "<$0,001"
+    if (usd < 1.0) {
+        // Three decimals, then the trailing zeros that carry nothing: `$0,47`, not `$0,470`.
+        val thousandths = (usd * 1000).toLong()
+        val fraction = (thousandths % 1000).toString().padStart(3, '0').trimEnd('0')
+        return "$${thousandths / 1000},$fraction"
+    }
+    val cents = (usd * 100).toLong()
+    val whole = cents / 100
+    val fraction = (cents % 100).toString().padStart(2, '0').trimEnd('0')
+    return if (fraction.isEmpty()) "$$whole" else "$$whole,$fraction"
+}
