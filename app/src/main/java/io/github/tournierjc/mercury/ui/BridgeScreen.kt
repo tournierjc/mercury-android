@@ -127,7 +127,7 @@ fun BridgeScreen(onBack: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(colors.surface)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -177,7 +177,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
-                    .clip(RoundedCornerShape(15.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(colors.surface)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -193,7 +193,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                 if (!granted) {
                     OutlinedButton(
                         onClick = { permissionLauncher.launch(arrayOf(row.permission)) },
-                        shape = RoundedCornerShape(18.dp),
+                        shape = MaterialTheme.shapes.small,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
                     ) { Text(stringResource(R.string.bridge_allow)) }
                 }
@@ -205,7 +205,7 @@ fun BridgeScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
-                .clip(RoundedCornerShape(15.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(colors.surface)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -228,7 +228,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                         context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     }
                 },
-                shape = RoundedCornerShape(18.dp),
+                shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
             ) { Text(if (notificationsGranted) stringResource(R.string.drawer_settings) else stringResource(R.string.bridge_enable)) }
         }

@@ -462,7 +462,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable(enabled = model.available) {
                                     showModelPicker = false
                                     viewModel.selectModel(model.name, model.model)

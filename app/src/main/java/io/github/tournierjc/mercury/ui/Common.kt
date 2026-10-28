@@ -332,19 +332,29 @@ fun ActionRow(
             }
         }
         if (actions.isNotEmpty()) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                actions.forEach { action ->
-                    IconButton(
-                        onClick = action.onClick,
-                        enabled = action.enabled,
-                        modifier = Modifier.size(38.dp),
-                    ) {
-                        Icon(
-                            imageVector = action.icon,
-                            contentDescription = action.label,
-                            tint = action.tint ?: colors.textSecondary,
-                            modifier = Modifier.size(20.dp),
-                        )
+            // Two per row, not one: four verbs stacked vertically made a one-line card 152 dp
+            // tall. The label of each glyph is its content description — a list row carries
+            // glyphs (like a belief), while a bar of actions carries the word underneath.
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(start = 6.dp),
+            ) {
+                actions.chunked(2).forEach { pair ->
+                    Row {
+                        pair.forEach { action ->
+                            IconButton(
+                                onClick = action.onClick,
+                                enabled = action.enabled,
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(
+                                    imageVector = action.icon,
+                                    contentDescription = action.label,
+                                    tint = action.tint ?: colors.textSecondary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }
