@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SmartToy
@@ -413,7 +414,7 @@ private fun screenLabel(screen: AppScreen): Int = when (screen) {
     AppScreen.Usage -> R.string.nav_usage
     AppScreen.Deliverables -> R.string.nav_deliverables
     AppScreen.Bridge -> R.string.nav_bridge
-    AppScreen.Console -> R.string.nav_console
+    AppScreen.Console -> R.string.nav_host
     AppScreen.Settings -> R.string.nav_settings
 }
 
@@ -437,7 +438,7 @@ private fun screenIcon(screen: AppScreen): ImageVector = when (screen) {
     AppScreen.Usage -> Icons.Rounded.BarChart
     AppScreen.Deliverables -> Icons.Rounded.FolderOpen
     AppScreen.Bridge -> Icons.Rounded.PhoneAndroid
-    AppScreen.Console -> Icons.Rounded.Terminal
+    AppScreen.Console -> Icons.Rounded.PlayArrow
     AppScreen.Settings -> Icons.Rounded.Settings
 }
 

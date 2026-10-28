@@ -127,6 +127,15 @@
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">en %1$s</string>
     <string name="chat_exit_prompt">Appuie encore une fois pour quitter</string>
+    <!-- Les vitaux du démon, déménagés de la Console vers l'écran État. -->
+    <string name="status_label_tokens">Jetons du jour</string>
+    <string name="status_label_loop">Boucle p99</string>
+    <string name="status_label_plugins">Plugins</string>
+    <string name="status_plugins_summary">%1$d actifs · %2$d outils</string>
+    <string name="status_label_safe_mode">Mode sûr</string>
+    <string name="status_safe_mode_on">actif</string>
+    <string name="host_title">Hôte</string>
+    <string name="nav_host">Hôte</string>
     <!-- Chercher et filtrer les livrables. -->
     <string name="out_search_hint">Chercher un fichier</string>
     <string name="out_search_clear">Effacer la recherche</string>

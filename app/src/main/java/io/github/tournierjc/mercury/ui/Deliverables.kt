@@ -523,29 +523,34 @@ fun OutputPreviewDialog(
 
 /**
  * The fleet inbox, wired: same rows as the per-bot section, with the producing bot named.
- * One composable, two hosts — the Console section and the dedicated Livrables screen — so
- * the two never drift apart.
+ *
+ * It took a console view model — the screen loaded fourteen routes to draw a file list. It takes
+ * the files and the roster now, and the caller owns the rest.
  */
 @Composable
 fun FleetDeliverablesSection(
-    state: ConsoleUiState,
-    viewModel: ConsoleViewModel,
+    outputs: List<DeliverableDto>,
+    bots: List<kotlinx.serialization.json.JsonObject>,
     avatars: Map<String, ByteArray> = emptyMap(),
+    busy: Boolean = false,
+    onPreview: (DeliverableDto) -> Unit,
+    onShare: (DeliverableDto) -> Unit,
+    onDelete: (DeliverableDto) -> Unit,
 ) {
-    val names = state.bots.associate { BotJson.id(it) to BotJson.name(it) }
-    val byId = state.bots.associateBy { BotJson.id(it) }
+    val names = bots.associate { BotJson.id(it) to BotJson.name(it) }
+    val byId = bots.associateBy { BotJson.id(it) }
     DeliverablesSection(
         title = stringResource(R.string.out_title),
-        outputs = state.outputs,
+        outputs = outputs,
         botNames = names,
         bots = byId,
         avatars = avatars,
         showOrigin = true,
-        busy = state.busy,
+        busy = busy,
         emptyText = stringResource(R.string.out_none_fleet),
-        onPreview = viewModel::previewOutput,
-        onShare = viewModel::shareOutput,
-        onDelete = viewModel::deleteOutput,
+        onPreview = onPreview,
+        onShare = onShare,
+        onDelete = onDelete,
     )
 }
 
@@ -565,18 +570,10 @@ fun BotOutputPreviewHost(state: BotsUiState, viewModel: BotsViewModel) {
 
 /** The preview dialog, hosted once per screen that can open a deliverable. */
 @Composable
-fun OutputPreviewHost(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    val preview = state.outputPreview ?: return
-    OutputPreviewDialog(
-        state = preview,
-        onDismiss = viewModel::dismissPreview,
-        onShare = {
-            viewModel.dismissPreview()
-            viewModel.shareOutput(preview.output)
-        },
-    )
+fun OutputPreviewHost(state: OutputPreviewState?, onDismiss: () -> Unit, onShare: () -> Unit) {
+    val preview = state ?: return
+    OutputPreviewDialog(state = preview, onDismiss = onDismiss, onShare = onShare)
 }
-
 
 /**
  * The bot's deliverable folder, opened from its conversation.

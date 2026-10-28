@@ -127,6 +127,14 @@
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">in %1$s</string>
     <string name="chat_exit_prompt">Press back again to exit</string>
+    <string name="status_label_tokens">Tokens today</string>
+    <string name="status_label_loop">Loop p99</string>
+    <string name="status_label_plugins">Plugins</string>
+    <string name="status_plugins_summary">%1$d running · %2$d tools</string>
+    <string name="status_label_safe_mode">Safe mode</string>
+    <string name="status_safe_mode_on">on</string>
+    <string name="host_title">Host</string>
+    <string name="nav_host">Host</string>
     <string name="out_search_hint">Search a file</string>
     <string name="out_search_clear">Clear the search</string>
     <string name="out_filter_all">All</string>

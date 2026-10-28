@@ -13,6 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import io.github.tournierjc.mercury.data.dto.DeliverableDto
+import kotlinx.serialization.json.JsonObject
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -21,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
-import io.github.tournierjc.mercury.vm.ConsoleViewModel
+import io.github.tournierjc.mercury.vm.DeliverablesViewModel
 import io.github.tournierjc.mercury.R
 
 /**
@@ -35,12 +39,15 @@ import io.github.tournierjc.mercury.R
 fun DeliverablesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val container = remember { (context.applicationContext as MercuryApp).container }
-    val viewModel: ConsoleViewModel = viewModel(factory = ConsoleViewModel.factory(container))
+    val viewModel: DeliverablesViewModel = viewModel(factory = DeliverablesViewModel.factory(container))
     val state by viewModel.state.collectAsState()
     val avatars by viewModel.avatars.collectAsState()
     val colors = LocalMercuryColors.current
-
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    // The names and faces of the groups: read once, beside the files they head.
+    var bots by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        bots = runCatching { container.api.bots() }.getOrNull()?.bots.orEmpty()
+    }
 
     Column(
         modifier = Modifier
@@ -61,10 +68,28 @@ fun DeliverablesScreen(onBack: () -> Unit) {
             onRefresh = viewModel::refresh,
             refreshing = state.loading,
         )
-        FleetDeliverablesSection(state, viewModel, avatars)
+        FleetDeliverablesSection(
+            outputs = state.outputs,
+            bots = bots,
+            avatars = avatars,
+            busy = state.busy,
+            onPreview = viewModel::previewOutput,
+            onShare = viewModel::shareOutput,
+            onDelete = viewModel::deleteOutput,
+        )
         // Same banner as every other screen: the error is dismissable, not a permanent stray line.
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
     }
 
-    OutputPreviewHost(state, viewModel)
+    val preview = state.outputPreview
+    OutputPreviewHost(
+        state = preview,
+        onDismiss = viewModel::dismissPreview,
+        onShare = {
+            preview?.output?.let { output: DeliverableDto ->
+                viewModel.dismissPreview()
+                viewModel.shareOutput(output)
+            }
+        },
+    )
 }
