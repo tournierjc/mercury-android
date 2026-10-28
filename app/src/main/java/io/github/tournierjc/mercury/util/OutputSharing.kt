@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.util
 
+import io.github.tournierjc.mercury.R
+
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
 
@@ -99,7 +101,7 @@ object OutputSharing {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val chooser = Intent.createChooser(intent, "Partager « ${file.name} »")
+        val chooser = Intent.createChooser(intent, context.getString(R.string.share_file_title, file.name))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         context.startActivity(chooser)
     }
