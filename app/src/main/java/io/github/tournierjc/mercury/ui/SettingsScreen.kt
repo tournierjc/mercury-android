@@ -139,7 +139,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 ActionRow(
                     title = current?.displayLabel ?: "Mercury",
                     subtitle = current?.let { "${it.group.ifBlank { it.name }} · ${it.model}" }
-                        ?: if (state.loading) stringResource(R.string.settings_loading) else stringResource(R.string.settings_no_model),
+                        ?: if (state.loading) stringResource(R.string.common_loading) else stringResource(R.string.settings_no_model),
                     trailing = stringResource(R.string.settings_change),
                     enabled = !state.models?.providers.isNullOrEmpty(),
                     onClick = { showModelPicker = true },
@@ -362,7 +362,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 // the actions, and Réglages a read-only list of the same six rows.
                 if (state.providers.isEmpty()) {
                     Text(
-                        text = if (state.loading) stringResource(R.string.settings_loading) else stringResource(R.string.settings_providers_none),
+                        text = if (state.loading) stringResource(R.string.common_loading) else stringResource(R.string.settings_providers_none),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )

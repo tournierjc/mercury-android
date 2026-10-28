@@ -16,7 +16,6 @@
     <string name="boards_apercu_indisponible">Preview unavailable for this format — open the file.</string>
     <string name="boards_ouvrir">Open</string>
     <string name="boards_telecharger">Download</string>
-    <string name="boards_chargement">Loading…</string>
     <string name="boards_aucun_plateau">No boards. A board is a queue of tasks the runtime executes card by card.</string>
     <string name="boards_en_attente">%1$d pending</string>
     <string name="boards_en_cours">%1$d running</string>
@@ -82,7 +81,6 @@
     <string name="memory_croyances">Beliefs</string>
     <string name="memory_quarantaine">Quarantine</string>
     <string name="memory_rechercher">Search memory</string>
-    <string name="memory_chargement">Loading…</string>
     <string name="memory_aucun_souvenir">Nothing in memory for this search.</string>
     <string name="memory_ajouter">Add</string>
     <string name="memory_souvenir_scores">confidence %1$d %% · importance %2$d %% · %3$s</string>

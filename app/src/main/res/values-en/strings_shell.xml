@@ -48,7 +48,6 @@
     <string name="run_details">details</string>
     <string name="run_older">… %1$d older run(s)</string>
     <string name="run_detail_title">Run detail</string>
-    <string name="run_loading">Loading…</string>
     <string name="run_state">State</string>
     <string name="run_started">Started</string>
     <string name="run_duration">Duration</string>
@@ -86,7 +85,6 @@
     <string name="out_cancel">Cancel</string>
     <string name="out_kind_final">final</string>
     <string name="out_kind_work">work</string>
-    <string name="out_loading">Loading…</string>
     <string name="out_empty_file">(empty file)</string>
     <string name="out_truncated">Preview truncated to the first 64 kB — share the file to read it whole.</string>
     <string name="out_unavailable">Preview unavailable.</string>

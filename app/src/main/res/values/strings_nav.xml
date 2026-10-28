@@ -20,7 +20,7 @@
     <string name="nav_schedules">Planifications</string>
     <string name="nav_usage">Consommation</string>
     <string name="nav_deliverables">Livrables</string>
-    <string name="nav_bridge">Pont</string>
+    <string name="nav_bridge">Pont appareil</string>
     <string name="nav_settings">Réglages</string>
     <string name="tasks_agents_titre">Agents en cours</string>
     <string name="tasks_aucun_agent">Aucun agent en cours.</string>

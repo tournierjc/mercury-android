@@ -328,9 +328,10 @@ fun SchedulesScreen(onBack: () -> Unit) {
             }
             state.schedules.forEach { schedule ->
                 val bot = schedule.botId.ifBlank { stringResource(R.string.configure_schedules_mercury) }
-                val next = schedule.nextRun.takeIf { it.isNotBlank() }
+                // A raw ISO string answers neither "when is it" nor "how soon".
+                val next = formatWhen(schedule.nextRun)
                     ?.let { stringResource(R.string.configure_schedules_next, it) }
-                val created = schedule.createdAt.takeIf { it.isNotBlank() }
+                val created = formatWhen(schedule.createdAt)
                     ?.let { stringResource(R.string.configure_schedules_created, it) }
                 DetailCard(
                     label = schedule.cron.ifBlank { UNNAMED },
@@ -559,7 +560,7 @@ private fun DetailCard(
 @Composable
 private fun EmptyLine(loading: Boolean, @StringRes emptyState: Int) {
     Text(
-        text = stringResource(if (loading) R.string.configure_loading else emptyState),
+        text = stringResource(if (loading) R.string.common_loading else emptyState),
         style = MaterialTheme.typography.bodyMedium,
         color = LocalMercuryColors.current.textSecondary,
     )

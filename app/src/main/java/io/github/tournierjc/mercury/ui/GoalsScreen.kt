@@ -80,7 +80,16 @@ fun GoalsScreen(onBack: () -> Unit) {
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
-        GoalTabs(selected = state.tab, onSelect = viewModel::selectTab)
+        SegmentedTabs(
+            labels = GoalTab.entries.map {
+                when (it) {
+                    GoalTab.Goals -> stringResource(R.string.brain_objectifs)
+                    GoalTab.Projects -> stringResource(R.string.brain_projets)
+                }
+            },
+            selected = state.tab.ordinal,
+            onSelect = { index -> viewModel.selectTab(GoalTab.entries[index]) },
+        )
 
         Column(
             modifier = Modifier
@@ -98,7 +107,7 @@ fun GoalsScreen(onBack: () -> Unit) {
                 if (shown.isEmpty()) {
                     Text(
                         text = when {
-                            state.loading -> stringResource(R.string.memory_chargement)
+                            state.loading -> stringResource(R.string.common_loading)
                             state.tab == GoalTab.Goals -> stringResource(R.string.brain_objectif_vide)
                             else -> stringResource(R.string.brain_projet_vide)
                         },
@@ -145,47 +154,6 @@ fun GoalsScreen(onBack: () -> Unit) {
     }
 }
 
-/** The same segmented row as the memory screen, two tabs instead of four. */
-@Composable
-private fun GoalTabs(selected: GoalTab, onSelect: (GoalTab) -> Unit) {
-    val colors = LocalMercuryColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        GoalTab.entries.forEach { tab ->
-            val isSelected = selected == tab
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .clickable { onSelect(tab) }
-                    .padding(vertical = 8.dp),
-            ) {
-                Text(
-                    text = when (tab) {
-                        GoalTab.Goals -> stringResource(R.string.brain_objectifs)
-                        GoalTab.Projects -> stringResource(R.string.brain_projets)
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isSelected) colors.accent else colors.textSecondary,
-                    maxLines = 1,
-                )
-                Box(
-                    modifier = Modifier
-                        .padding(top = 6.dp)
-                        .width(18.dp)
-                        .height(2.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(if (isSelected) colors.accent else Color.Transparent),
-                )
-            }
-        }
-    }
-}
 
 /**
  * A goal or a project, written from the phone. The type is the open tab's, so the dialog asks for

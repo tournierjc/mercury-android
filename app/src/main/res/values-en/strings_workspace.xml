@@ -11,7 +11,6 @@
     <string name="workspace_onglet_git">Git</string>
 
     <!-- Files -->
-    <string name="workspace_chargement">Loading…</string>
     <string name="workspace_dossier_vide">This folder is empty.</string>
     <string name="workspace_dossier_ouvrir">Open folder</string>
     <string name="workspace_fichier_ouvrir">Open file</string>

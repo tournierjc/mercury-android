@@ -84,7 +84,7 @@ fun PersonsScreen(onBack: () -> Unit) {
                     // An instance with no people route is not an instance with no people: the
                     // two empty screens must not say the same thing.
                     text = when {
-                        state.loading -> stringResource(R.string.memory_chargement)
+                        state.loading -> stringResource(R.string.common_loading)
                         !state.available -> stringResource(R.string.brain_personnes_indisponible)
                         else -> stringResource(R.string.memory_aucune_personne)
                     },

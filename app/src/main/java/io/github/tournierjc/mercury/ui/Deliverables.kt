@@ -255,7 +255,7 @@ fun OutputPreviewDialog(
                 )
                 when {
                     state.loading -> Text(
-                        text = stringResource(R.string.out_loading),
+                        text = stringResource(R.string.common_loading),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )

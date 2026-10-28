@@ -1,6 +1,8 @@
 package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -53,6 +55,8 @@ fun TasksScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(colors.canvas)
+            .safeDrawingPadding()
             .padding(horizontal = 14.dp)
             .verticalScroll(rememberScrollState()),
     ) {
@@ -61,10 +65,12 @@ fun TasksScreen(onBack: () -> Unit) {
         CollapsibleSection(stringResource(R.string.tasks_agents_titre), defaultOpen = true) {
             if (agents.isEmpty()) {
                 Text(
-                    text = if (available == false) {
-                        stringResource(R.string.tasks_agents_indisponible)
-                    } else {
-                        stringResource(R.string.tasks_aucun_agent)
+                    // Loading is not empty: before the API has answered, "no agent running" is a
+                    // claim we cannot make.
+                    text = when (available) {
+                        null -> stringResource(R.string.common_loading)
+                        false -> stringResource(R.string.tasks_agents_indisponible)
+                        true -> stringResource(R.string.tasks_aucun_agent)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
@@ -75,7 +81,7 @@ fun TasksScreen(onBack: () -> Unit) {
                     title = agent["id"]?.jsonPrimitive?.content ?: stringResource(R.string.tasks_agent_sans_id),
                     subtitle = listOfNotNull(
                         agent["state"]?.jsonPrimitive?.content?.let { rawLabel(it) },
-                        agent["startedAt"]?.jsonPrimitive?.content,
+                        agent["startedAt"]?.jsonPrimitive?.content?.let { formatWhen(it) },
                     ).joinToString(" · "),
                     trailing = "",
                     actions = emptyList(),

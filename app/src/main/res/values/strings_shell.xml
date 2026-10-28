@@ -48,7 +48,6 @@
     <string name="run_details">détail</string>
     <string name="run_older">… %1$d run(s) plus ancien(s)</string>
     <string name="run_detail_title">Détail du run</string>
-    <string name="run_loading">Chargement…</string>
     <string name="run_state">État</string>
     <string name="run_started">Démarré</string>
     <string name="run_duration">Durée</string>
@@ -86,7 +85,6 @@
     <string name="out_cancel">Annuler</string>
     <string name="out_kind_final">final</string>
     <string name="out_kind_work">travail</string>
-    <string name="out_loading">Chargement…</string>
     <string name="out_empty_file">(fichier vide)</string>
     <string name="out_truncated">Aperçu tronqué aux 64 premiers ko — partagez le fichier pour le lire en entier.</string>
     <string name="out_unavailable">Aperçu indisponible.</string>

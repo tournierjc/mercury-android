@@ -11,7 +11,6 @@
     <string name="workspace_onglet_git">Git</string>
 
     <!-- Fichiers -->
-    <string name="workspace_chargement">Chargement…</string>
     <string name="workspace_dossier_vide">Ce dossier est vide.</string>
     <string name="workspace_dossier_ouvrir">Ouvrir le dossier</string>
     <string name="workspace_fichier_ouvrir">Ouvrir le fichier</string>
@@ -49,7 +48,7 @@
     <string name="workspace_git_desindexer_tout">Tout désindexer</string>
     <string name="workspace_git_message">Message de commit</string>
     <string name="workspace_git_generer">Générer</string>
-    <string name="workspace_git_committer">Committer</string>
+    <string name="workspace_git_committer">Valider</string>
     <string name="workspace_git_pousser">Pousser</string>
     <string name="workspace_git_tirer">Tirer</string>
     <string name="workspace_git_rafraichir">Rafraîchir</string>
@@ -59,7 +58,7 @@
     <string name="workspace_git_diff_non_indexe">Non indexé</string>
     <string name="workspace_git_diff_vide">Aucun diff pour ce fichier.</string>
     <string name="workspace_git_diff_fermer">Fermer le diff</string>
-    <string name="workspace_git_choisir">Touchez un fichier pour lire son diff.</string>
+    <string name="workspace_git_choisir">Touche un fichier pour lire son diff.</string>
     <plurals name="workspace_git_indexes">
         <item quantity="one">%d fichier indexé</item>
         <item quantity="other">%d fichiers indexés</item>

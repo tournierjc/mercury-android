@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Status screen: the instance's dashboard. -->
-    <string name="status_title">Status</string>
-    <string name="status_loading">Loading…</string>
 
     <!-- Daemon -->
     <string name="status_section_daemon">Daemon</string>
@@ -60,7 +58,6 @@
     <string name="status_off">off</string>
 
     <!-- Configure screens: one capability per screen, read-only. -->
-    <string name="configure_loading">Loading…</string>
 
     <!-- Providers -->
     <string name="configure_providers_title">Providers</string>

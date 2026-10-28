@@ -103,7 +103,7 @@ fun GraphScreen(onBack: () -> Unit) {
         if (state.nodes.isEmpty()) {
             Text(
                 text = when {
-                    state.loading -> stringResource(R.string.memory_chargement)
+                    state.loading -> stringResource(R.string.common_loading)
                     !state.available -> stringResource(R.string.brain_graphe_indisponible)
                     else -> stringResource(R.string.brain_graphe_vide)
                 },

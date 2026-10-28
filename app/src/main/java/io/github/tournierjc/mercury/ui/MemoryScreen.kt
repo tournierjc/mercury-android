@@ -96,41 +96,11 @@ fun MemoryScreen(onBack: () -> Unit) {
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
-        // One segmented row: four tabs on a phone, the active one underlined in the accent.
-        // Chips wrapped onto a second line and read as filters, not as sections.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            MemoryTab.entries.forEach { tab ->
-                val selected = state.tab == tab
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .clickable { viewModel.selectTab(tab) }
-                        .padding(vertical = 8.dp),
-                ) {
-                    Text(
-                        text = tab.label(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) colors.accent else colors.textSecondary,
-                        maxLines = 1,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 6.dp)
-                            .width(18.dp)
-                            .height(2.dp)
-                            .clip(RoundedCornerShape(1.dp))
-                            .background(if (selected) colors.accent else Color.Transparent),
-                    )
-                }
-            }
-        }
+        SegmentedTabs(
+            labels = MemoryTab.entries.map { it.label() },
+            selected = state.tab.ordinal,
+            onSelect = { index -> viewModel.selectTab(MemoryTab.entries[index]) },
+        )
 
         Column(
             modifier = Modifier
@@ -195,7 +165,7 @@ private fun ConsciousTab(state: MemoryUiState, viewModel: MemoryViewModel, onAdd
         if (state.conscious.isEmpty()) {
             Text(
                 text = if (state.loading) {
-                    stringResource(R.string.memory_chargement)
+                    stringResource(R.string.common_loading)
                 } else {
                     stringResource(R.string.memory_aucun_souvenir)
                 },
@@ -240,7 +210,7 @@ private fun SubconsciousTab(state: MemoryUiState, viewModel: MemoryViewModel) {
         if (state.subconscious.isEmpty()) {
             Text(
                 text = if (state.loading) {
-                    stringResource(R.string.memory_chargement)
+                    stringResource(R.string.common_loading)
                 } else {
                     stringResource(R.string.memory_aucun_souvenir)
                 },

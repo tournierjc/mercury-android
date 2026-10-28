@@ -16,7 +16,6 @@
     <string name="boards_apercu_indisponible">Aperçu indisponible pour ce format — ouvre le fichier.</string>
     <string name="boards_ouvrir">Ouvrir</string>
     <string name="boards_telecharger">Télécharger</string>
-    <string name="boards_chargement">Chargement…</string>
     <string name="boards_aucun_plateau">Aucun plateau. Un plateau est une file de tâches que le runtime exécute carte par carte.</string>
     <string name="boards_en_attente">%1$d en attente</string>
     <string name="boards_en_cours">%1$d en cours</string>
@@ -82,7 +81,6 @@
     <string name="memory_croyances">Croyances</string>
     <string name="memory_quarantaine">Quarantaine</string>
     <string name="memory_rechercher">Rechercher dans la mémoire</string>
-    <string name="memory_chargement">Chargement…</string>
     <string name="memory_aucun_souvenir">Rien en mémoire pour cette recherche.</string>
     <string name="memory_ajouter">Ajouter</string>
     <string name="memory_souvenir_scores">confiance %1$d %% · importance %2$d %% · %3$s</string>

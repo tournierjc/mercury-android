@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -121,6 +122,61 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
  * own count (`bots_section_waiting`, 3 → 4) must pass a stable `stateKey`, or the section folds
  * and unfolds every time that number changes.
  */
+/**
+ * The segmented row: one flat bar, the current section underlined in the accent.
+ *
+ * Three screens had their own copy, pixel for pixel — except that one drew the idle underline in
+ * the canvas colour instead of transparent, which shows as a faint block on a raised surface. One
+ * component, one 48 dp touch target, one place to change.
+ */
+@Composable
+fun SegmentedTabs(
+    labels: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalMercuryColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        labels.forEachIndexed { index, label ->
+            val active = index == selected
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .clickable { onSelect(index) }
+                    .padding(vertical = 8.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (active) colors.accent else colors.textSecondary,
+                    // « Subconscient » does not fit a quarter of a 360 dp phone: shrink it, do not
+                    // cut it in the middle of a word.
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Box(
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .width(18.dp)
+                        .height(2.dp)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(if (active) colors.accent else Color.Transparent),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun CollapsibleSection(
     title: String,
@@ -138,6 +194,7 @@ fun CollapsibleSection(
             .padding(top = 18.dp)
             .clip(MaterialTheme.shapes.extraSmall)
             .clickable { open = !open }
+            .heightIn(min = 48.dp)
             .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Text(

@@ -53,7 +53,7 @@ fun StatusScreen(onBack: () -> Unit) {
             .safeDrawingPadding(),
     ) {
         ScreenHeader(
-            title = stringResource(R.string.status_title),
+            title = stringResource(R.string.nav_status),
             subtitle = state.status?.let { status ->
                 listOf(
                     daemonStateLabel(status.state, status.running),
@@ -94,7 +94,7 @@ private fun DaemonSection(state: StatusUiState) {
         val status = state.status
         if (status == null) {
             Text(
-                text = stringResource(if (state.loading) R.string.status_loading else R.string.status_daemon_unavailable),
+                text = stringResource(if (state.loading) R.string.common_loading else R.string.status_daemon_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -121,7 +121,6 @@ private fun InstanceSection(state: StatusUiState, serverUrl: String) {
         if (serverUrl.isNotBlank()) {
             KeyValueRow(stringResource(R.string.status_label_server), serverUrl)
         }
-        KeyValueRow(stringResource(R.string.status_label_uptime), formatUptime(state.status?.uptime ?: 0L))
     }
 }
 
@@ -133,7 +132,7 @@ private fun ProvidersSection(state: StatusUiState) {
     CollapsibleSection(stringResource(R.string.status_section_providers), defaultOpen = true) {
         if (state.status == null) {
             Text(
-                text = stringResource(if (state.loading) R.string.status_loading else R.string.status_daemon_unavailable),
+                text = stringResource(if (state.loading) R.string.common_loading else R.string.status_daemon_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -166,7 +165,7 @@ private fun BrainSection(state: StatusUiState) {
         val brain = state.brain
         if (brain == null) {
             Text(
-                text = stringResource(if (state.loading) R.string.status_loading else R.string.status_brain_unavailable),
+                text = stringResource(if (state.loading) R.string.common_loading else R.string.status_brain_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -201,7 +200,7 @@ private fun UsageSection(state: StatusUiState) {
         val usage = state.usage
         if (usage == null) {
             Text(
-                text = stringResource(if (state.loading) R.string.status_loading else R.string.status_usage_unavailable),
+                text = stringResource(if (state.loading) R.string.common_loading else R.string.status_usage_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )

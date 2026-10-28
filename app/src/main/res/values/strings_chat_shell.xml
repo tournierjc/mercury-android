@@ -21,4 +21,5 @@
     <string name="connect_label_password">Mot de passe</string>
     <string name="connect_sign_in">Se connecter</string>
     <string name="connect_reachability_hint">Le dashboard Mercury doit être joignable depuis le téléphone (Tailscale + `tailscale serve`, ou tunnel SSH).</string>
+    <string name="common_loading">Chargement…</string>
 </resources>

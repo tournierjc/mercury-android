@@ -156,7 +156,7 @@
     <string name="console_generate">Générer</string>
     <string name="console_create_commit_title">Créer le commit ?</string>
     <string name="console_create_commit_body">Le message part tel quel. Mercury ajoute lui-même la ligne « Co-authored-by » et ne commite que ce qui est indexé.</string>
-    <string name="console_commit">Committer</string>
+    <string name="console_commit">Valider</string>
     <string name="console_push_branch_title">Pousser la branche ?</string>
     <string name="console_push_body">Les commits partent sur origin. Rien n\'est réécrit, rien n\'est forcé.</string>
     <string name="console_push">Pousser</string>

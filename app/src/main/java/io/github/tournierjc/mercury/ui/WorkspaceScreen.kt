@@ -124,12 +124,16 @@ fun WorkspaceScreen(onBack: () -> Unit) {
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
-        TabRow(selected = state.tab, onSelect = viewModel::selectTab)
+        SegmentedTabs(
+            labels = WorkspaceTab.entries.map { it.label() },
+            selected = state.tab.ordinal,
+            onSelect = { index -> viewModel.selectTab(WorkspaceTab.entries[index]) },
+        )
 
         // One request at a time: the line says why every control went quiet.
         if (state.busy) {
             Text(
-                text = stringResource(R.string.workspace_chargement),
+                text = stringResource(R.string.common_loading),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 modifier = Modifier.padding(horizontal = 18.dp),
@@ -156,45 +160,7 @@ fun WorkspaceScreen(onBack: () -> Unit) {
     }
 }
 
-/** The segmented row the memory screen uses: labels, the active one underlined in the accent. */
-@Composable
-private fun TabRow(selected: WorkspaceTab, onSelect: (WorkspaceTab) -> Unit) {
-    val colors = LocalMercuryColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        WorkspaceTab.entries.forEach { tab ->
-            val active = tab == selected
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .clickable { onSelect(tab) }
-                    .padding(vertical = 8.dp),
-            ) {
-                Text(
-                    text = tab.label(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (active) colors.accent else colors.textSecondary,
-                    maxLines = 1,
-                )
-                Box(
-                    modifier = Modifier
-                        .padding(top = 6.dp)
-                        .width(18.dp)
-                        .height(2.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(if (active) colors.accent else colors.canvas),
-                )
-            }
-        }
-    }
-}
-
+/** The label of each tab, one place, so the drawer of this screen cannot disagree with itself. */
 @Composable
 private fun WorkspaceTab.label(): String = when (this) {
     WorkspaceTab.Files -> stringResource(R.string.workspace_onglet_fichiers)
@@ -218,7 +184,7 @@ private fun ColumnScope.FilesTab(state: WorkspaceUiState, viewModel: WorkspaceVi
     }
 
     when {
-        state.filesLoading -> QuietLine(stringResource(R.string.workspace_chargement))
+        state.filesLoading -> QuietLine(stringResource(R.string.common_loading))
         state.entries.isEmpty() -> QuietLine(stringResource(R.string.workspace_dossier_vide))
         else -> state.entries.forEach { entry ->
             EntryRow(entry = entry, enabled = !state.busy, onClick = { viewModel.open(entry) })
@@ -571,11 +537,14 @@ private fun CommandBlock(entry: WorkspaceCommand) {
                 color = colors.textSecondary,
             )
 
-            else -> Text(
-                text = entry.output.trimEnd(),
-                style = mono,
-                color = if (entry.ok) colors.textPrimary else colors.danger,
-            )
+            // On a phone the first thing you want from a terminal is to copy what it said.
+            else -> SelectionContainer {
+                Text(
+                    text = entry.output.trimEnd(),
+                    style = mono,
+                    color = if (entry.ok) colors.textPrimary else colors.danger,
+                )
+            }
         }
         entry.result?.let { result ->
             Text(

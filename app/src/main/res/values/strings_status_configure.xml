@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Écran État : le tableau de bord de l'instance. -->
-    <string name="status_title">État</string>
-    <string name="status_loading">Chargement…</string>
 
     <!-- Démon -->
     <string name="status_section_daemon">Démon</string>
@@ -60,7 +58,6 @@
     <string name="status_off">désactivé</string>
 
     <!-- Écrans Configurer : une capacité par écran, en lecture seule. -->
-    <string name="configure_loading">Chargement…</string>
 
     <!-- Fournisseurs -->
     <string name="configure_providers_title">Fournisseurs</string>
