@@ -39,6 +39,9 @@ import io.github.tournierjc.mercury.util.OutputActions
 import io.github.tournierjc.mercury.util.OutputPreviewState
 import io.github.tournierjc.mercury.util.SharedFile
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.data.toNotice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,12 +62,13 @@ data class TerminalEntry(
 ) {
     val ok: Boolean get() = result?.success == true
     val body: String get() = result?.display ?: failure.orEmpty()
-    val status: String
+    /** The line under the transcript: a key, so the screen says it in the owner's language. */
+    val status: Notice?
         get() = when {
-            failure != null -> "échec de la requête"
-            result == null -> ""
-            result.exitCode != 0 -> "code ${result.exitCode}"
-            else -> "ok"
+            failure != null -> Notice(NoticeKey.TERMINAL_REQUEST_FAILED)
+            result == null -> null
+            result.exitCode != 0 -> Notice(NoticeKey.TERMINAL_EXIT_CODE, args = listOf(result.exitCode.toString()))
+            else -> Notice(NoticeKey.TERMINAL_OK).asInfo()
         }
 }
 
@@ -107,15 +111,18 @@ data class ConsoleUiState(
     val outputPreview: OutputPreviewState? = null,
     val pendingShare: SharedFile? = null,
     val busy: Boolean = false,
-    val message: String? = null,
-    val error: String? = null,
+    /** What the last finished action says (a key, resolved by the screen). */
+    val message: Notice? = null,
+    val error: Notice? = null,
     // Git: the workspace repository, driven from the console.
     val git: GitStatusDto? = null,
     val gitBranches: List<GitBranchDto> = emptyList(),
     val gitLog: List<GitCommitDto> = emptyList(),
     val commitDraft: String = "",
     val gitDiff: String? = null,
-    val gitDiffTitle: String = "",
+    /** Which side of the index the patch came from, and the path when there was one. */
+    val gitDiffStaged: Boolean = false,
+    val gitDiffPath: String? = null,
     val gitBusy: Boolean = false,
     // Spotify: a convenience surface, not a music app.
     val music: SpotifyStatusDto? = null,
@@ -216,48 +223,48 @@ class ConsoleViewModel(
         }
     }
 
-    fun cancelTask(id: String) = action("Tâche annulée") { api.cancelTask(id) }
+    fun cancelTask(id: String) = action(Notice(NoticeKey.TASK_CANCELLED)) { api.cancelTask(id) }
 
-    fun clearFinishedTasks() = action("Tâches terminées effacées") { api.clearFinishedTasks() }
+    fun clearFinishedTasks() = action(Notice(NoticeKey.FINISHED_TASKS_CLEARED)) { api.clearFinishedTasks() }
 
-    fun haltAgents() = action("Agents mis en pause") { api.haltAgents() }
+    fun haltAgents() = action(Notice(NoticeKey.AGENTS_HALTED)) { api.haltAgents() }
 
-    fun stopAgents() = action("Agents arrêtés") { api.stopAgents() }
+    fun stopAgents() = action(Notice(NoticeKey.AGENTS_STOPPED)) { api.stopAgents() }
 
-    fun deleteSchedule(id: String) = action("Automatisation supprimée") { api.deleteSchedule(id) }
+    fun deleteSchedule(id: String) = action(Notice(NoticeKey.SCHEDULE_DELETED)) { api.deleteSchedule(id) }
 
     fun toggleSkill(name: String, active: Boolean) = action(
-        if (active) "Skill $name activé" else "Skill $name désactivé",
+        if (active) Notice(NoticeKey.SKILL_ENABLED, args = listOf(name)) else Notice(NoticeKey.SKILL_DISABLED, args = listOf(name)),
     ) { api.setSkillActive(name, active) }
 
     /** `POST /api/skills/install` — the daemon takes a URL, not a local folder. */
-    fun installSkill(url: String) = action("Skill installé depuis $url") { api.installSkill(url) }
+    fun installSkill(url: String) = action(Notice(NoticeKey.SKILL_INSTALLED_FROM_URL, args = listOf(url))) { api.installSkill(url) }
 
     /** `POST /api/skills/install-from-registry` — `id` is `<category>/<slug>`. */
-    fun installSkillFromRegistry(id: String, force: Boolean) = action("Skill $id installé depuis le registre") {
+    fun installSkillFromRegistry(id: String, force: Boolean) = action(Notice(NoticeKey.SKILL_INSTALLED_FROM_REGISTRY, args = listOf(id))) {
         api.installSkillFromRegistry(id, force)
     }
 
     /** `DELETE /api/skills/:name` — confirmed by the caller: the folder leaves the host. */
-    fun deleteSkill(name: String) = action("Skill $name supprimé") { api.deleteSkill(name) }
+    fun deleteSkill(name: String) = action(Notice(NoticeKey.SKILL_DELETED, args = listOf(name))) { api.deleteSkill(name) }
 
-    fun startBot(id: String) = action("Bot démarré") { api.startBot(id) }
+    fun startBot(id: String) = action(Notice(NoticeKey.BOT_STARTED)) { api.startBot(id) }
 
-    fun stopBot(id: String) = action("Bot arrêté") { api.stopBot(id) }
+    fun stopBot(id: String) = action(Notice(NoticeKey.BOT_STOPPED)) { api.stopBot(id) }
 
-    fun runBot(id: String) = action("Exécution demandée") { api.runBot(id) }
+    fun runBot(id: String) = action(Notice(NoticeKey.RUN_REQUESTED)) { api.runBot(id) }
 
-    fun startAllBots() = action("Tous les bots démarrés") { api.startAllBots() }
+    fun startAllBots() = action(Notice(NoticeKey.BOTS_ALL_STARTED)) { api.startAllBots() }
 
-    fun stopAllBots() = action("Tous les bots arrêtés") { api.stopAllBots() }
+    fun stopAllBots() = action(Notice(NoticeKey.BOTS_ALL_STOPPED)) { api.stopAllBots() }
 
     fun setBotEnabled(id: String, enabled: Boolean) = action(
-        if (enabled) "Bot $id activé" else "Bot $id désactivé",
+        if (enabled) Notice(NoticeKey.TEAMMATE_ENABLED, args = listOf(id)) else Notice(NoticeKey.TEAMMATE_DISABLED, args = listOf(id)),
     ) { api.setBotEnabled(id, enabled) }
 
-    fun deleteBot(id: String) = action("Bot $id supprimé") { api.deleteBot(id) }
+    fun deleteBot(id: String) = action(Notice(NoticeKey.TEAMMATE_DELETED_NAMED, args = listOf(id))) { api.deleteBot(id) }
 
-    fun createBot(id: String, name: String, description: String?, tier: String?) = action("Bot $name créé") {
+    fun createBot(id: String, name: String, description: String?, tier: String?) = action(Notice(NoticeKey.TEAMMATE_CREATED, args = listOf(name))) {
         api.createBot(id, name, description?.trim()?.ifBlank { null }, tier)
     }
 
@@ -274,10 +281,10 @@ class ConsoleViewModel(
         _state.update { it.copy(botDetail = null) }
     }
 
-    fun setCodeMode(state: String) = action("Mode programmation : $state") { api.setCodeMode(state) }
+    fun setCodeMode(state: String) = action(Notice(NoticeKey.CODE_MODE_SET, args = listOf(state))) { api.setCodeMode(state) }
 
     /** Restarts the daemon: the HTTP call returns before the socket actually drops. */
-    fun restart() = action("Redémarrage accepté — le runtime revient dans quelques secondes") { api.restart() }
+    fun restart() = action(Notice(NoticeKey.RESTART_REQUESTED)) { api.restart() }
 
     /**
      * Stops the daemon. The follow-up refresh would hit a socket that is going away, so this
@@ -290,11 +297,11 @@ class ConsoleViewModel(
                 .onSuccess { result ->
                     if (result.ok) {
                         _state.update { s ->
-                            s.copy(busy = false, message = "Arrêt accepté (pid ${result.pid}) — le démon s'arrête")
+                            s.copy(busy = false, message = Notice(NoticeKey.SHUTDOWN_ACCEPTED, args = listOf(result.pid.toString())))
                         }
                     } else {
                         _state.update { s ->
-                            s.copy(busy = false, error = result.error.ifBlank { "Arrêt refusé par le démon" })
+                            s.copy(busy = false, error = Notice(NoticeKey.SHUTDOWN_REFUSED).withDetail(result.error))
                         }
                     }
                 }
@@ -303,7 +310,7 @@ class ConsoleViewModel(
     }
 
     /** `PUT /api/workspace/root` — the daemon refuses a path that does not exist. */
-    fun setWorkspaceRoot(path: String) = action("Espace de travail : $path") { api.setWorkspaceRoot(path) }
+    fun setWorkspaceRoot(path: String) = action(Notice(NoticeKey.WORKSPACE_SET, args = listOf(path))) { api.setWorkspaceRoot(path) }
 
     // -------------------------------------------------------------------
     // Providers: write a key, probe the endpoint
@@ -337,18 +344,23 @@ class ConsoleViewModel(
                     val report = response.report
                     when {
                         response.error.isNotBlank() ->
-                            _state.update { s -> s.copy(busy = false, error = response.error) }
+                            _state.update { s -> s.copy(busy = false, error = Notice(NoticeKey.CREW_IMPORT_FAILED).withDetail(response.error)) }
 
                         report.created.isEmpty() -> _state.update { s ->
-                            s.copy(busy = false, message = "Rien d'importé — ${report.skipped.size} équipier(s) déjà présent(s)")
+                            s.copy(busy = false, message = Notice(NoticeKey.CREW_IMPORT_NOTHING, args = listOf(report.skipped.size.toString())))
                         }
 
                         else -> {
                             _state.update { s ->
                                 s.copy(
                                     busy = false,
-                                    message = "${report.created.size} équipier(s) importé(s), désactivé(s) : " +
-                                        report.created.joinToString(", "),
+                                    message = Notice(
+                                        NoticeKey.CREW_IMPORTED,
+                                        args = listOf(
+                                            report.created.size.toString(),
+                                            report.created.joinToString(", "),
+                                        ),
+                                    ),
                                 )
                             }
                             refresh()
@@ -397,26 +409,24 @@ class ConsoleViewModel(
             _state.update { it.copy(busy = true, error = null) }
             runCatching { api.deleteOutput(output.botId, output.name) }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = "Livrable supprimé") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.OUTPUT_DELETED)) }
                     refresh()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
 
-    private fun action(successMessage: String, block: suspend () -> Any?) {
+    private fun action(success: Notice, block: suspend () -> Any?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { block() }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = successMessage) }; refresh() }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = success) }; refresh() }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
 
-    private fun Throwable.readable(): String = when (this) {
-        is AuthException -> "Session expirée — reconnecte-toi"
-        else -> message ?: "Requête refusée"
-    }
+    /** One mapping for the whole app (see `toNotice`). */
+    private fun Throwable.readable(): Notice = toNotice()
 
     // -------------------------------------------------------------------
     // Terminal: one command, at the owner's explicit request
@@ -445,7 +455,8 @@ class ConsoleViewModel(
                         s.copy(
                             terminalBusy = false,
                             error = e.readable(),
-                            terminalLog = (s.terminalLog + TerminalEntry(command = command, failure = e.readable()))
+                            // The entry mirrors the transport error as text: the banner carries the notice.
+                            terminalLog = (s.terminalLog + TerminalEntry(command = command, failure = e.message.orEmpty()))
                                 .takeLast(60),
                         )
                     }
@@ -469,7 +480,7 @@ class ConsoleViewModel(
         viewModelScope.launch {
             runCatching { api.botCrew(id) }
                 .onSuccess { crew -> _state.update { it.copy(crew = crew) } }
-                .onFailure { e -> _state.update { it.copy(crew = BotCrewResponse(error = e.readable())) } }
+                .onFailure { e -> _state.update { it.copy(crew = BotCrewResponse(error = e.message.orEmpty())) } }
         }
     }
 
@@ -481,11 +492,11 @@ class ConsoleViewModel(
         }
     }
 
-    fun promoteBot(id: String) = botAction("Équipier promu en chef de flotte") { api.promoteBot(id) }
+    fun promoteBot(id: String) = botAction(Notice(NoticeKey.PROMOTED_LEAD)) { api.promoteBot(id) }
 
-    fun autoCrew(id: String) = botAction("Construction de la flotte demandée") { api.autoCrewBot(id) }
+    fun autoCrew(id: String) = botAction(Notice(NoticeKey.CREW_AUTOBUILD_REQUESTED)) { api.autoCrewBot(id) }
 
-    fun setTier(id: String, tier: String) = botAction("Palier de permissions appliqué") {
+    fun setTier(id: String, tier: String) = botAction(Notice(NoticeKey.TIER_APPLIED)) {
         api.setBotPermissions(id, tier)
     }
 
@@ -496,15 +507,15 @@ class ConsoleViewModel(
         description: String?,
         persona: String?,
         tier: String?,
-    ) = botAction("Équipier ajouté à la flotte") {
+    ) = botAction(Notice(NoticeKey.CREW_MEMBER_ADDED)) {
         api.addBotCrew(leadId, id, name, description, persona, tier)
     }.also { loadCrew(leadId) }
 
-    private fun botAction(successMessage: String, block: suspend () -> Any?) {
+    private fun botAction(success: Notice, block: suspend () -> Any?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { block() }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = successMessage) }; refresh() }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = success) }; refresh() }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
@@ -522,13 +533,13 @@ class ConsoleViewModel(
      * [readable] keeps that text whole: "nothing to commit, working tree clean" is more
      * useful to the owner than anything this client could paraphrase.
      */
-    private fun gitAction(successMessage: String, onSuccess: () -> Unit = {}, block: suspend () -> Any?) {
+    private fun gitAction(success: Notice, onSuccess: () -> Unit = {}, block: suspend () -> Any?) {
         viewModelScope.launch {
             _state.update { it.copy(gitBusy = true, message = null, error = null) }
             runCatching { block() }
                 .onSuccess {
                     onSuccess()
-                    _state.update { s -> s.copy(gitBusy = false, message = successMessage) }
+                    _state.update { s -> s.copy(gitBusy = false, message = success) }
                     loadGit()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(gitBusy = false, error = e.readable()) } }
@@ -546,14 +557,20 @@ class ConsoleViewModel(
 
     fun stage(paths: List<String>) {
         if (paths.isEmpty()) return
-        gitAction(if (paths.size == 1) "Fichier indexé" else "${paths.size} fichiers indexés") {
+        gitAction(
+        if (paths.size == 1) Notice(NoticeKey.FILE_STAGED)
+        else Notice(NoticeKey.FILES_STAGED, args = listOf(paths.size.toString())),
+    ) {
             api.gitStage(paths)
         }
     }
 
     fun unstage(paths: List<String>) {
         if (paths.isEmpty()) return
-        gitAction(if (paths.size == 1) "Fichier désindexé" else "${paths.size} fichiers désindexés") {
+        gitAction(
+        if (paths.size == 1) Notice(NoticeKey.FILE_UNSTAGED)
+        else Notice(NoticeKey.FILES_UNSTAGED, args = listOf(paths.size.toString())),
+    ) {
             api.gitUnstage(paths)
         }
     }
@@ -581,16 +598,16 @@ class ConsoleViewModel(
     fun commit() {
         val message = _state.value.commitDraft.trim()
         if (message.isEmpty()) return
-        gitAction("Commit créé", onSuccess = { _state.update { it.copy(commitDraft = "") } }) {
+        gitAction(Notice(NoticeKey.COMMIT_CREATED), onSuccess = { _state.update { it.copy(commitDraft = "") } }) {
             api.gitCommit(message)
         }
     }
 
-    fun push() = gitAction("Poussé sur origin") { api.gitPush() }
+    fun push() = gitAction(Notice(NoticeKey.PUSHED)) { api.gitPush() }
 
-    fun pull() = gitAction("Dépôt mis à jour") { api.gitPull() }
+    fun pull() = gitAction(Notice(NoticeKey.PULLED)) { api.gitPull() }
 
-    fun checkout(branch: String) = gitAction("Branche « $branch »") { api.gitCheckout(branch) }
+    fun checkout(branch: String) = gitAction(Notice(NoticeKey.BRANCH_CHECKED_OUT, args = listOf(branch))) { api.gitCheckout(branch) }
 
     /**
      * The diff route, shown as monospace text in a dialog. Nothing parses the patch here:
@@ -601,12 +618,9 @@ class ConsoleViewModel(
             _state.update { it.copy(gitBusy = true, message = null, error = null) }
             runCatching { api.gitDiff(path, staged) }
                 .onSuccess { diff ->
-                    val title = listOfNotNull(
-                        if (staged) "Diff indexé" else "Diff non indexé",
-                        path?.takeIf { it.isNotBlank() },
-                    ).joinToString(" · ")
+                    val where = path?.takeIf { it.isNotBlank() }
                     _state.update {
-                        it.copy(gitBusy = false, gitDiff = diff.ifBlank { "Aucune différence." }, gitDiffTitle = title)
+                        it.copy(gitBusy = false, gitDiff = diff, gitDiffStaged = staged, gitDiffPath = where)
                     }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(gitBusy = false, error = e.readable()) } }
@@ -614,7 +628,7 @@ class ConsoleViewModel(
     }
 
     fun dismissDiff() {
-        _state.update { it.copy(gitDiff = null, gitDiffTitle = "") }
+        _state.update { it.copy(gitDiff = null, gitDiffPath = null) }
     }
 
     // -------------------------------------------------------------------

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- BoardsScreen -->
-    <string name="boards_erreur_ecriture">Cannot write to that location</string>
-    <string name="boards_aucune_app_ouverture">No app can open %1$s</string>
     <string name="boards_titre_plateau">Board</string>
     <string name="boards_titre_plateaux">Boards</string>
     <string name="boards_sous_titre_nb_plateaux">%1$d boards</string>
@@ -132,4 +130,5 @@
     <string name="memory_corriger_croyance">Correct the belief</string>
     <string name="memory_formulation">Correct wording</string>
     <string name="memory_enregistrer">Save</string>
+    <string name="boards_apercu_tronque">… preview truncated — download the file for the full text</string>
 </resources>

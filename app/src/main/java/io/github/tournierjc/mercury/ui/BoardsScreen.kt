@@ -52,6 +52,8 @@ import io.github.tournierjc.mercury.vm.AttachmentPreview
 import io.github.tournierjc.mercury.vm.BoardsUiState
 import io.github.tournierjc.mercury.vm.BoardsViewModel
 import io.github.tournierjc.mercury.vm.CardDetail
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -91,7 +93,7 @@ fun BoardsScreen(onBack: () -> Unit) {
         pendingSave = null
         if (target != null && export != null) {
             if (!AttachmentFiles.save(context, target, export.file.bytes)) {
-                viewModel.report(context.getString(R.string.boards_erreur_ecriture))
+                viewModel.report(Notice(NoticeKey.BOARD_WRITE_FAILED))
             }
         }
     }
@@ -102,7 +104,7 @@ fun BoardsScreen(onBack: () -> Unit) {
             pendingSave = export
             saveLauncher.launch(export.file.name)
         } else if (!AttachmentFiles.open(context, export.file)) {
-            viewModel.report(context.getString(R.string.boards_aucune_app_ouverture, export.file.name))
+            viewModel.report(Notice(NoticeKey.NO_APP_FOR_TYPE, args = listOf(export.file.name)))
         }
         viewModel.consumeExport()
     }
@@ -128,8 +130,8 @@ fun BoardsScreen(onBack: () -> Unit) {
             onBack = { if (state.openBoardId == null) onBack() else viewModel.close() },
             onRefresh = viewModel::refresh,
         )
-        state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
-        state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
+        state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
+        state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
         Column(
             modifier = Modifier
@@ -281,7 +283,7 @@ private fun AttachmentDialog(
             ) {
                 when {
                     preview.loading -> Text(stringResource(R.string.boards_lecture), color = colors.textSecondary)
-                    preview.error != null -> Text(preview.error, color = colors.danger)
+                    preview.error != null -> Text(noticeText(preview.error), color = colors.danger)
                     preview.isImage -> {
                         val bitmap = remember(preview.bytes) {
                             preview.bytes?.let { AttachmentFiles.decode(it) }
@@ -303,13 +305,23 @@ private fun AttachmentDialog(
                             )
                         }
                     }
-                    else -> Text(
-                        text = preview.text?.ifBlank { stringResource(R.string.boards_fichier_vide) }
-                            ?: stringResource(R.string.boards_apercu_indisponible),
-                        color = if (preview.text == null) colors.textSecondary else colors.textPrimary,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = if (preview.text != null) FontFamily.Monospace else FontFamily.Default,
-                    )
+                    else -> Column {
+                        Text(
+                            text = preview.text?.ifBlank { stringResource(R.string.boards_fichier_vide) }
+                                ?: stringResource(R.string.boards_apercu_indisponible),
+                            color = if (preview.text == null) colors.textSecondary else colors.textPrimary,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = if (preview.text != null) FontFamily.Monospace else FontFamily.Default,
+                        )
+                        if (preview.truncated) {
+                            Text(
+                                text = stringResource(R.string.boards_apercu_tronque),
+                                color = colors.textSecondary,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
                 }
                 if (!preview.loading && preview.error == null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
