@@ -182,17 +182,19 @@ fun DeliverablesSection(
                         color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        // The name takes whatever the count and the chevron leave: pinning them to
+                        // the right edge is what makes the column read as one, instead of every
+                        // count starting wherever its own folder name happens to end.
                         modifier = Modifier
-                            .weight(1f, fill = false)
+                            .weight(1f)
                             .padding(start = if (bot != null) 8.dp else 0.dp),
                     )
                     Text(
                         text = stringResource(R.string.out_n_files, group.files.size),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
-                        modifier = Modifier.padding(start = 6.dp),
+                        modifier = Modifier.padding(start = 8.dp),
                     )
-                    Box(modifier = Modifier.weight(1f))
                     Icon(
                         imageVector = if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                         contentDescription = stringResource(
@@ -200,7 +202,9 @@ fun DeliverablesSection(
                             group.name,
                         ),
                         tint = colors.textSecondary,
-                        modifier = Modifier.size(18.dp),
+                        // 2 dp of air, then the same 4 dp the section headings above use, so every
+                        // chevron in the column sits on one vertical line.
+                        modifier = Modifier.padding(start = 2.dp, end = 4.dp).size(18.dp),
                     )
                 }
                 if (!open) return@forEach
