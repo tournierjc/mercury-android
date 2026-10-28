@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.ui
 
+import io.github.tournierjc.mercury.data.FleetRow
+
 /**
  * One row of the drawer, in the order it is drawn.
  *
@@ -14,7 +16,16 @@ package io.github.tournierjc.mercury.ui
 sealed interface DrawerRow {
     /** The crew heading, drawn only when there is a crew. */
     data class CrewHeader(val bots: Int) : DrawerRow
-    data class Bot(val id: String) : DrawerRow
+
+    /**
+     * A lead with a crew: the row carries the count and a disclosure, and its crew is only drawn
+     * when [open]. Folded by default — a fleet of ten used to read as ten equals, and the one thing
+     * the drawer could not show was who answers to whom.
+     */
+    data class Lead(val id: String, val crew: Int, val open: Boolean) : DrawerRow
+
+    /** [under] indents a crew member beneath its lead; a solo bot is never indented. */
+    data class Bot(val id: String, val under: Boolean = false) : DrawerRow
     data object AllCrew : DrawerRow
 
     /** The sessions heading says so, instead of leaving an empty space under it. */
@@ -41,13 +52,32 @@ enum class DrawerSection { Work, SecondBrain, Configure }
  * lists the server owns, and the drawer is the only place they meet).
  */
 fun drawerRows(
-    botIds: List<String>,
+    fleet: List<FleetRow>,
     threadIds: List<String>,
     current: AppScreen = AppScreen.Chat,
+    /** The leads whose crew is unfolded. Folded is the default, and the only state we keep. */
+    openLeads: Set<String> = emptySet(),
 ): List<DrawerRow> = buildList {
-    if (botIds.isNotEmpty()) {
-        add(DrawerRow.CrewHeader(botIds.size))
-        botIds.forEach { add(DrawerRow.Bot(it)) }
+    if (fleet.isNotEmpty()) {
+        // The heading counts the whole fleet, folded or not: a drawer that said « 4 » while holding
+        // ten teammates would be lying about what is behind « Tous les équipiers ».
+        val total = fleet.sumOf { row -> if (row is FleetRow.Lead) 1 + row.crewIds.size else 1 }
+        add(DrawerRow.CrewHeader(total))
+        fleet.forEach { row ->
+            when (row) {
+                is FleetRow.Solo -> add(DrawerRow.Bot(row.id))
+                is FleetRow.Lead -> {
+                    if (row.crewIds.isEmpty()) {
+                        // A lead nobody answers to yet is one row: nothing to disclose.
+                        add(DrawerRow.Bot(row.id))
+                    } else {
+                        val open = row.id in openLeads
+                        add(DrawerRow.Lead(row.id, row.crewIds.size, open))
+                        if (open) row.crewIds.forEach { add(DrawerRow.Bot(it, under = true)) }
+                    }
+                }
+            }
+        }
         add(DrawerRow.AllCrew)
     }
     add(DrawerRow.SessionHeader)

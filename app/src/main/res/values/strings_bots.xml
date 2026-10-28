@@ -157,6 +157,10 @@
     <string name="perm_action_keep_asking">Rester en demande</string>
     <string name="perm_action_allow_all">Tout autoriser</string>
     <string name="bots_cd_lead">Chef d\'équipage</string>
+    <plurals name="bots_crew_folded">
+        <item quantity="one">%1$d équipier</item>
+        <item quantity="other">%1$d équipiers</item>
+    </plurals>
     <plurals name="bots_lead_crew_members">
         <item quantity="one"> · %1$d équipier</item>
         <item quantity="other"> · %1$d équipiers</item>

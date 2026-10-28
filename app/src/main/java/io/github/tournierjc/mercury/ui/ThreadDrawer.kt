@@ -3,8 +3,11 @@ package io.github.tournierjc.mercury.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Psychology
@@ -40,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.CircleShape
@@ -62,11 +69,13 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.SpaceDashboard
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BotJson
+import io.github.tournierjc.mercury.data.fleetRows
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.ui.icons.GraphGlyph
 import io.github.tournierjc.mercury.ui.icons.ProviderGlyph
@@ -81,6 +90,8 @@ fun ThreadDrawer(
     onOpenThread: (ThreadDto) -> Unit,
     onDeleteThread: (ThreadDto) -> Unit,
     onOpenBot: (String) -> Unit = {},
+    /** A long press on a teammate opens its settings page, where the tap opens the conversation. */
+    onOpenBotConfig: (String) -> Unit = {},
     onSignOut: () -> Unit,
     /** The screen on top, so the drawer marks where the owner is. */
     current: AppScreen = AppScreen.Chat,
@@ -95,11 +106,16 @@ fun ThreadDrawer(
     val needsYou = stringResource(R.string.drawer_needs_you)
     var pendingDelete by remember { mutableStateOf<ThreadDto?>(null) }
 
-    val rows = remember(bots, threads, current) {
+    // Which leads the owner unfolded. Folded is the default: the drawer arrives as a tree, not as
+    // ten rows that happen to mention a fleet in a subtitle.
+    var openLeads by rememberSaveable { mutableStateOf(listOf<String>()) }
+    val fleet = remember(bots) { fleetRows(bots) }
+    val rows = remember(fleet, threads, current, openLeads) {
         drawerRows(
-            botIds = bots.map { BotJson.id(it) },
+            fleet = fleet,
             threadIds = threads.map { it.id },
             current = current,
+            openLeads = openLeads.toSet(),
         )
     }
     val botsById = remember(bots) { bots.associateBy { BotJson.id(it) } }
@@ -121,6 +137,7 @@ fun ThreadDrawer(
                 items = rows,
                 key = { row ->
                     when (row) {
+                        is DrawerRow.Lead -> "lead:${row.id}"
                         is DrawerRow.Bot -> "bot:${row.id}"
                         is DrawerRow.Thread -> "thread:${row.id}"
                         else -> row.toString()
@@ -135,44 +152,42 @@ fun ThreadDrawer(
                         modifier = Modifier.padding(bottom = 6.dp),
                     )
 
+                    is DrawerRow.Lead -> {
+                        val bot = botsById[row.id] ?: return@items
+                        DrawerBotRow(
+                            needsYou = needsYou,
+                            bot = bot,
+                            face = avatars[row.id],
+                            selected = row.id == activeBotId,
+                            under = false,
+                            crew = row.crew,
+                            open = row.open,
+                            onClick = { onOpenBot(row.id) },
+                            onLongClick = { onOpenBotConfig(row.id) },
+                            onToggleCrew = {
+                                openLeads = if (row.id in openLeads) {
+                                    openLeads - listOf(row.id)
+                                } else {
+                                    openLeads + listOf(row.id)
+                                }
+                            },
+                        )
+                    }
+
                     is DrawerRow.Bot -> {
                         val bot = botsById[row.id] ?: return@items
-                        val selected = row.id == activeBotId
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(MaterialTheme.shapes.extraSmall)
-                                .clickable { onOpenBot(row.id) }
-                                .padding(horizontal = 8.dp, vertical = 10.dp),
-                        ) {
-                            BotFace(bot, avatars[row.id], small = true)
-                            Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-                                Text(
-                                    text = BotJson.name(bot),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (selected) colors.accent else colors.textPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = noticeText(BotJson.stateNotice(BotJson.state(bot))),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.textSecondary,
-                                )
-                            }
-                            if (BotJson.needsYou(bot)) {
-                                // A dot with a name, not a bare "⚠" in a Text: the core icon set has
-                                // no warning glyph, and a literal has no accessible label.
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(colors.danger)
-                                        .semantics { contentDescription = needsYou },
-                                )
-                            }
-                        }
+                        DrawerBotRow(
+                            needsYou = needsYou,
+                            bot = bot,
+                            face = avatars[row.id],
+                            selected = row.id == activeBotId,
+                            under = row.under,
+                            crew = null,
+                            open = null,
+                            onClick = { onOpenBot(row.id) },
+                            onLongClick = { onOpenBotConfig(row.id) },
+                            onToggleCrew = null,
+                        )
                     }
 
                     // The list above is the access: a second entry called « Équipiers » below opened
@@ -424,4 +439,97 @@ private fun screenIcon(screen: AppScreen): ImageVector = when (screen) {
     AppScreen.Bridge -> Icons.Rounded.PhoneAndroid
     AppScreen.Console -> Icons.Rounded.Terminal
     AppScreen.Settings -> Icons.Rounded.Settings
+}
+
+/**
+ * One teammate in the drawer: a solo bot, a lead with its crew folded or unfolded, or a crew member
+ * indented under its lead.
+ *
+ * The two gestures are the two things one wants from a name here: a tap goes to the conversation,
+ * a long press to the settings page (opening the conversation is the common case, so it keeps the
+ * cheap gesture). Both are named for TalkBack — a long press with no label is a gesture nobody can
+ * discover.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DrawerBotRow(
+    needsYou: String,
+    bot: JsonObject,
+    face: ByteArray?,
+    selected: Boolean,
+    under: Boolean,
+    /** The size of the crew behind a lead, or null on any other row. */
+    crew: Int?,
+    /** Whether a lead's crew is unfolded, or null on any other row. */
+    open: Boolean?,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onToggleCrew: (() -> Unit)?,
+) {
+    val colors = LocalMercuryColors.current
+    val name = BotJson.name(bot)
+    val folded = crew != null && open == false
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.extraSmall)
+            .combinedClickable(
+                onClickLabel = stringResource(R.string.drawer_bot_open_chat),
+                onLongClickLabel = stringResource(R.string.drawer_bot_open_config),
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
+            .heightIn(min = 48.dp)
+            // The indent carries the tree, so a crew member never reads as the lead's sibling.
+            .padding(start = if (under) 26.dp else 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+    ) {
+        // The arrow is left of the face — the tree's own edge, and the same place it sits in the
+        // Équipiers screen. A row with nothing to fold keeps the slot so the faces line up.
+        when {
+            onToggleCrew != null -> IconButton(onClick = onToggleCrew, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (open == true) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (open == true) {
+                        stringResource(R.string.drawer_fold_crew, name)
+                    } else {
+                        stringResource(R.string.drawer_unfold_crew, name)
+                    },
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            crew != null -> Spacer(Modifier.width(36.dp))
+        }
+        BotFace(bot, face, small = true)
+        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) colors.accent else colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = if (folded) {
+                    pluralStringResource(R.plurals.bots_crew_folded, crew, crew)
+                } else {
+                    noticeText(BotJson.stateNotice(BotJson.state(bot)))
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
+        }
+        if (BotJson.needsYou(bot)) {
+            // A dot with a name, not a bare "⚠" in a Text: the core icon set has no warning glyph,
+            // and a literal has no accessible label.
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(colors.danger)
+                    .semantics { contentDescription = needsYou },
+            )
+        }
+    }
 }

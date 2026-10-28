@@ -157,6 +157,10 @@
     <string name="perm_action_keep_asking">Keep asking</string>
     <string name="perm_action_allow_all">Allow all</string>
     <string name="bots_cd_lead">Crew lead</string>
+    <plurals name="bots_crew_folded">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
     <plurals name="bots_lead_crew_members">
         <item quantity="one"> · %1$d member</item>
         <item quantity="other"> · %1$d members</item>

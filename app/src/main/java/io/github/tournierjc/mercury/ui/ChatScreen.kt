@@ -392,6 +392,14 @@ fun ChatScreen(
                     screen = AppScreen.Chat
                     scope.launch { drawerState.close() }
                 },
+                // A long press on a name goes to the page that changes it, not to the one that talks
+                // to it — and the sheet hands over to Équipiers with that bot already open.
+                onOpenBotConfig = { id ->
+                    botToOpen = id
+                    cameFromBots = false
+                    screen = AppScreen.Bots
+                    scope.launch { drawerState.close() }
+                },
                 onDeleteThread = { thread ->
                     onDeleteThread(thread)
                     scope.launch { drawerState.close() }

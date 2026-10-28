@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +46,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Create
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.HideImage
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.IosShare
@@ -74,6 +77,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -403,29 +407,38 @@ private fun RosterList(
             )
             return@CollapsibleSection
         }
-        // The roster is a tree: a lead opens onto its crew, everyone else is one row. Flat, the
-        // only hint of hierarchy was "crew de mac-lead" in a subtitle — a label, not a structure.
+        // The roster is a tree, and the lead *is* the node: it used to be a section heading with a
+        // copy of the lead as its first row — the same bot twice, one level deeper than it needed to
+        // be. Now the disclosure sits on the lead's own row (arrow on the left) and its crew folds
+        // underneath, indented under the face.
+        var openLeads by rememberSaveable { mutableStateOf(listOf<String>()) }
         val byId = remember(watch.bots) { watch.bots.associateBy { BotJson.id(it) } }
         remember(watch.bots) { fleetRows(watch.bots) }.forEach { row ->
             when (row) {
-                is FleetRow.Solo -> byId[row.id]?.let { bot -> BotRosterRow(bot, avatars[row.id], watch, onSelect, onOpenChat) }
+                is FleetRow.Solo -> byId[row.id]?.let { bot ->
+                    BotRosterRow(bot, avatars[row.id], watch, onSelect, onOpenChat)
+                }
 
                 is FleetRow.Lead -> byId[row.id]?.let { lead ->
-                    if (row.crewIds.isEmpty()) {
-                        // A lead that has spawned nobody yet: a row like any other, crown included.
-                        BotRosterRow(lead, avatars[row.id], watch, onSelect, onOpenChat)
-                    } else {
-                        CollapsibleSection(
-                            title = BotJson.name(lead) + stringResource(R.string.bots_lead_badge) +
-                                pluralStringResource(R.plurals.bots_lead_crew_members, row.crewIds.size, row.crewIds.size),
-                            defaultOpen = false,
-                            stateKey = "roster-lead-${row.id}",
-                        ) {
-                            BotRosterRow(lead, avatars[row.id], watch, onSelect, onOpenChat)
-                            row.crewIds.forEach { crewId ->
-                                byId[crewId]?.let { crew ->
-                                    BotRosterRow(crew, avatars[crewId], watch, onSelect, onOpenChat, indent = true)
-                                }
+                    val open = row.id in openLeads
+                    BotRosterRow(
+                        bot = lead,
+                        avatar = avatars[row.id],
+                        watch = watch,
+                        onSelect = onSelect,
+                        onOpenChat = onOpenChat,
+                        crew = row.crewIds.size.takeIf { it > 0 },
+                        expanded = open,
+                        onToggle = row.crewIds.takeIf { it.isNotEmpty() }?.let {
+                            {
+                                openLeads = if (open) openLeads - listOf(row.id) else openLeads + listOf(row.id)
+                            }
+                        },
+                    )
+                    if (open) {
+                        row.crewIds.forEach { crewId ->
+                            byId[crewId]?.let { crew ->
+                                BotRosterRow(crew, avatars[crewId], watch, onSelect, onOpenChat, indent = true)
                             }
                         }
                     }
@@ -437,7 +450,12 @@ private fun RosterList(
 
 /**
  * One bot of the roster. The same row serves a solo bot, a lead and a crew member — only the
- * indent changes, so a fleet cannot grow a second row design beside the flat one it came from.
+ * indent and the disclosure change, so a fleet cannot grow a second row design beside the flat one
+ * it came from.
+ *
+ * A lead carries [crew] (how many answer to it) and, when that crew is non-empty, [onToggle]: the
+ * chevron sits at the left edge of the row and unfolds the crew in place. The row *is* the section —
+ * it used to be a heading with the same bot repeated as its first row underneath.
  */
 @Composable
 private fun BotRosterRow(
@@ -447,6 +465,10 @@ private fun BotRosterRow(
     onSelect: (String) -> Unit,
     onOpenChat: (String) -> Unit,
     indent: Boolean = false,
+    /** The size of the crew behind this lead, or null on any other row. */
+    crew: Int? = null,
+    expanded: Boolean = false,
+    onToggle: (() -> Unit)? = null,
 ) {
     val colors = LocalMercuryColors.current
     val id = BotJson.id(bot)
@@ -459,8 +481,26 @@ private fun BotRosterRow(
             // the default action there is to configure, and chatting is one deliberate
             // tap away (the drawer stays the quick way to switch conversations).
             .clickable { onSelect(id) }
-            .padding(start = if (indent) 26.dp else 0.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = if (indent) 40.dp else 0.dp, top = 6.dp, bottom = 6.dp),
     ) {
+        // The arrow is left of the face: it reads as the tree's own edge, and it is the one thing on
+        // the row that folds instead of navigating. A lead with nobody keeps the slot empty, so the
+        // faces of the leads line up whether or not they have a crew.
+        when {
+            onToggle != null -> IconButton(onClick = onToggle, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (expanded) {
+                        stringResource(R.string.drawer_fold_crew, BotJson.name(bot))
+                    } else {
+                        stringResource(R.string.drawer_unfold_crew, BotJson.name(bot))
+                    },
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            crew != null -> Spacer(Modifier.width(40.dp))
+        }
         BotFace(bot, avatar)
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -484,10 +524,16 @@ private fun BotRosterRow(
             }
             Text(
                 // The parent is the tree above now; repeating it here would say it twice.
-                text = listOf(
-                    noticeText(BotJson.stateNotice(BotJson.state(bot))),
-                    live.takeIf { it.isNotBlank() },
-                ).filterNotNull().joinToString(" · "),
+                // Folded, the row says what is behind it instead of the lead's own state: the crew
+                // is the thing the arrow is about.
+                text = if (crew != null && !expanded) {
+                    pluralStringResource(R.plurals.bots_crew_folded, crew, crew)
+                } else {
+                    listOf(
+                        noticeText(BotJson.stateNotice(BotJson.state(bot))),
+                        live.takeIf { it.isNotBlank() },
+                    ).filterNotNull().joinToString(" · ")
+                },
                 color = colors.textSecondary,
                 style = MaterialTheme.typography.labelSmall,
             )
