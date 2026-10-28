@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Réglages › Instance: what the daemon accepts to write (PUT /api/config, PUT /api/chat/settings). -->
+<resources>
+    <string name="instance_title">Instance</string>
+    <string name="instance_identity_hint">The name and owner the runtime announces.</string>
+    <string name="instance_name_required">A name is required.</string>
+    <string name="instance_provider_title">Default provider</string>
+    <string name="instance_provider_hint">Used when a request names no model.</string>
+    <string name="instance_provider_none">No provider exposed by the runtime.</string>
+    <string name="instance_budget_title">Global budget per day</string>
+    <string name="instance_budget_hint">In tokens. 0 = unlimited, blank = unchanged.</string>
+    <string name="instance_budget_invalid">Invalid token count.</string>
+    <string name="instance_workspace_title">Working folder</string>
+    <string name="instance_workspace_hint">The folder the agent reads and writes in. It must exist on the daemon\'s machine.</string>
+    <string name="instance_heartbeat_title">Heartbeat interval</string>
+    <string name="instance_heartbeat_value">%1$s min</string>
+    <string name="instance_heartbeat_readonly">Read-only: the write route does not accept it. It is set in config.yaml or through the daemon\'s environment.</string>
+    <string name="instance_unavailable">Instance settings unavailable: the daemon did not answer.</string>
+    <string name="notice_instance_saved">Instance settings saved.</string>
+    <string name="notice_instance_restart_required">Saved — the runtime must restart to apply them.</string>
+</resources>

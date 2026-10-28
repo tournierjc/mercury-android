@@ -10,7 +10,7 @@ import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.HealthDto
-import io.github.tournierjc.mercury.data.dto.ConfigDto
+import io.github.tournierjc.mercury.data.dto.InstanceConfig
 import io.github.tournierjc.mercury.data.dto.StatusDto
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import io.github.tournierjc.mercury.data.toNotice
@@ -32,7 +32,7 @@ data class StatusUiState(
     val status: StatusDto? = null,
     val brain: BrainStatusDto? = null,
     val usage: UsageDto? = null,
-    val config: ConfigDto? = null,
+    val config: InstanceConfig? = null,
     /**
      * The daemon's own vitals — pid, loop p99, plugins — which the console used to show on its own
      * screen while this one showed the same state and uptime. One home for one fact.
@@ -75,7 +75,7 @@ class StatusViewModel(private val api: MercuryApi, private val container: AppCon
                 val status = api.status()
                 val brain = runCatching { api.brainStatus() }.getOrNull()
                 val usage = runCatching { api.usage() }.getOrNull()
-                val config = runCatching { api.config() }.getOrNull()
+                val config = runCatching { api.instanceConfig() }.getOrNull()
                 val health = runCatching { api.healthDetail() }.getOrNull()
                 _state.update {
                     it.copy(loading = false, status = status, brain = brain, usage = usage, config = config, health = health)

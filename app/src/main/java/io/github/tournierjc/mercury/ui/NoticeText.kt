@@ -263,6 +263,8 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.CODE_MODE_SET -> R.string.notice_code_mode_set
     NoticeKey.CODE_MODE_FAILED -> R.string.notice_code_mode_failed
     NoticeKey.WORKSPACE_SET -> R.string.notice_workspace_set
+    NoticeKey.INSTANCE_SAVED -> R.string.notice_instance_saved
+    NoticeKey.INSTANCE_RESTART_REQUIRED -> R.string.notice_instance_restart_required
     NoticeKey.CREW_IMPORT_FAILED -> R.string.notice_crew_import_failed
 
 

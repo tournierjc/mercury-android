@@ -119,6 +119,9 @@ enum class NoticeKey {
     MEMORY_RESTORED,
     BYPASS_APPROVED,
     BYPASS_ASKED,
+    /** The instance's identity, provider or budget was written; the daemon answers `restartRequired`. */
+    INSTANCE_SAVED,
+    INSTANCE_RESTART_REQUIRED,
 
     // ---- boards: what a finished card or board action says
     BOARD_CREATED,
