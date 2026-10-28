@@ -172,7 +172,9 @@ private fun PersonRow(
                 color = colors.textPrimary,
                 modifier = Modifier.padding(top = if (person.relation.isBlank()) 0.dp else 4.dp),
             )
-            person.summary.takeIf { it.isNotBlank() && !expanded }?.let { summary ->
+            // The row keeps its summary until the unfolded body carries a fuller one, so the
+            // sentence does not disappear while the request is out.
+            person.summary.takeIf { it.isNotBlank() && (detail == null || detail.summary.isBlank()) }?.let { summary ->
                 Text(
                     text = summary,
                     style = MaterialTheme.typography.bodyMedium,
@@ -224,6 +226,17 @@ private fun PersonDetail(detail: PersonDetailUi?, loading: Boolean, failed: Bool
         detail == null -> Unit
 
         else -> Column(modifier = Modifier.padding(top = 10.dp)) {
+            // The row hides its own summary when unfolded, so the full text lives here — the list
+            // version was capped at four lines and the page version is not.
+            detail.summary.takeIf { it.isNotBlank() }?.let { summary ->
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+
             detail.traits.takeIf { it.isNotEmpty() }?.let { traits ->
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     traits.forEach { trait ->
