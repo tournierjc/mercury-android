@@ -63,6 +63,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -97,6 +101,22 @@ import java.util.Locale
 
 
 
+/**
+ * The history survives process death, so a phone that reclaims the app does not silently reset the
+ * path — but an entry naming a screen this build no longer has is dropped rather than thrown.
+ */
+private val navHistorySaver = Saver<SnapshotStateList<NavStep>, List<String>>(
+    save = { steps -> steps.map { "${it.screen.name}\u0001${it.conversation.orEmpty()}\u0001${it.drawerOpen}" } },
+    restore = { saved ->
+        saved.mapNotNull { line ->
+            val parts = line.split('\u0001')
+            val screen = runCatching { AppScreen.valueOf(parts[0]) }.getOrNull() ?: return@mapNotNull null
+            NavStep(screen, parts.getOrNull(1)?.ifBlank { null }, parts.getOrNull(2) == "true")
+        }.toMutableStateList()
+    },
+)
+
+
 @Composable
 fun ChatScreen(
     state: ChatState,
@@ -128,8 +148,61 @@ fun ChatScreen(
     // Seeded from the notification, not set afterwards: the Mercury conversation used to be the
     // first frame of a cold start, so tapping a notification showed it, then jumped.
     var botChat by rememberSaveable { mutableStateOf(openBotId) }
-    // Where the open conversation was entered from, so Back retraces one step.
-    var cameFromBots by rememberSaveable { mutableStateOf(false) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    // Where the owner has been. Back used to send every screen home to the conversation, so the
+    // second screen deep in a corner of the app was unreachable again: one press and the path was
+    // gone. The history remembers the screen, the conversation and the sheet, one entry per move.
+    val history = rememberSaveable(saver = navHistorySaver) { mutableStateListOf<NavStep>() }
+
+    /** Leaves the current place for [to], remembering the one being left. */
+    fun go(to: AppScreen, conversation: String? = null) {
+        history.add(NavStep(screen = screen, conversation = botChat, drawerOpen = drawerState.isOpen))
+        screen = to
+        botChat = conversation
+        botToOpen = null
+        if (drawerState.isOpen) scope.launch { drawerState.close() }
+    }
+
+    /** Opens [id]'s conversation as a step of its own, from wherever the owner is. */
+    fun openConversation(id: String) = go(AppScreen.Chat, conversation = id)
+
+    /** Opens [id]'s settings page, the bot itself already open on it. */
+    fun openConfig(id: String) {
+        go(AppScreen.Bots)
+        botToOpen = id
+    }
+
+    /**
+     * One step back, in the order a thumb expects: the sheet first, because it is on top, then the
+     * place the owner came from — restored exactly as it was left, sheet included. A screen with
+     * inner depth (the workspace's folders, a preview) registers its own Back handler deeper in the
+     * tree, so it undoes that first.
+     */
+    fun goBack() {
+        when (val action = backAction(drawerState.isOpen, history, botChat)) {
+            BackAction.CloseDrawer -> scope.launch { drawerState.close() }
+            is BackAction.Restore -> {
+                history.removeAt(history.lastIndex)
+                val step = action.step
+                screen = step.screen
+                botChat = step.conversation
+                // Coming back to the roster reopens the bot whose page was left: the same place,
+                // not the top of the list.
+                botToOpen = if (step.screen == AppScreen.Bots) step.conversation else null
+                if (step.drawerOpen) scope.launch { drawerState.open() }
+            }
+            BackAction.CloseConversation -> botChat = null
+            // Nothing to close: the handler below is disabled in that case and the system exits.
+            BackAction.LeaveApp -> Unit
+        }
+    }
+
+    // Enabled only while there is something to close or somewhere to go back to: on the
+    // conversation with nothing open, Back still leaves the app.
+    val canGoBack = backAction(drawerState.isOpen, history, botChat) != BackAction.LeaveApp
+    BackHandler(enabled = canGoBack) { goBack() }
 
     // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
     // bot id, and the app lands on that bot instead of the last conversation.
@@ -138,32 +211,27 @@ fun ChatScreen(
             // Straight into the conversation: that is where the work it announced lives. The
             // nonce makes a second tap on the same bot a new event rather than a no-op.
             if (botChat != openBotId) botChat = openBotId
-            cameFromBots = false
+            // A notification is a new destination, not a step in the path the owner was walking.
+            history.clear()
             screen = AppScreen.Chat
             onOpenBotConsumed()
         }
     }
 
-    // Back closes what is on top; it never leaves the app while something is open. The
-    // screens each drew their own back arrow, but the system button is the one a thumb finds.
-    BackHandler(enabled = screen != AppScreen.Chat) {
-        screen = AppScreen.Chat
-        botToOpen = null
-    }
 
     when (screen) {
         AppScreen.Bridge -> {
-            BridgeScreen(onBack = { screen = AppScreen.Chat })
+            BridgeScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Settings -> {
-            SettingsScreen(onBack = { screen = AppScreen.Chat }, onChangeServer = onChangeServer)
+            SettingsScreen(onBack = ::goBack, onChangeServer = onChangeServer)
             return
         }
 
         AppScreen.Status -> {
-            StatusScreen(onBack = { screen = AppScreen.Chat })
+            StatusScreen(onBack = ::goBack)
             return
         }
 
@@ -171,109 +239,100 @@ fun ChatScreen(
         // the roster, the share sheet, and the console — the webapp folded the console's counters
         // into Status and Usage, the app still owns the terminal view.
         AppScreen.Memory -> {
-            MemoryScreen(onBack = { screen = AppScreen.Chat })
+            MemoryScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Boards -> {
-            BoardsScreen(onBack = { screen = AppScreen.Chat })
+            BoardsScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Bots -> {
             BotsScreen(
-                onBack = {
-                    screen = AppScreen.Chat
-                    botToOpen = null
-                },
+                onBack = ::goBack,
                 initialBotId = botToOpen,
                 onOpened = { botToOpen = null },
                 // The sheet hands over to the conversation, and back comes home to the sheet:
                 // a single step each way, instead of landing in Mercury's screen and having to
                 // find the teammate again.
-                onOpenChat = { id ->
-                    botChat = id
-                    cameFromBots = true
-                    screen = AppScreen.Chat
-                },
+                onOpenChat = { id -> openConversation(id) },
             )
             return
         }
 
         AppScreen.Deliverables -> {
-            DeliverablesScreen(onBack = { screen = AppScreen.Chat })
+            DeliverablesScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Console -> {
-            ConsoleScreen(onBack = { screen = AppScreen.Chat })
+            ConsoleScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Tasks -> {
-            TasksScreen(onBack = { screen = AppScreen.Chat })
+            TasksScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Workspace -> {
-            WorkspaceScreen(onBack = { screen = AppScreen.Chat })
+            WorkspaceScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Persons -> {
-            PersonsScreen(onBack = { screen = AppScreen.Chat })
+            PersonsScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Goals -> {
-            GoalsScreen(onBack = { screen = AppScreen.Chat })
+            GoalsScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Graph -> {
-            GraphScreen(onBack = { screen = AppScreen.Chat })
+            GraphScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Providers -> {
-            ProvidersScreen(onBack = { screen = AppScreen.Chat })
+            ProvidersScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Skills -> {
-            SkillsScreen(onBack = { screen = AppScreen.Chat })
+            SkillsScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Mcp -> {
-            McpScreen(onBack = { screen = AppScreen.Chat })
+            McpScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Plugins -> {
-            PluginsScreen(onBack = { screen = AppScreen.Chat })
+            PluginsScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Permissions -> {
-            PermissionsScreen(onBack = { screen = AppScreen.Chat })
+            PermissionsScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Schedules -> {
-            SchedulesScreen(onBack = { screen = AppScreen.Chat })
+            SchedulesScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Usage -> {
-            UsageScreen(onBack = { screen = AppScreen.Chat })
+            UsageScreen(onBack = ::goBack)
             return
         }
 
         AppScreen.Chat -> Unit
     }
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
@@ -284,16 +343,6 @@ fun ChatScreen(
     val botAvatars by botsVm.avatars.collectAsState()
     LaunchedEffect(botWatch.bots) { botsVm.loadAvatars(botWatch.bots) }
     LaunchedEffect(botChat) { botChat?.let { botsVm.select(it) } }
-
-    BackHandler(enabled = botChat != null) {
-        botChat = null
-        if (cameFromBots) {
-            // Opened from the roster: Back returns to it, with the same bot still selected.
-            cameFromBots = false
-            botToOpen = botsState.selectedId
-            screen = AppScreen.Bots
-        }
-    }
 
     var composerText by rememberSaveable { mutableStateOf("") }
     // The message being answered, if any: the composer shows it as a chip and the send prepends
@@ -358,9 +407,6 @@ fun ChatScreen(
         }
     }
 
-    // Inside the chat itself, back closes the drawer before it closes the app.
-    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -368,38 +414,22 @@ fun ChatScreen(
                 threads = threads,
                 currentSessionId = state.sessionId,
                 onNewChat = {
-                    botChat = null
+                    go(AppScreen.Chat)
                     onNewChat()
-                    scope.launch { drawerState.close() }
                 },
                 onOpenThread = { thread ->
-                    botChat = null
+                    go(AppScreen.Chat)
                     onOpenThread(thread)
-                    scope.launch { drawerState.close() }
                 },
                 current = if (botChat != null) AppScreen.Chat else screen,
-                onOpen = { destination ->
-                    botChat = null
-                    screen = destination
-                    scope.launch { drawerState.close() }
-                },
+                onOpen = { destination -> go(destination) },
                 bots = botWatch.bots,
                 avatars = botAvatars,
                 activeBotId = botChat,
-                onOpenBot = { id ->
-                    botChat = id
-                    cameFromBots = false
-                    screen = AppScreen.Chat
-                    scope.launch { drawerState.close() }
-                },
+                onOpenBot = { id -> openConversation(id) },
                 // A long press on a name goes to the page that changes it, not to the one that talks
                 // to it — and the sheet hands over to Équipiers with that bot already open.
-                onOpenBotConfig = { id ->
-                    botToOpen = id
-                    cameFromBots = false
-                    screen = AppScreen.Bots
-                    scope.launch { drawerState.close() }
-                },
+                onOpenBotConfig = { id -> openConfig(id) },
                 onDeleteThread = { thread ->
                     onDeleteThread(thread)
                     scope.launch { drawerState.close() }
@@ -478,10 +508,7 @@ fun ChatScreen(
                                 tint = if (botsState.outputs.isEmpty()) colors.textSecondary else colors.accent,
                             )
                         }
-                        IconButton(onClick = {
-                            botToOpen = botId
-                            screen = AppScreen.Bots
-                        }) {
+                        IconButton(onClick = { openConfig(botId) }) {
                             Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.chat_bot_settings, botName), tint = colors.textSecondary)
                         }
                     },
