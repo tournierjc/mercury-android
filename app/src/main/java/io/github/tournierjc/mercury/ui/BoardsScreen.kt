@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.ViewKanban
@@ -48,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -131,10 +133,19 @@ fun BoardsScreen(onBack: () -> Unit) {
                 state.boardName.ifBlank { stringResource(R.string.boards_titre_plateau) }
             } ?: stringResource(R.string.boards_titre_plateaux),
             subtitle = if (state.openBoardId == null) {
-                stringResource(R.string.boards_sous_titre_nb_plateaux, state.boards.size)
+                // At zero the message speaks, not a counter: "0 plateau" is noise above "no board".
+                if (state.boards.isEmpty() && !state.loading) {
+                    ""
+                } else {
+                    pluralStringResource(
+                        R.plurals.boards_sous_titre_nb_plateaux,
+                        state.boards.size,
+                        state.boards.size,
+                    )
+                }
             } else {
                 listOfNotNull(
-                    stringResource(R.string.boards_sous_titre_nb_cartes, state.cards.size),
+                    pluralStringResource(R.plurals.boards_nb_cartes, state.cards.size, state.cards.size),
                     stringResource(if (state.live) R.string.boards_live_direct else R.string.boards_live_auto),
                 ).joinToString(" · ")
             },
@@ -151,9 +162,13 @@ fun BoardsScreen(onBack: () -> Unit) {
                 .padding(horizontal = 14.dp),
         ) {
             if (state.openBoardId == null) {
-                BoardList(state, onOpen = viewModel::open, onDelete = viewModel::deleteBoard) {
-                    showCreateBoard = true
-                }
+                BoardList(
+                    state,
+                    onOpen = viewModel::open,
+                    onDelete = viewModel::deleteBoard,
+                    onCreate = { showCreateBoard = true },
+                    onRetry = viewModel::refresh,
+                )
             } else {
                 BoardActions(
                     state = state,
@@ -345,15 +360,58 @@ private fun AttachmentDialog(
     )
 }
 
+/**
+ * The one place a status becomes a word. Called from the section header and from the card sheet —
+ * the API key never reaches the screen, except when the status is one Mercury does not know yet: it
+ * then keeps its raw key, which is the only exploitable fact about it (SPECS/111 §1.5).
+ */
+@Composable
+private fun statusLabel(status: String): String = when (status) {
+    "pending" -> stringResource(R.string.boards_statut_pending)
+    "paused" -> stringResource(R.string.boards_statut_paused)
+    "question" -> stringResource(R.string.boards_statut_question)
+    "running" -> stringResource(R.string.boards_statut_running)
+    "done" -> stringResource(R.string.boards_statut_done)
+    "failed" -> stringResource(R.string.boards_statut_failed)
+    else -> status
+}
+
 @Composable
 private fun BoardList(
     state: BoardsUiState,
     onOpen: (String) -> Unit,
     onDelete: (String) -> Unit,
     onCreate: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
     CollapsibleSection(stringResource(R.string.boards_titre_plateaux), defaultOpen = true) {
+        if (state.available == false) {
+            // A service that did not start is not an empty list: saying "aucun plateau" would tell
+            // the owner his task queue is clear when it is merely unreadable.
+            Text(
+                text = stringResource(R.string.boards_indisponible_titre),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+            )
+            Text(
+                text = stringResource(R.string.boards_indisponible_corps),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            IconActionBar(
+                listOf(
+                    QuickAction(
+                        icon = Icons.Rounded.Refresh,
+                        label = stringResource(R.string.boards_indisponible_reessayer),
+                        tint = colors.accent,
+                        onClick = onRetry,
+                    ),
+                ),
+            )
+            return@CollapsibleSection
+        }
         if (state.boards.isEmpty()) {
             Text(
                 text = if (state.loading) {
@@ -370,7 +428,7 @@ private fun BoardList(
             ActionRow(
                 title = BoardJson.title(board),
                 subtitle = listOfNotNull(
-                    BoardJson.intField(board, "cardCount")?.let { stringResource(R.string.boards_nb_cartes, it) },
+                    BoardJson.intField(board, "cardCount")?.let { pluralStringResource(R.plurals.boards_nb_cartes, it, it) },
                     BoardJson.intField(board, "pendingCount")?.let { stringResource(R.string.boards_en_attente, it) },
                     BoardJson.intField(board, "runningCount")?.takeIf { it > 0 }?.let { stringResource(R.string.boards_en_cours, it) },
                     if (BoardJson.boolField(board, "active") == true) stringResource(R.string.boards_actif) else null,
@@ -502,7 +560,7 @@ private fun CardColumns(
         return
     }
     state.grouped.forEach { (status, cards) ->
-        CollapsibleSection("$status · ${cards.size}", defaultOpen = true, stateKey = "board-status-$status") {
+        CollapsibleSection("${statusLabel(status)} · ${cards.size}", defaultOpen = true, stateKey = "board-status-$status") {
             cards.forEach { card ->
                 val cardId = BoardJson.id(card)
                 ActionRow(
@@ -587,7 +645,7 @@ private fun CardDetailDialog(
                 if (BoardJson.description(card).isNotBlank()) {
                     Text(BoardJson.description(card), color = colors.textSecondary, style = MaterialTheme.typography.bodyMedium)
                 }
-                KeyValueRow(stringResource(R.string.boards_statut), BoardJson.status(card))
+                KeyValueRow(stringResource(R.string.boards_statut), statusLabel(BoardJson.status(card)))
                 KeyValueRow(stringResource(R.string.boards_commentaires), detail.comments.size.toString())
                 KeyValueRow(stringResource(R.string.boards_pieces_jointes), detail.attachments.size.toString())
                 KeyValueRow(stringResource(R.string.boards_etiquettes), detail.labels.size.toString())

@@ -109,6 +109,7 @@ private fun MercuryRoot(
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val attachments by viewModel.attachments.collectAsStateWithLifecycle()
+    val syncing by viewModel.syncing.collectAsStateWithLifecycle()
 
     if (!signedIn) {
         ConnectScreen(
@@ -137,6 +138,7 @@ private fun MercuryRoot(
             onChangeServer = viewModel::changeServer,
             onDismissError = viewModel::dismissError,
             onDismissWarning = viewModel::dismissWarning,
+            syncing = syncing,
             openBotId = openBotId,
             openBotNonce = openBotNonce,
             onOpenBotConsumed = onBotOpened,

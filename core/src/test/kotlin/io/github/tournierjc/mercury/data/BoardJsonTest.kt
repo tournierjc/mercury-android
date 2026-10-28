@@ -38,25 +38,26 @@ class BoardJsonTest {
     }
 
     @Test
-    fun `missing status falls back to todo and missing title to the id`() {
+    fun `missing status falls back to pending and missing title to the id`() {
         val card = obj("""{"id":"c3"}""")
-        assertEquals("todo", BoardJson.status(card))
+        assertEquals("pending", BoardJson.status(card))
         assertEquals("c3", BoardJson.title(card))
     }
 
     @Test
-    fun `cards group by status keeping server order`() {
+    fun `cards group by status in the shared order, keeping server order inside a group`() {
         val cards = listOf(
-            obj("""{"id":"a","status":"doing"}"""),
-            obj("""{"id":"b","status":"todo"}"""),
-            obj("""{"id":"c","status":"doing"}"""),
+            obj("""{"id":"a","status":"running"}"""),
+            obj("""{"id":"b","status":"pending"}"""),
+            obj("""{"id":"c","status":"running"}"""),
         )
         val grouped = BoardJson.byStatus(cards)
 
-        assertEquals(listOf("doing", "todo"), grouped.map { it.first })
-        assertEquals(2, grouped[0].second.size)
-        assertEquals("a", BoardJson.id(grouped[0].second[0]))
-        assertEquals("c", BoardJson.id(grouped[0].second[1]))
+        assertEquals(listOf("pending", "running"), grouped.map { it.first })
+        assertEquals(1, grouped[0].second.size)
+        assertEquals(2, grouped[1].second.size)
+        assertEquals("a", BoardJson.id(grouped[1].second[0]))
+        assertEquals("c", BoardJson.id(grouped[1].second[1]))
     }
 
     @Test
@@ -143,5 +144,49 @@ class BoardJsonTest {
             BoardJson.feedbackQuestion(obj("""{"id":"fb_1","cardId":"c1","question":"Quel format ?"}""")),
         )
         assertEquals("", BoardJson.feedbackQuestion(obj("""{"id":"fb_2"}""")))
+    }
+
+    @Test
+    fun `every known status sorts in the shared order, failed last`() {
+        val cards = listOf(
+            obj("""{"id":"f","status":"failed"}"""),
+            obj("""{"id":"d","status":"done"}"""),
+            obj("""{"id":"q","status":"question"}"""),
+            obj("""{"id":"r","status":"running"}"""),
+            obj("""{"id":"p","status":"paused"}"""),
+            obj("""{"id":"t","status":"pending"}"""),
+        )
+
+        assertEquals(
+            listOf("pending", "paused", "question", "running", "done", "failed"),
+            BoardJson.byStatus(cards).map { it.first },
+        )
+    }
+
+    @Test
+    fun `an unknown status is never folded and comes after the six`() {
+        val cards = listOf(
+            obj("""{"id":"x","status":"archived"}"""),
+            obj("""{"id":"t","status":"pending"}"""),
+            obj("""{"id":"y","status":"archived"}"""),
+        )
+        val grouped = BoardJson.byStatus(cards)
+
+        assertEquals(listOf("pending", "archived"), grouped.map { it.first })
+        assertEquals(listOf("x", "y"), grouped[1].second.map { BoardJson.id(it) })
+    }
+
+    @Test
+    fun `an empty status is not rendered`() {
+        val cards = listOf(obj("""{"id":"t","status":"pending"}"""))
+
+        assertEquals(listOf("pending"), BoardJson.byStatus(cards).map { it.first })
+    }
+
+    @Test
+    fun `availability is read, and absent means unknown rather than false`() {
+        assertEquals(false, BoardJson.available(obj("""{"boards":[],"available":false}""")))
+        assertEquals(true, BoardJson.available(obj("""{"boards":[],"available":true}""")))
+        assertNull(BoardJson.available(obj("""{"boards":[]}""")))
     }
 }

@@ -3,8 +3,6 @@
     <!-- BoardsScreen -->
     <string name="boards_titre_plateau">Board</string>
     <string name="boards_titre_plateaux">Boards</string>
-    <string name="boards_sous_titre_nb_plateaux">%1$d boards</string>
-    <string name="boards_sous_titre_nb_cartes">%1$d cards</string>
     <string name="boards_live_direct">live</string>
     <string name="boards_live_auto">auto-refresh</string>
     <string name="boards_plan_titre">Execution plan</string>
@@ -20,7 +18,6 @@
     <string name="boards_telecharger">Download</string>
     <string name="boards_chargement">Loading…</string>
     <string name="boards_aucun_plateau">No boards. A board is a queue of tasks the runtime executes card by card.</string>
-    <string name="boards_nb_cartes">%1$d cards</string>
     <string name="boards_en_attente">%1$d pending</string>
     <string name="boards_en_cours">%1$d running</string>
     <string name="boards_actif">active</string>
@@ -131,4 +128,22 @@
     <string name="memory_formulation">Correct wording</string>
     <string name="memory_enregistrer">Save</string>
     <string name="boards_apercu_tronque">… preview truncated — download the file for the full text</string>
+
+    <string name="boards_statut_pending">To Do</string>
+    <string name="boards_statut_paused">Paused</string>
+    <string name="boards_statut_question">Awaiting answer</string>
+    <string name="boards_statut_running">In Progress</string>
+    <string name="boards_statut_done">Done</string>
+    <string name="boards_statut_failed">Failed</string>
+    <string name="boards_indisponible_titre">Boards unavailable</string>
+    <string name="boards_indisponible_corps">The boards service did not start on this instance: your boards cannot be listed. This is not an empty board list — nothing was deleted.</string>
+    <string name="boards_indisponible_reessayer">Retry</string>
+    <plurals name="boards_nb_cartes">
+        <item quantity="one">%1$d card</item>
+        <item quantity="other">%1$d cards</item>
+    </plurals>
+    <plurals name="boards_sous_titre_nb_plateaux">
+        <item quantity="one">%1$d board</item>
+        <item quantity="other">%1$d boards</item>
+    </plurals>
 </resources>

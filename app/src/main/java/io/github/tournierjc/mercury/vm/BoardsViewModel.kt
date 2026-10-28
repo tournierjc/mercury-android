@@ -60,6 +60,12 @@ data class AttachmentExport(val file: AttachmentFile, val download: Boolean)
 data class BoardsUiState(
     val loading: Boolean = true,
     val boards: List<JsonObject> = emptyList(),
+    /**
+     * `false` when the boards service is not running on this instance. It is not the same screen as
+     * an empty list: one says \"nothing to do\", the other says \"I cannot see your work\" — and the
+     * second must never read as the first (SPECS/110 §5, Ticket C).
+     */
+    val available: Boolean? = null,
     val openBoardId: String? = null,
     val board: JsonObject? = null,
     val cards: List<JsonObject> = emptyList(),
@@ -104,7 +110,11 @@ class BoardsViewModel(
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             runCatching { api.boards() }
-                .onSuccess { root -> _state.update { it.copy(loading = false, boards = BoardJson.boards(root)) } }
+                .onSuccess { root ->
+                    _state.update {
+                        it.copy(loading = false, boards = BoardJson.boards(root), available = BoardJson.available(root))
+                    }
+                }
                 .onFailure { e -> _state.update { it.copy(loading = false, error = e.readable()) } }
             val openId = _state.value.openBoardId
             if (openId != null) loadBoard(openId)
