@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ThreadDto
+import io.github.tournierjc.mercury.ui.icons.GraphGlyph
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.serialization.json.JsonObject
 
@@ -410,7 +411,7 @@ private fun screenIcon(screen: AppScreen): ImageVector = when (screen) {
     AppScreen.Memory -> Icons.Rounded.Psychology
     AppScreen.Persons -> Icons.Rounded.Group
     AppScreen.Goals -> Icons.Rounded.Flag
-    AppScreen.Graph -> Icons.Rounded.Share
+    AppScreen.Graph -> GraphGlyph
     AppScreen.Providers -> Icons.Rounded.Memory
     AppScreen.Skills -> Icons.Rounded.Extension
     AppScreen.Mcp -> Icons.Rounded.Cable
