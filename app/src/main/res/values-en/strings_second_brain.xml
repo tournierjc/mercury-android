@@ -54,4 +54,12 @@
     <string name="memory_forget_cancel">Keep</string>
     <!-- A graph node: its kind, then its weight. The space before % is French. -->
     <string name="graph_node_meta">%1$s · %2$d%%</string>
+    <string name="brain_personne_deplier">Open this person\'s details</string>
+    <string name="brain_personne_replier">Close this person\'s details</string>
+    <string name="brain_personne_detail_echoue">This person\'s details did not answer.</string>
+    <string name="brain_personne_aucun_souvenir">No memory is attached to this person yet.</string>
+    <plurals name="brain_personne_memoires">
+        <item quantity="one">%1$d memory</item>
+        <item quantity="other">%1$d memories</item>
+    </plurals>
 </resources>

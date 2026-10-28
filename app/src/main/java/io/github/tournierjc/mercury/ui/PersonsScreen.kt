@@ -1,5 +1,22 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import io.github.tournierjc.mercury.vm.PersonDetailUi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,9 +63,9 @@ fun PersonsScreen(onBack: () -> Unit) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .background(colors.canvas)
-            .safeDrawingPadding(),
+             .fillMaxSize()
+             .background(colors.canvas)
+             .safeDrawingPadding(),
     ) {
         ScreenHeader(
             title = stringResource(R.string.memory_personnes),
@@ -69,14 +86,14 @@ fun PersonsScreen(onBack: () -> Unit) {
             label = { Text(stringResource(R.string.brain_personnes_rechercher)) },
             singleLine = true,
             modifier = Modifier
-                .fillMaxWidth()
+                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 6.dp),
         )
 
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
+                 .weight(1f)
+                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp),
         ) {
             if (state.persons.isEmpty()) {
@@ -93,7 +110,16 @@ fun PersonsScreen(onBack: () -> Unit) {
                     modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
                 )
             }
-            state.persons.forEach { person -> PersonRow(person) }
+            state.persons.forEach { person ->
+                PersonRow(
+                    person = person,
+                    expanded = state.expanded == person.id,
+                    detail = state.detail.takeIf { state.expanded == person.id },
+                    loading = state.detailLoading && state.expanded == person.id,
+                    failed = state.detailFailed && state.expanded == person.id,
+                    onToggle = { viewModel.toggle(person) },
+                )
+            }
             Text(
                 text = " ",
                 style = MaterialTheme.typography.labelSmall,
@@ -103,19 +129,36 @@ fun PersonsScreen(onBack: () -> Unit) {
     }
 }
 
-/** One person, in the same card shape the memories use: the name, the relation, the sentence. */
+/**
+ * One person, in the same card shape the memories use: the name, the relation, the sentence.
+ *
+ * The webapp pushes a page for a person; on a phone the list keeps the row in place and unfolds it,
+ * so the answer stays next to the question and going back does not cost a navigation.
+ */
 @Composable
-private fun PersonRow(person: PersonUi) {
+private fun PersonRow(
+    person: PersonUi,
+    expanded: Boolean,
+    detail: PersonDetailUi?,
+    loading: Boolean,
+    failed: Boolean,
+    onToggle: () -> Unit,
+) {
     val colors = LocalMercuryColors.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
+             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .semantics {
+                contentDescription = person.name
+                role = Role.Button
+            },
     ) {
-        Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
             person.relation.takeIf { it.isNotBlank() }?.let { relation ->
                 Text(
                     text = rawLabel(relation),
@@ -129,7 +172,9 @@ private fun PersonRow(person: PersonUi) {
                 color = colors.textPrimary,
                 modifier = Modifier.padding(top = if (person.relation.isBlank()) 0.dp else 4.dp),
             )
-            person.summary.takeIf { it.isNotBlank() }?.let { summary ->
+            // The row keeps its summary until the unfolded body carries a fuller one, so the
+            // sentence does not disappear while the request is out.
+            person.summary.takeIf { it.isNotBlank() && (detail == null || detail.summary.isBlank()) }?.let { summary ->
                 Text(
                     text = summary,
                     style = MaterialTheme.typography.bodyMedium,
@@ -137,6 +182,112 @@ private fun PersonRow(person: PersonUi) {
                     modifier = Modifier.padding(top = 4.dp),
                     maxLines = 4,
                 )
+            }
+        }
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowDown,
+                contentDescription = stringResource(
+                    if (expanded) R.string.brain_personne_replier else R.string.brain_personne_deplier,
+                ),
+                tint = colors.textSecondary,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                     .size(20.dp)
+                    .rotate(if (expanded) 180f else 0f),
+            )
+        }
+
+        if (expanded) {
+            PersonDetail(detail = detail, loading = loading, failed = failed)
+        }
+    }
+}
+
+/** What the row unfolds into: the traits, then the memories, or the reason there are none. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PersonDetail(detail: PersonDetailUi?, loading: Boolean, failed: Boolean) {
+    val colors = LocalMercuryColors.current
+    when {
+        loading -> Text(
+            text = stringResource(R.string.common_loading),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 10.dp),
+        )
+
+        failed -> Text(
+            text = stringResource(R.string.brain_personne_detail_echoue),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 10.dp),
+        )
+
+        detail == null -> Unit
+
+        else -> Column(modifier = Modifier.padding(top = 10.dp)) {
+            // The row hides its own summary when unfolded, so the full text lives here — the list
+            // version was capped at four lines and the page version is not.
+            detail.summary.takeIf { it.isNotBlank() }?.let { summary ->
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+
+            detail.traits.takeIf { it.isNotEmpty() }?.let { traits ->
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    traits.forEach { trait ->
+                        Text(
+                            text = trait,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textPrimary,
+                            modifier = Modifier
+                                .border(1.dp, colors.hairlineStrong, MaterialTheme.shapes.extraSmall)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+                 Spacer(Modifier.height(10.dp))
+            }
+
+            Text(
+                text = pluralStringResource(R.plurals.brain_personne_memoires, detail.total, detail.total),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.accent,
+            )
+            if (detail.memories.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.brain_personne_aucun_souvenir),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            detail.memories.forEach { memory ->
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    Text(
+                        text = rawLabel(memory.type),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                    Text(
+                        text = memory.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textPrimary,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    formatWhen(memory.createdAt)?.let { when_ ->
+                        Text(
+                            text = when_,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                }
             }
         }
     }
