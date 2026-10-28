@@ -165,4 +165,18 @@
     <string name="configure_usage_no_requests">No logged request.</string>
     <string name="configure_usage_counts">input %1$s · output %2$s</string>
     <string name="configure_unavailable">The server did not answer — this route is not exposed by this version of the daemon.</string>
+    <string name="cron_every_minutes">every %1$d min</string>
+    <string name="cron_hourly">hourly</string>
+    <string name="cron_every_hours">every %1$d h</string>
+    <string name="cron_daily">every day at %1$s</string>
+    <string name="cron_weekdays">Monday to Friday at %1$s</string>
+    <string name="cron_weekly">every %1$s at %2$s</string>
+    <string name="cron_monthly">the %1$d of each month at %2$s</string>
+    <string name="cron_day_sunday">Sunday</string>
+    <string name="cron_day_monday">Monday</string>
+    <string name="cron_day_tuesday">Tuesday</string>
+    <string name="cron_day_wednesday">Wednesday</string>
+    <string name="cron_day_thursday">Thursday</string>
+    <string name="cron_day_friday">Friday</string>
+    <string name="cron_day_saturday">Saturday</string>
 </resources>

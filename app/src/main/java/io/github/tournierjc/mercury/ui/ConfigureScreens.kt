@@ -108,7 +108,9 @@ fun SkillsScreen(onBack: () -> Unit) {
                 EmptyLine(state.loading, R.string.configure_skills_empty, ConfigureSlice.Skills in state.failed)
             }
             state.skills.forEach { skill ->
-                val version = stringResource(R.string.configure_version, skill.version?.takeIf { it.isNotBlank() } ?: UNNAMED)
+                // "v—" is what a prefix in front of an unknown version produces: drop the prefix.
+                val version = skill.version?.takeIf { it.isNotBlank() }
+                    ?.let { stringResource(R.string.configure_version, it) }
                 val activity = stringResource(if (skill.active) R.string.configure_active else R.string.configure_inactive)
                 val tools = pluralStringResource(
                     R.plurals.configure_skills_tools,
@@ -344,10 +346,13 @@ fun SchedulesScreen(onBack: () -> Unit) {
                 val created = formatWhen(schedule.createdAt)
                     ?.let { stringResource(R.string.configure_schedules_created, it) }
                 DetailCard(
-                    label = schedule.cron.ifBlank { UNNAMED },
+                    // The cadence in words where we can read the expression; the expression itself
+                    // moves to the meta, next to the rest of the identifiers.
+                    label = cronCadenceLabel(schedule.cron) ?: schedule.cron.ifBlank { UNNAMED },
                     labelTint = colors.accent,
                     title = schedule.description.ifBlank { schedule.prompt }.ifBlank { schedule.id },
-                    meta = listOfNotNull(bot, next, created).joinToString(" · "),
+                    meta = listOfNotNull(schedule.cron.takeIf { it.isNotBlank() }, bot, next, created)
+                        .joinToString(" · "),
                 )
             }
         }

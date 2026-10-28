@@ -165,4 +165,18 @@
     <string name="configure_usage_no_requests">Aucune requête journalisée.</string>
     <string name="configure_usage_counts">entrée %1$s · sortie %2$s</string>
     <string name="configure_unavailable">Le serveur n\'a pas répondu — cette route n\'est pas exposée par cette version du démon.</string>
+    <string name="cron_every_minutes">toutes les %1$d min</string>
+    <string name="cron_hourly">chaque heure</string>
+    <string name="cron_every_hours">toutes les %1$d h</string>
+    <string name="cron_daily">chaque jour à %1$s</string>
+    <string name="cron_weekdays">du lundi au vendredi à %1$s</string>
+    <string name="cron_weekly">chaque %1$s à %2$s</string>
+    <string name="cron_monthly">le %1$d de chaque mois à %2$s</string>
+    <string name="cron_day_sunday">dimanche</string>
+    <string name="cron_day_monday">lundi</string>
+    <string name="cron_day_tuesday">mardi</string>
+    <string name="cron_day_wednesday">mercredi</string>
+    <string name="cron_day_thursday">jeudi</string>
+    <string name="cron_day_friday">vendredi</string>
+    <string name="cron_day_saturday">samedi</string>
 </resources>
