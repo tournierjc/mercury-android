@@ -201,6 +201,10 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.SPOTIFY_CAST -> R.string.notice_spotify_cast
     NoticeKey.SPOTIFY_CAR -> R.string.notice_spotify_car
     NoticeKey.SPOTIFY_DEVICE -> R.string.notice_spotify_device
+    NoticeKey.SPOTIFY_UNKNOWN_TITLE -> R.string.notice_spotify_unknown_title
+    NoticeKey.SPOTIFY_PREMIUM -> R.string.notice_spotify_premium
+    NoticeKey.SPOTIFY_FREE -> R.string.notice_spotify_free
+
     NoticeKey.SPOTIFY_OTHER -> R.string.notice_spotify_other
     NoticeKey.TOKENS_IN -> R.string.notice_tokens_in
     NoticeKey.TOKENS_OUT -> R.string.notice_tokens_out

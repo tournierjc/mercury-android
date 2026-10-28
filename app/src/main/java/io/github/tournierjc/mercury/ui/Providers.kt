@@ -120,7 +120,7 @@ internal fun ProviderTestLine(result: ProviderTestResult) {
         val catalogue = result.models.take(4).joinToString(", ")
         Text(
             text = stringResource(R.string.prov_connected, result.models.size) +
-                (if (catalogue.isNotBlank()) " : $catalogue" else "") +
+                (if (catalogue.isNotBlank()) stringResource(R.string.prov_catalogue, catalogue) else "") +
                 (if (result.recommendedModel.isNotBlank()) {
                     stringResource(R.string.prov_recommended, result.recommendedModel)
                 } else {

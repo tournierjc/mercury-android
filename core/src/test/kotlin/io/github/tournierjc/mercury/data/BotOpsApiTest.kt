@@ -93,7 +93,9 @@ class BotOpsApiTest {
         val failure = assertThrows(MercuryException::class.java) {
             runBlocking { api.downloadOutput("publisher", "ghost.md") }
         }
-        assertEquals("Livrable introuvable", failure.message)
+        // A diagnostic, not a sentence: the banner says "Requête refusée" in the owner's
+        // language and this text rides along as the detail.
+        assertEquals("404: output not found", failure.message)
     }
 
     @Test

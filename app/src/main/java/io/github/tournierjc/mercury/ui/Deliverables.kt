@@ -246,7 +246,7 @@ fun OutputPreviewDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 KeyValueRow(
-                    "Fichier",
+                    stringResource(R.string.out_row_file),
                     listOf(
                         if (state.output.final) stringResource(R.string.out_kind_final) else stringResource(R.string.out_kind_work),
                         BotOps.sizeNotice(state.output.bytes)?.let { noticeText(it) }.orEmpty(),

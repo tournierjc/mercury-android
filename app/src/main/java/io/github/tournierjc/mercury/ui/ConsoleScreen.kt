@@ -61,6 +61,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.GitJson
 import io.github.tournierjc.mercury.data.SpotifyJson
@@ -1338,7 +1340,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
 
         KeyValueRow(
             stringResource(R.string.console_label_account),
-            listOf(music.accountName?.ifBlank { "—" } ?: "—", SpotifyJson.productLabel(music.product))
+            listOf(music.accountName?.ifBlank { "—" } ?: "—", SpotifyJson.productNotice(music.product)?.let { noticeText(it) } ?: "—")
                 .joinToString(" · "),
         )
 
@@ -1352,7 +1354,7 @@ private fun MusicSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             )
         } else {
             Text(
-                text = track.title,
+                text = track.title.ifBlank { noticeText(Notice(NoticeKey.SPOTIFY_UNKNOWN_TITLE)) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.textPrimary,
                 maxLines = 2,

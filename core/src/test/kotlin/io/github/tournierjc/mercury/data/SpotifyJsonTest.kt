@@ -89,8 +89,8 @@ class SpotifyJsonTest {
 
     @Test
     fun `a free account is named as such`() {
-        assertEquals("Premium", SpotifyJson.productLabel("premium"))
-        assertEquals("Gratuit", SpotifyJson.productLabel("free"))
-        assertEquals("—", SpotifyJson.productLabel(null))
+        assertEquals(NoticeKey.SPOTIFY_PREMIUM, SpotifyJson.productNotice("premium")?.key)
+        assertEquals(NoticeKey.SPOTIFY_FREE, SpotifyJson.productNotice("free")?.key)
+        assertNull(SpotifyJson.productNotice(null))
     }
 }

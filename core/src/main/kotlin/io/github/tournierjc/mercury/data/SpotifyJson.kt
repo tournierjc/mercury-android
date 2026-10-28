@@ -69,7 +69,8 @@ object SpotifyJson {
         val title = if (artist.isEmpty()) head else head.substringAfter(DASH).trim()
         return NowPlaying(
             artist = artist,
-            title = title.ifBlank { "Titre inconnu" },
+            // Left empty on purpose: the screen supplies its own word (SPOTIFY_UNKNOWN_TITLE).
+            title = title,
             positionMs = position,
             durationMs = duration,
         )
@@ -98,11 +99,11 @@ object SpotifyJson {
     /** The device Spotify is currently playing on, if any. */
     fun activeDevice(devices: List<SpotifyDevice>): SpotifyDevice? = devices.firstOrNull { it.active }
 
-    fun productLabel(product: String?): String = when (product?.lowercase()) {
-        "premium" -> "Premium"
-        "free" -> "Gratuit"
-        null, "" -> "—"
-        else -> product
+    fun productNotice(product: String?): Notice? = when (product?.lowercase()) {
+        "premium" -> Notice(NoticeKey.SPOTIFY_PREMIUM).asInfo()
+        "free" -> Notice(NoticeKey.SPOTIFY_FREE).asInfo()
+        null, "" -> null
+        else -> Notice(NoticeKey.UNKNOWN_CODE, args = listOf(product)).asInfo()
     }
 
     private fun clockMs(minutes: String, seconds: String): Long =

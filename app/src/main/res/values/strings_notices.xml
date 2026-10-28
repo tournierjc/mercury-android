@@ -228,4 +228,7 @@
     <string name="notice_size_bytes">%1$s o</string>
     <string name="notice_size_kb">%1$s ko</string>
     <string name="notice_size_mb">%1$s Mo</string>
+    <string name="notice_spotify_unknown_title">Titre inconnu</string>
+    <string name="notice_spotify_free">Gratuit</string>
+    <string name="notice_spotify_premium">Premium</string>
 </resources>

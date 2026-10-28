@@ -11,4 +11,6 @@
     <string name="picker_not_image">%1$s is not a readable image</string>
     <string name="bridge_no_address">&lt;phone-ip&gt;</string>
     <string name="share_bundle_title">Share the bundle</string>
+    <string name="out_row_file">File</string>
+    <string name="prov_catalogue">: %1$s</string>
 </resources>
