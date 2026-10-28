@@ -538,6 +538,25 @@ class BotsViewModel(
         }
     }
 
+    /**
+     * Writes a whole permissions document and keeps the answer.
+     *
+     * [doc] must be built from the document already loaded — `BotPermissionsDoc` merges one edit
+     * into it. `PUT /api/bots/:id/permissions` replaces the file, so a document built from scratch
+     * would erase the tier and every key the editor does not show.
+     */
+    fun savePermissions(id: String, doc: JsonObject) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, message = null, error = null) }
+            runCatching { api.setBotPermissionsDoc(id, doc) }
+                .onSuccess { result ->
+                    val stored = result["permissions"] as? JsonObject
+                    _state.update { s -> s.copy(busy = false, permissions = stored ?: s.permissions) }
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
+
     /** The tier catalogue, for the sheets whose permissions file predates the `tier` field. */
     fun loadTiers() {
         if (_state.value.tiers.isNotEmpty()) return

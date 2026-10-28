@@ -941,6 +941,9 @@ private fun BotDetail(
                 }
             }
         }
+        // Les permissions fines vivent dans le même fichier que le palier : l'éditeur fusionne
+        // chaque modification avec le document chargé, il ne réécrit que la clé touchée.
+        BotPermissionsEditor(state = state, viewModel = viewModel)
     }
 
     CollapsibleSection(stringResource(R.string.bots_section_model_budget)) {
