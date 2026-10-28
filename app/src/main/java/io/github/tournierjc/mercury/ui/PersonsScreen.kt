@@ -1,5 +1,6 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +60,12 @@ fun PersonsScreen(onBack: () -> Unit) {
     val container = remember { (context.applicationContext as MercuryApp).container }
     val viewModel: PersonsViewModel = viewModel(factory = PersonsViewModel.factory(container))
     val state by viewModel.state.collectAsState()
+
+    // The unfold is a step of its own: Back folds the person before it leaves the screen.
+    val unfolded = state.expanded.isNotBlank()
+    BackHandler(enabled = unfolded) {
+        state.persons.firstOrNull { it.id == state.expanded }?.let { viewModel.toggle(it) }
+    }
     val colors = LocalMercuryColors.current
 
     Column(

@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -140,6 +141,10 @@ fun BotsScreen(
     val viewModel: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
     val watch by viewModel.watcher.state.collectAsState()
     val state by viewModel.state.collectAsState()
+
+    // Inner depth goes first: a bot's page closes before Équipiers hands Back to the screen it came
+    // from, which is what « back one step » means when the step is inside the screen.
+    BackHandler(enabled = state.selectedId != null) { viewModel.select(null) }
     val avatars by viewModel.avatars.collectAsState()
     // Faces are fetched only for bots whose roster entry says they have one.
     LaunchedEffect(watch.bots) { viewModel.loadAvatars(watch.bots) }
