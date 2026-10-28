@@ -552,6 +552,16 @@ private fun CommandBlock(entry: WorkspaceCommand) {
                 style = MaterialTheme.typography.labelSmall,
                 color = if (result.exitCode == 0) colors.textSecondary else colors.danger,
             )
+            // The daemon merges stderr into stdout on a failed command but only returns stdout on
+            // success: what is on screen is not always "the whole output", and saying so is cheaper
+            // than a debugging session about a missing line.
+            if (result.exitCode != 0) {
+                Text(
+                    text = stringResource(R.string.workspace_terminal_flux),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                )
+            }
         }
     }
 }

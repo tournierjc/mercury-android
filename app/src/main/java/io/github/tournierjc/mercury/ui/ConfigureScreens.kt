@@ -213,9 +213,6 @@ fun PluginsScreen(onBack: () -> Unit) {
                 val version = plugin.version.takeIf { it.isNotBlank() }
                     ?.let { stringResource(R.string.configure_version, it) }
                 val family = listOf(rawLabel(plugin.kind), rawLabel(plugin.tier)).filter { it.isNotBlank() }.joinToString(" · ")
-                val running = stringResource(
-                    if (plugin.running) R.string.configure_plugin_running else R.string.configure_plugin_stopped,
-                )
                 val renderers = if (plugin.renderers.isEmpty()) {
                     null
                 } else {
@@ -234,7 +231,7 @@ fun PluginsScreen(onBack: () -> Unit) {
                     },
                     title = plugin.name.ifBlank { plugin.id },
                     body = plugin.description,
-                    meta = listOfNotNull(version, family.ifBlank { null }, running, renderers).joinToString(" · "),
+                    meta = listOfNotNull(version, family.ifBlank { null }, renderers).joinToString(" · "),
                 )
             }
         }

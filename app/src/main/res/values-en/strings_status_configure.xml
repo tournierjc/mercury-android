@@ -117,8 +117,6 @@
     <string name="configure_plugin_disabled">disabled</string>
     <string name="configure_plugin_failed">failed</string>
     <string name="configure_plugin_unknown">unknown</string>
-    <string name="configure_plugin_running">running</string>
-    <string name="configure_plugin_stopped">stopped</string>
     <plurals name="configure_plugin_renderers">
         <item quantity="one">%d renderer</item>
         <item quantity="other">%d renderers</item>

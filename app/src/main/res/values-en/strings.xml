@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Mercury</string>
     <string name="bridge_channel_name">Device bridge</string>
     <string name="bridge_channel_description">Keeps Mercury\'s read-only access to the phone data alive.</string>
     <string name="bridge_notification_title">Device bridge running</string>
     <string name="bridge_notification_text">Mercury can read calendar, contacts and messages (port %1$d)</string>
     <string name="bridge_notification_stop">Stop</string>
+    <string name="app_name">Mercury</string>
 </resources>

@@ -300,9 +300,10 @@ private fun NodePanel(node: GraphNode, onClose: () -> Unit, modifier: Modifier =
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = buildString {
-                    append(rawLabel(node.type))
-                    if (node.importance > 0.0) append(" · ").append((node.importance * 100).toInt()).append(" %")
+                text = if (node.importance > 0.0) {
+                    stringResource(R.string.graph_node_meta, rawLabel(node.type), (node.importance * 100).toInt())
+                } else {
+                    rawLabel(node.type)
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,

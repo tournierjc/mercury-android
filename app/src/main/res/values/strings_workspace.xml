@@ -74,4 +74,5 @@
     <string name="workspace_confirmer">Confirmer</string>
     <string name="workspace_annuler">Annuler</string>
     <string name="workspace_git_indisponible">Git n\'a pas répondu — on ne sait pas si ce dossier est un dépôt.</string>
+    <string name="workspace_terminal_flux">Sortie : stdout et stderr mêlés.</string>
 </resources>
