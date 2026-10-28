@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La fiche d'un bot, suite : ce qu'il retient (mémoire), à qui il parle (comms), ce qu'il
+     garde (rétention) et combien de tours il mène de front. -->
+<resources>
+    <!-- Section Mémoire -->
+    <string name="bots_section_memory">Mémoire</string>
+    <string name="bots_memory_hint">Ce que l\'équipier garde d\'un tour à l\'autre.</string>
+    <string name="bots_memory_scope_none">Aucune</string>
+    <string name="bots_memory_scope_own">La sienne</string>
+    <string name="bots_memory_scope_shared">Partagée</string>
+    <string name="bots_memory_scope_none_verb">Rien n\'est retenu d\'un tour à l\'autre : chaque tâche repart de zéro.</string>
+    <string name="bots_memory_scope_own_verb">Il se souvient de ses propres tours, et de rien d\'autre.</string>
+    <string name="bots_memory_scope_shared_verb">Il relit aussi le contexte que d\'autres équipiers ont appris.</string>
+    <string name="bots_memory_learn">Apprendre des tours productifs</string>
+    <string name="bots_memory_learn_hint">Il retient ce qu\'un tour a produit, pas seulement ce qui s\'est dit.</string>
+    <string name="bots_memory_recall">Relire le contexte de</string>
+    <string name="bots_memory_recall_hint">Seuls les équipiers cochés lui sont accessibles. Il ne se relit jamais lui-même.</string>
+    <string name="bots_memory_recall_empty">Aucun autre équipier sur cette instance.</string>
+
+    <!-- Section Rétention -->
+    <string name="bots_section_retention">Rétention</string>
+    <string name="bots_retention_hint">Ce que le démon garde, et pendant combien de temps. Un champ vide suit son défaut.</string>
+    <string name="bots_config_default">défaut du démon</string>
+    <string name="bots_label_transcript_runs">Tours conservés</string>
+    <string name="bots_hint_transcript_runs">Transcriptions gardées pour cet équipier.</string>
+    <string name="bots_label_journal_rotate">Rotation du journal (octets)</string>
+    <string name="bots_hint_journal_rotate">Taille atteinte avant que le journal tourne.</string>
+    <string name="bots_label_journal_keep">Rotations gardées</string>
+    <string name="bots_hint_journal_keep">Anciens journaux conservés après rotation.</string>
+    <string name="bots_label_mailbox_ttl">Messages gardés (heures)</string>
+    <string name="bots_hint_mailbox_ttl">Durée de vie d\'un message en boîte.</string>
+    <string name="bots_label_dlq_cap">Échecs gardés</string>
+    <string name="bots_hint_dlq_cap">Jobs en file morte avant purge.</string>
+    <string name="bots_label_artifact_quota">Quota des livrables (octets)</string>
+    <string name="bots_hint_artifact_quota">Espace des fichiers que l\'équipier produit.</string>
+    <string name="bots_label_janitor">Janitor du bac à sable</string>
+    <string name="bots_hint_janitor">Il archive puis supprime ce que les tours laissent dans le sandbox.</string>
+    <string name="bots_label_janitor_hot">Jours chauds</string>
+    <string name="bots_hint_janitor_hot">Fichiers gardés tels quels.</string>
+    <string name="bots_label_janitor_archive">Jours d\'archive</string>
+    <string name="bots_hint_janitor_archive">Fichiers compressés avant suppression.</string>
+
+    <!-- Section Modèle et budget : la cinquième limite -->
+    <string name="bots_label_max_concurrent">Exécutions simultanées</string>
+    <string name="bots_hint_max_concurrent">Tours menés en parallèle sur un même équipier.</string>
+</resources>

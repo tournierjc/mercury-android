@@ -914,6 +914,7 @@ private fun BotDetail(
         )
     }
 
+    BotMemorySection(state = state, viewModel = viewModel)
     // Les créneaux cron de l'équipier : juste après sa persona, avant ses permissions.
     BotRoutinesSection(state = state, viewModel = viewModel)
 
@@ -1091,7 +1092,17 @@ private fun BotDetail(
             value = BotAutonomy.value(bot, BotAutonomy.TURN_TOKENS),
             onApply = { viewModel.setAutonomyLimit(id, BotAutonomy.TURN_TOKENS, it) },
         )
+        // The fifth limit: how many turns this bot may run at once. Same merge as the other
+        // four — `autonomy` is replaced whole, and BotAutonomy keeps the keys it did not touch.
+        LimitField(
+            label = stringResource(R.string.bots_label_max_concurrent),
+            hint = stringResource(R.string.bots_hint_max_concurrent),
+            value = BotAutonomy.value(bot, BotAutonomy.CONCURRENT),
+            onApply = { viewModel.setAutonomyLimit(id, BotAutonomy.CONCURRENT, it) },
+        )
     }
+
+    BotRetentionSection(state = state, viewModel = viewModel)
 
     CollapsibleSection(stringResource(R.string.bots_section_fleet)) {
         val crew = state.crew
@@ -1557,7 +1568,7 @@ private fun AddCrewSheet(
  * back to the default without anyone having to remember what the default was.
  */
 @Composable
-private fun LimitField(
+internal fun LimitField(
     label: String,
     hint: String,
     value: Int?,
