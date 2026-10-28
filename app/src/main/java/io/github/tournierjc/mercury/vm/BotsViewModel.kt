@@ -363,7 +363,8 @@ class BotsViewModel(
         }
     }
 
-    fun setEnabled(id: String, enabled: Boolean) = patch(id, """{"enabled":$enabled}""")
+    fun setEnabled(id: String, enabled: Boolean) =
+        patch(id, """{"enabled":$enabled}""", Notice(NoticeKey.TEAMMATE_ENABLED_TOGGLED))
 
     /**
      * `model` is an object in the manifest — `{ provider, model }` — so a bot inherits the main
@@ -372,10 +373,11 @@ class BotsViewModel(
     fun setModel(id: String, provider: String, model: String) = patch(
         id,
         """{"model":{"provider":"${escape(provider)}","model":"${escape(model)}"}}""",
+        Notice(NoticeKey.TEAMMATE_MODEL_SAVED),
     )
 
     /** Back to the main default: the key is removed rather than emptied. */
-    fun clearModel(id: String) = patch(id, """{"model":null}""")
+    fun clearModel(id: String) = patch(id, """{"model":null}""", Notice(NoticeKey.TEAMMATE_MODEL_CLEARED))
 
     /** The provider/model list, once per screen: it changes when a key is added, not per bot. */
     fun loadModels() {
@@ -387,11 +389,16 @@ class BotsViewModel(
         }
     }
 
-    fun setDescription(id: String, description: String) = patch(id, """{"description":"${escape(description)}"}""")
+    fun setDescription(id: String, description: String) =
+        patch(id, """{"description":"${escape(description)}"}""", Notice(NoticeKey.TEAMMATE_DESCRIPTION_SAVED))
 
     /** Daily token cap lives in `autonomy`; 0 means "no cap". */
     fun setDailyBudget(id: String, tokens: Int) =
-        patch(id, """{"autonomy":{"dailyTokenBudget":${if (tokens > 0) tokens else 0}}}""")
+        patch(
+            id,
+            """{"autonomy":{"dailyTokenBudget":${if (tokens > 0) tokens else 0}}}""",
+            Notice(NoticeKey.TEAMMATE_BUDGET_SAVED),
+        )
 
     fun savePersona(text: String) {
         val id = _state.value.selectedId ?: return
@@ -691,14 +698,14 @@ class BotsViewModel(
         }
     }
 
-    private fun patch(id: String, patchJson: String) {
+    private fun patch(id: String, patchJson: String, success: Notice) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
             runCatching {
                 api.patchBot(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject)
             }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.SAVED)) }
+                    _state.update { s -> s.copy(busy = false, message = success) }
                     // The sheet's rows read the model from the manifest: without this the row
                     // kept the old label until the bot was reopened, which looked like the
                     // change had not been applied.
