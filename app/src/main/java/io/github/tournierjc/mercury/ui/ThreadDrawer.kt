@@ -90,7 +90,7 @@ fun ThreadDrawer(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { onOpenBot(id) }
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                     ) {
@@ -121,7 +121,7 @@ fun ThreadDrawer(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .clickable { onOpenBots() }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                 ) {
@@ -168,7 +168,7 @@ fun ThreadDrawer(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 2.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { onOpenThread(thread) },
                     ) {
                         Column(
@@ -258,7 +258,7 @@ private fun DrawerEntry(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {

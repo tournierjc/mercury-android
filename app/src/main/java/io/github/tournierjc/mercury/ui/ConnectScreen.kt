@@ -103,7 +103,7 @@ fun ConnectScreen(
         Button(
             onClick = { onSubmit(url, username, password) },
             enabled = !busy && url.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.textPrimary,
                 contentColor = colors.canvas,
@@ -162,7 +162,7 @@ private fun Field(
                 keyboardType = if (isPassword) KeyboardType.Password else keyboardType,
                 imeAction = ImeAction.Next,
             ),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.small,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = colors.surface,
                 unfocusedContainerColor = colors.surface,

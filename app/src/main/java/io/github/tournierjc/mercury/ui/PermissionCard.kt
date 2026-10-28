@@ -60,13 +60,13 @@ fun InteractionCard(
                 if (isSecondary(option)) {
                     OutlinedButton(
                         onClick = { onAction(option) },
-                        shape = RoundedCornerShape(20.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                     ) { Text(label(option)) }
                 } else {
                     Button(
                         onClick = { onAction(option) },
-                        shape = RoundedCornerShape(20.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isPrimary(option)) colors.textPrimary else colors.surfaceMuted,
                             contentColor = if (isPrimary(option)) colors.canvas else colors.textPrimary,

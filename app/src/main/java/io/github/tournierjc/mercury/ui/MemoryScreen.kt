@@ -216,7 +216,7 @@ private fun MemoryRow(memory: MemoryDto, onForget: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
+            .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -284,7 +284,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
-                    .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
+                    .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
                     .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -370,7 +370,7 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
-                    .background(colors.surfaceMuted, RoundedCornerShape(14.dp))
+                    .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
                     .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
             ) {
                 Column(modifier = Modifier.weight(1f)) {

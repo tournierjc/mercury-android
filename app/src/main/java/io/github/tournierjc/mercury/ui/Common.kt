@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -135,7 +134,7 @@ fun CollapsibleSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 18.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .clickable { open = !open }
             .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
     ) {
@@ -214,7 +213,7 @@ fun IconActionBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .width(72.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .clickable(enabled = action.enabled) { action.onClick() }
                     .padding(vertical = 6.dp),
             ) {
@@ -224,7 +223,7 @@ fun IconActionBar(
                         .size(42.dp)
                         .background(
                             colors.surface,
-                            RoundedCornerShape(14.dp),
+                            MaterialTheme.shapes.extraSmall,
                         ),
                 ) {
                     Icon(
@@ -294,7 +293,7 @@ fun ActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .then(if (onClick != null && enabled) Modifier.clickable { onClick() } else Modifier)
             .padding(horizontal = 10.dp, vertical = 9.dp),
     ) {
@@ -384,7 +383,7 @@ fun InlineBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .background(colors.surface)
             .clickable { onDismiss() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -438,7 +437,7 @@ fun ButtonRow(content: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 6.dp)
-            .background(LocalMercuryColors.current.surfaceMuted, RoundedCornerShape(14.dp))
+            .background(LocalMercuryColors.current.surfaceMuted, MaterialTheme.shapes.extraSmall)
             .padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.Center,

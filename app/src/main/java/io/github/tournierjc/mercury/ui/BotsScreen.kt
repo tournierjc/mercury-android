@@ -331,7 +331,7 @@ private fun FleetBlock(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .clickable { onSelect(id) }
                     .padding(vertical = 6.dp),
             ) {
@@ -624,8 +624,8 @@ private fun BotDetail(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                .clip(MaterialTheme.shapes.small)
+                .border(1.dp, colors.hairline, MaterialTheme.shapes.small)
                 .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         ) {
             Box(modifier = Modifier.weight(1f).padding(top = 6.dp)) {
@@ -781,11 +781,11 @@ private fun BotDetail(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(if (selected) colors.accent.copy(alpha = 0.16f) else Color.Transparent)
                         .then(
                             if (selected) Modifier
-                            else Modifier.border(1.dp, colors.hairlineStrong, RoundedCornerShape(12.dp)),
+                            else Modifier.border(1.dp, colors.hairlineStrong, MaterialTheme.shapes.extraSmall),
                         )
                         // Tapping the active tier takes it back: a choice you cannot undo is not
                         // a choice. It returns the bot to the daemon's default document, which
@@ -836,7 +836,7 @@ private fun BotDetail(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(colors.surfaceMuted)
                 .clickable { viewModel.loadModels(); showModelPicker = true }
                 .padding(horizontal = 14.dp, vertical = 13.dp),
@@ -873,7 +873,7 @@ private fun BotDetail(
                 keyboardActions = KeyboardActions(
                     onDone = { budgetText.trim().toIntOrNull()?.let { viewModel.setDailyBudget(id, it) } },
                 ),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.extraSmall,
                 trailingIcon = {
                     if (budgetText.isNotBlank()) {
                         IconButton(onClick = { budgetText.trim().toIntOrNull()?.let { viewModel.setDailyBudget(id, it) } }) {
@@ -1041,7 +1041,7 @@ private fun BotDetail(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { showModelPicker = false; viewModel.clearModel(id) }
                             .padding(vertical = 10.dp, horizontal = 4.dp),
                     ) {
@@ -1070,7 +1070,7 @@ private fun BotDetail(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable {
                                     showModelPicker = false
                                     viewModel.setModel(id, ref.name, ref.model)
@@ -1227,7 +1227,7 @@ private fun AddCrewSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { onAdopt(candidateId) }
                             .padding(vertical = 6.dp, horizontal = 4.dp),
                     ) {
@@ -1256,7 +1256,7 @@ private fun AddCrewSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .clickable { onCreateNew() }
                         .padding(vertical = 8.dp, horizontal = 4.dp),
                 ) {

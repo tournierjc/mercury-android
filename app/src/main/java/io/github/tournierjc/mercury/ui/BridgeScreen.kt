@@ -279,7 +279,7 @@ fun BridgeScreen(onBack: () -> Unit) {
                     BridgeService.start(context)
                 }
             },
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.extraSmall,
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.danger.copy(alpha = 0.16f),
                 contentColor = colors.danger,
@@ -297,7 +297,7 @@ fun BridgeScreen(onBack: () -> Unit) {
             color = colors.textSecondary,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(colors.surface)
                 .padding(16.dp),
         )
@@ -339,7 +339,7 @@ private fun CopyableField(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .background(colors.surface)
             .clickable(onClick = onClick)
             .padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
