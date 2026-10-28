@@ -23,13 +23,31 @@ class NoticeStringsTest {
             .associate { it.groupValues[1] to it.groupValues[2] }
     }
 
+    /**
+     * Every `notice_*` string of a locale, wherever it is filed.
+     *
+     * Notices used to live in one file only. A section that ships its own strings file must not have
+     * to duplicate a notice into `strings_notices.xml` to be found here — that is how the same
+     * sentence ends up translated twice.
+     */
+    private fun notices(locale: String): Map<String, String> {
+        val dir = File(root, locale)
+        val files = dir.listFiles { f -> f.name.startsWith("strings") && f.name.endsWith(".xml") }
+        assertTrue("no $locale directory", files != null)
+        val pattern = Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+        return files.orEmpty().filter { it.isFile }
+            .flatMap { file -> pattern.findAll(file.readText()).map { m -> m.groupValues[1] to m.groupValues[2] } }
+            .filter { (key, _) -> key.startsWith("notice_") }
+            .toMap()
+    }
+
     private fun placeholders(text: String): List<String> =
         Regex("""%(\d+)\$[sd]""").findAll(text).map { it.value }.sorted().toList()
 
     @Test
     fun `every key is spelled in both locales`() {
-        val fr = strings("values")
-        val en = strings("values-en")
+        val fr = notices("values")
+        val en = notices("values-en")
         val missing = NoticeKey.entries
             .map { "notice_" + it.name.lowercase() }
             .filterNot { it in fr && it in en }
@@ -39,8 +57,8 @@ class NoticeStringsTest {
 
     @Test
     fun `both locales take the same arguments`() {
-        val fr = strings("values")
-        val en = strings("values-en")
+        val fr = notices("values")
+        val en = notices("values-en")
         val mismatched = fr.keys.filter { key ->
             val other = en[key] ?: return@filter true
             placeholders(fr.getValue(key)) != placeholders(other)
@@ -60,7 +78,7 @@ class NoticeStringsTest {
         val numeric = listOf("%" + "d", "%1" + dollar + "d", "%2" + dollar + "d", "%3" + dollar + "d")
 
         val offenders = listOf("values", "values-en").flatMap { locale ->
-            strings(locale)
+            notices(locale)
                 .filterValues { text -> numeric.any { it in text } }
                 .keys
                 .map { "$locale:$it" }
@@ -74,7 +92,7 @@ class NoticeStringsTest {
         val known = NoticeKey.entries.map { "notice_" + it.name.lowercase() }.toSet()
         // Checking `values` alone let an orphan that only existed in `values-en` through.
         for (locale in listOf("values", "values-en")) {
-            val orphans = strings(locale).keys - known
+            val orphans = notices(locale).keys - known
             assertEquals("strings in $locale with no NoticeKey: $orphans", emptySet<String>(), orphans)
         }
     }

@@ -242,8 +242,12 @@ private fun UsageSection(state: StatusUiState) {
 }
 
 /**
- * `GET /api/config` — the runtime's identity and the switches the About tab described in prose.
- * A field the daemon leaves blank is not drawn: "—" is a value, absence is not.
+ * `GET /api/config` — the two switches nothing else in the app can flip.
+ *
+ * The identity, the default provider, the budget and the heartbeat used to be printed here too, a
+ * second read-only copy of what Réglages › Instance now edits. Two screens showing the same value
+ * drift the day one of them stops refreshing; the five rows moved, and their labels moved with
+ * them, so a key names one value on one screen.
  */
 @Composable
 private fun AgentSection(state: StatusUiState) {
@@ -262,19 +266,6 @@ private fun AgentSection(state: StatusUiState) {
     }
     if (config == null) return
     CollapsibleSection(stringResource(R.string.status_section_agent)) {
-        KeyValueRow(stringResource(R.string.status_label_agent_name), config.identity.name.ifBlank { PLACEHOLDER })
-        KeyValueRow(stringResource(R.string.status_label_owner), config.identity.owner.ifBlank { PLACEHOLDER })
-        KeyValueRow(stringResource(R.string.status_label_default_provider), config.defaultProvider.ifBlank { PLACEHOLDER })
-        KeyValueRow(
-            label = stringResource(R.string.status_label_token_budget),
-            value = if (config.tokenBudget > 0) formatCompact(config.tokenBudget) else stringResource(R.string.status_unlimited),
-        )
-        if (config.heartbeatInterval > 0) {
-            KeyValueRow(
-                label = stringResource(R.string.status_label_heartbeat),
-                value = stringResource(R.string.status_heartbeat_minutes, formatCount(config.heartbeatInterval)),
-            )
-        }
         KeyValueRow(
             label = stringResource(R.string.status_label_second_brain),
             value = stringResource(if (config.secondBrainEnabled) R.string.status_on else R.string.status_off),
@@ -287,9 +278,6 @@ private fun AgentSection(state: StatusUiState) {
         )
     }
 }
-
-/** What a missing value reads as. Punctuation, not a word to translate. */
-private const val PLACEHOLDER = "—"
 
 /** The daemon's state in the owner's words; an unknown state is shown as the daemon names it. */
 @Composable

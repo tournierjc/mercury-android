@@ -33,7 +33,8 @@ import io.github.tournierjc.mercury.data.dto.RunRecordPage
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import io.github.tournierjc.mercury.data.dto.CreateBotRequest
 import io.github.tournierjc.mercury.data.dto.UpdateBotRequest
-import io.github.tournierjc.mercury.data.dto.ConfigDto
+import io.github.tournierjc.mercury.data.dto.InstanceConfig
+import io.github.tournierjc.mercury.data.dto.InstanceConfigSave
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.ChatSettings
 import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
@@ -1385,7 +1386,31 @@ class MercuryApi(
         SimpleResponse.serializer(),
     )
 
-    suspend fun config(): ConfigDto = getDecoded("/api/config", ConfigDto.serializer())
+    /**
+     * `GET /api/config` — the instance's identity and the numbers the daemon keeps for itself.
+     *
+     * Read by Réglages › Instance, which writes four of these keys back through
+     * [saveInstanceConfig]; the heartbeat in the same payload is not writable from the app.
+     */
+    suspend fun instanceConfig(): InstanceConfig = getDecoded("/api/config", InstanceConfig.serializer())
+
+    /**
+     * `PUT /api/config` — the route accepts `identity.name`, `identity.owner`, `defaultProvider` and
+     * `tokenBudget`, and nothing else. [patch] is built by `InstancePatch`, which sends only the keys
+     * the owner actually changed: the daemon rewrites the whole object it holds, so echoing an
+     * unchanged field back makes "who changed what" unreadable in the config file's history.
+     */
+    suspend fun saveInstanceConfig(patch: JsonObject): InstanceConfigSave =
+        putJson("/api/config", patch, InstanceConfigSave.serializer())
+
+    /**
+     * `PUT /api/chat/settings` with `workspace` alone — the folder the agent reads and writes in.
+     *
+     * A separate call from [saveInstanceConfig] because the daemon keeps this one in the chat
+     * settings, not in the instance config: same screen, two routes.
+     */
+    suspend fun saveWorkspace(path: String): ChatSettings =
+        updateSettings(ChatSettingsUpdate(workspace = path.trim()))
 
     /** Reads one workspace file; Mercury refuses anything outside the workspace root. */
     suspend fun workspaceFile(path: String): WorkspaceFileDto = getDecoded(

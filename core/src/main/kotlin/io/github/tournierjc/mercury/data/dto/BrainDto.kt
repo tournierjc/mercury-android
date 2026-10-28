@@ -140,15 +140,34 @@ data class IdentityDto(
     val about: String = "",
 )
 
-/** `GET /api/config` projects the runtime config down to these keys. */
+/**
+ * `GET /api/config` projects the runtime config down to these keys.
+ *
+ * Réglages › Instance writes four of them back (`identity.name`, `identity.owner`,
+ * `defaultProvider`, `tokenBudget`). `heartbeatInterval` is read-only on purpose: the PUT route does
+ * not accept it — it lives in the daemon's `config.yaml` or its environment, and an app that showed
+ * a spinner for it would be lying.
+ */
 @Serializable
-data class ConfigDto(
+data class InstanceConfig(
     val identity: IdentityDto = IdentityDto(),
     val defaultProvider: String = "",
     val tokenBudget: Long = 0,
     val heartbeatInterval: Long = 0,
     val telegramEnabled: Boolean = false,
     val secondBrainEnabled: Boolean = false,
+)
+
+/**
+ * `PUT /api/config` answers `{success, restartRequired}`.
+ *
+ * The daemon reads the provider and the budget at boot, so a successful write almost always comes
+ * back with `restartRequired: true` — the caller says so instead of implying the change is live.
+ */
+@Serializable
+data class InstanceConfigSave(
+    val success: Boolean = false,
+    val restartRequired: Boolean = false,
 )
 
 @Serializable
