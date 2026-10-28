@@ -59,6 +59,10 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.rounded.WorkspacePremium
+import androidx.compose.ui.res.pluralStringResource
+import io.github.tournierjc.mercury.data.FleetRow
+import io.github.tournierjc.mercury.data.fleetRows
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -398,56 +402,101 @@ private fun RosterList(
             )
             return@CollapsibleSection
         }
-        watch.bots.forEach { bot ->
-            val id = BotJson.id(bot)
-            val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // Tap = settings, icon = conversation. The roster is a management screen:
-                    // the default action there is to configure, and chatting is one deliberate
-                    // tap away (the drawer stays the quick way to switch conversations).
-                    .clickable { onSelect(id) }
-                    .padding(vertical = 6.dp),
-            ) {
-                BotFace(bot, avatars[BotJson.id(bot)])
-                Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = BotJson.name(bot),
-                            color = colors.textPrimary,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        )
-                        if (BotJson.isLead(bot)) {
-                            Text(
-                                text = stringResource(R.string.bots_lead_badge) + (BotJson.crewWorking(bot)?.takeIf { it > 0 }?.let { stringResource(R.string.bots_lead_crew_count, it) } ?: ""),
-                                color = colors.accent,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                        if (BotJson.needsYou(bot)) {
-                            Text("  ⚠", color = colors.danger, style = MaterialTheme.typography.labelSmall)
+        // The roster is a tree: a lead opens onto its crew, everyone else is one row. Flat, the
+        // only hint of hierarchy was "crew de mac-lead" in a subtitle — a label, not a structure.
+        val byId = remember(watch.bots) { watch.bots.associateBy { BotJson.id(it) } }
+        remember(watch.bots) { fleetRows(watch.bots) }.forEach { row ->
+            when (row) {
+                is FleetRow.Solo -> byId[row.id]?.let { bot -> BotRosterRow(bot, avatars[row.id], watch, onSelect, onOpenChat) }
+
+                is FleetRow.Lead -> byId[row.id]?.let { lead ->
+                    if (row.crewIds.isEmpty()) {
+                        // A lead that has spawned nobody yet: a row like any other, crown included.
+                        BotRosterRow(lead, avatars[row.id], watch, onSelect, onOpenChat)
+                    } else {
+                        CollapsibleSection(
+                            title = BotJson.name(lead) + stringResource(R.string.bots_lead_badge) +
+                                pluralStringResource(R.plurals.bots_lead_crew_members, row.crewIds.size, row.crewIds.size),
+                            defaultOpen = false,
+                            stateKey = "roster-lead-${row.id}",
+                        ) {
+                            BotRosterRow(lead, avatars[row.id], watch, onSelect, onOpenChat)
+                            row.crewIds.forEach { crewId ->
+                                byId[crewId]?.let { crew ->
+                                    BotRosterRow(crew, avatars[crewId], watch, onSelect, onOpenChat, indent = true)
+                                }
+                            }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One bot of the roster. The same row serves a solo bot, a lead and a crew member — only the
+ * indent changes, so a fleet cannot grow a second row design beside the flat one it came from.
+ */
+@Composable
+private fun BotRosterRow(
+    bot: JsonObject,
+    avatar: ByteArray?,
+    watch: BotWatchState,
+    onSelect: (String) -> Unit,
+    onOpenChat: (String) -> Unit,
+    indent: Boolean = false,
+) {
+    val colors = LocalMercuryColors.current
+    val id = BotJson.id(bot)
+    val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            // Tap = settings, icon = conversation. The roster is a management screen:
+            // the default action there is to configure, and chatting is one deliberate
+            // tap away (the drawer stays the quick way to switch conversations).
+            .clickable { onSelect(id) }
+            .padding(start = if (indent) 26.dp else 0.dp, top = 6.dp, bottom = 6.dp),
+    ) {
+        BotFace(bot, avatar)
+        Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = BotJson.name(bot),
+                    color = colors.textPrimary,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                )
+                if (BotJson.isLead(bot)) {
                     Text(
-                        text = listOf(
-                            noticeText(BotJson.stateNotice(BotJson.state(bot))),
-                            live.takeIf { it.isNotBlank() },
-                            BotJson.parent(bot).takeIf { it.isNotBlank() }?.let { stringResource(R.string.bots_crew_of, it) },
-                        ).filterNotNull().joinToString(" · "),
-                        color = colors.textSecondary,
+                        text = stringResource(R.string.bots_lead_badge) +
+                            (BotJson.crewWorking(bot)?.takeIf { it > 0 }
+                                ?.let { stringResource(R.string.bots_lead_crew_count, it) } ?: ""),
+                        color = colors.accent,
                         style = MaterialTheme.typography.labelSmall,
                     )
                 }
-                IconButton(onClick = { onOpenChat(id) }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Chat,
-                        contentDescription = stringResource(R.string.bots_cd_conversation_with, BotJson.name(bot)),
-                        tint = colors.textSecondary,
-                    )
+                if (BotJson.needsYou(bot)) {
+                    Text("  ⚠", color = colors.danger, style = MaterialTheme.typography.labelSmall)
                 }
             }
+            Text(
+                // The parent is the tree above now; repeating it here would say it twice.
+                text = listOf(
+                    noticeText(BotJson.stateNotice(BotJson.state(bot))),
+                    live.takeIf { it.isNotBlank() },
+                ).filterNotNull().joinToString(" · "),
+                color = colors.textSecondary,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        IconButton(onClick = { onOpenChat(id) }) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.Chat,
+                contentDescription = stringResource(R.string.bots_cd_conversation_with, BotJson.name(bot)),
+                tint = colors.textSecondary,
+            )
         }
     }
 }
@@ -1136,6 +1185,33 @@ private fun BotDetail(
  */
 @Composable
 internal fun BotFace(bot: JsonObject, avatar: ByteArray?, small: Boolean = false) {
+    val colors = LocalMercuryColors.current
+    Box {
+        BotFaceCore(bot, avatar, small)
+        // A lead carries a crown on its own avatar: the roster tells a chief from a bot standing
+        // alone at a glance, without reading a badge next to the name (§roster).
+        if (BotJson.isLead(bot)) {
+            val badge = if (small) 12.dp else 16.dp
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(badge)
+                    .background(colors.surface, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.WorkspacePremium,
+                    contentDescription = stringResource(R.string.bots_cd_lead),
+                    tint = colors.accent,
+                    modifier = Modifier.size(badge - 3.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BotFaceCore(bot: JsonObject, avatar: ByteArray?, small: Boolean = false) {
     val size = if (small) 26.dp else 38.dp
     if (avatar != null) {
         val bitmap = remember(avatar) {
