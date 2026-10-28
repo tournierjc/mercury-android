@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -406,7 +407,7 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 120.dp, max = 340.dp)
+                .heightIn(min = 280.dp, max = 560.dp)
                 .verticalScroll(scroll),
         ) {
             if (state.commands.isEmpty()) {
@@ -440,6 +441,20 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
                     .padding(start = 8.dp)
                     .semantics { contentDescription = commandLabel },
             )
+            // Clearing the transcript is a destructive act: it keeps the danger colour and sits
+            // right where the hand already is, instead of a bar of its own under the terminal.
+            IconButton(
+                onClick = viewModel::clearTerminal,
+                enabled = state.commands.isNotEmpty() && !state.busy,
+                modifier = Modifier.size(34.dp),
+            ) {
+                Icon(
+                    Icons.Rounded.DeleteSweep,
+                    contentDescription = stringResource(R.string.workspace_terminal_effacer),
+                    tint = if (state.commands.isNotEmpty() && !state.busy) colors.danger else colors.textSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
             IconButton(
                 onClick = { submit() },
                 enabled = line.isNotBlank() && !state.busy,
@@ -501,17 +516,8 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
         }
     }
 
-    IconActionBar(
-        listOf(
-            QuickAction(
-                icon = Icons.Rounded.DeleteSweep,
-                label = stringResource(R.string.workspace_terminal_effacer),
-                tint = colors.danger,
-                enabled = state.commands.isNotEmpty() && !state.busy,
-                onClick = viewModel::clearTerminal,
-            ),
-        ),
-    )
+    // Breathing room where the clear bar used to sit: the terminal tab ends on its history.
+    Spacer(Modifier.size(4.dp))
 }
 
 @Composable
