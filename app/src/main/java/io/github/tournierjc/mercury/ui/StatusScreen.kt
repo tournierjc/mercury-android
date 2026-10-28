@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.BuildConfig
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatUptime
 import io.github.tournierjc.mercury.vm.StatusUiState
@@ -107,6 +108,23 @@ private fun DaemonSection(state: StatusUiState) {
             highlight = status.running,
         )
         KeyValueRow(stringResource(R.string.status_label_uptime), formatUptime(status.uptime))
+        KeyValueRow(
+            stringResource(R.string.status_label_tokens),
+            "${formatTokens(status.tokens.dailyUsed)} / ${formatTokens(status.tokens.dailyBudget)}",
+        )
+        // The daemon's own vitals, read from `/api/health`: the console showed them on a second
+        // screen that also repeated the state and the uptime above.
+        state.health?.let { health ->
+            KeyValueRow("PID", health.pid.toString())
+            KeyValueRow(stringResource(R.string.status_label_loop), "${health.loopLag.p99Ms} ms")
+            KeyValueRow(
+                stringResource(R.string.status_label_plugins),
+                stringResource(R.string.status_plugins_summary, health.plugins.running, health.plugins.tools),
+            )
+            if (health.plugins.safeMode) {
+                KeyValueRow(stringResource(R.string.status_label_safe_mode), stringResource(R.string.status_safe_mode_on), highlight = true)
+            }
+        }
     }
 }
 

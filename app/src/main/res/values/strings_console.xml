@@ -1,110 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Écran Console : supervision du démon. -->
-    <string name="console_title">Console</string>
 
     <!-- Runtime -->
-    <string name="console_section_runtime">Runtime</string>
-    <string name="console_status_unavailable">État indisponible.</string>
-    <string name="console_label_state">État</string>
     <string name="console_active">actif</string>
-    <string name="console_stopped">arrêté</string>
-    <string name="console_label_uptime">Uptime</string>
-    <string name="console_label_daily_tokens">Tokens du jour</string>
-    <string name="console_label_loop_lag">Boucle (p99)</string>
-    <string name="console_label_plugins">Plugins</string>
-    <string name="console_plugins_summary">%1$d actifs · %2$d outils</string>
-    <string name="console_label_safe_mode">Mode sûr</string>
-    <string name="console_safe_mode_on">activé</string>
 
     <!-- Mode programmation -->
-    <string name="console_unavailable_on_runtime">Indisponible sur ce runtime.</string>
 
     <!-- Tâches de fond -->
-    <string name="console_section_background_tasks">Tâches de fond</string>
-    <string name="console_trailing_cancel">annuler</string>
-    <string name="console_no_tasks">Aucune tâche en cours.</string>
-    <string name="console_clear_finished_tasks">Effacer les tâches terminées</string>
 
     <!-- Automatisations -->
-    <string name="console_section_schedules">Automatisations</string>
-    <string name="console_trailing_delete">supprimer</string>
-    <string name="console_no_schedules">Aucune automatisation programmée.</string>
 
     <!-- Agents -->
-    <string name="console_section_agents">Agents</string>
     <string name="console_pause">Pause</string>
     <string name="console_stop">Arrêter</string>
 
     <!-- Skills -->
-    <string name="console_section_skills">Skills</string>
-    <string name="console_no_skills">Aucun skill installé.</string>
-    <string name="console_install_url">Installer (URL)</string>
-    <string name="console_registry">Registre</string>
-    <string name="console_install_skill_title">Installer un skill</string>
-    <string name="console_install_url_body">Mercury télécharge le paquet depuis une URL http(s). Un dossier local du serveur n\'est pas accepté par cette route.</string>
-    <string name="console_package_url_label">URL du paquet</string>
-    <string name="console_install">Installer</string>
-    <string name="console_install_from_registry_title">Installer depuis le registre</string>
-    <string name="console_registry_id_body">Identifiant au format catégorie/nom, par exemple research/arxiv.</string>
-    <string name="console_identifier">Identifiant</string>
-    <string name="console_force_reinstall">Forcer (réinstaller)</string>
-    <string name="console_delete_skill_title">Supprimer le skill ?</string>
-    <string name="console_delete_skill_body">Le dossier de « %1$s » est retiré du serveur, références et scripts compris. Cette action ne peut pas être annulée.</string>
-    <string name="console_delete">Supprimer</string>
 
     <!-- Plugins -->
-    <string name="console_section_plugins">Plugins</string>
 
     <!-- Espace de travail -->
-    <string name="console_section_workspace">Espace de travail</string>
-    <string name="console_label_folder">Dossier</string>
-    <string name="console_label_project">Projet</string>
-    <string name="console_repository">dépôt</string>
-    <string name="console_none">aucun</string>
-    <string name="console_change_root">Changer la racine</string>
-    <string name="console_change_root_title">Changer la racine du workspace</string>
-    <string name="console_change_root_body">Le dossier doit déjà exister sur la machine de Mercury : le chemin est celui du serveur, pas celui du téléphone.</string>
-    <string name="console_absolute_path">Chemin absolu</string>
-    <string name="console_move">Déplacer</string>
 
     <!-- Coût -->
-    <string name="console_section_cost">Coût</string>
-    <string name="console_cost_unavailable">Dépense indisponible sur ce runtime.</string>
-    <string name="console_label_window">Fenêtre</string>
-    <string name="console_window_days">%1$d jours</string>
-    <string name="console_label_tokens_used">Tokens consommés</string>
-    <string name="console_label_daily_cap">Plafond du jour</string>
-    <string name="console_unlimited">illimité</string>
-    <string name="console_label_fleet">Flotte</string>
-    <string name="console_fleet_paused_cap_reached">en pause — plafond atteint</string>
-    <string name="console_no_spend">Aucune dépense sur la période.</string>
-    <string name="console_runs_count">%1$d passage(s)</string>
-    <string name="console_failures_count">%1$d échec(s)</string>
-    <string name="console_bot_cap">plafond %1$s/j</string>
-    <string name="console_paused">en pause</string>
 
     <!-- Stockage -->
-    <string name="console_section_storage">Stockage</string>
-    <string name="console_storage_unavailable">Occupation disque indisponible sur ce runtime.</string>
-    <string name="console_label_total">Total</string>
-    <string name="console_label_queue">File</string>
-    <string name="console_queue_pending">%1$d en attente</string>
-    <string name="console_queue_in_progress">%1$d en cours</string>
-    <string name="console_queue_failed">%1$d en échec</string>
-    <string name="console_no_teammate_dirs">Aucun dossier d\'équipier à mesurer.</string>
-    <string name="console_size_with_journal">%1$s dont journal %2$s</string>
 
     <!-- Serveurs MCP -->
-    <string name="console_section_mcp">Serveurs MCP</string>
-    <string name="console_mcp_unavailable">État MCP indisponible.</string>
-    <string name="console_mcp_not_exposed">Ce runtime n\'expose pas de gestion MCP.</string>
-    <string name="console_no_mcp_servers">Aucun serveur MCP configuré.</string>
-    <string name="console_server">serveur</string>
-    <string name="console_label_transport">Transport</string>
-    <string name="console_label_tools">Outils</string>
-    <string name="console_tools_exposed">%1$d exposé(s)</string>
-    <string name="console_blocked">bloqué</string>
     <string name="console_mcp_state_connected">connecté</string>
     <string name="console_mcp_state_connecting">connexion…</string>
     <string name="console_mcp_state_reconnecting">reconnexion…</string>
@@ -113,62 +34,11 @@
     <string name="console_mcp_state_unknown">inconnu</string>
 
     <!-- Équipiers -->
-    <string name="console_new_bot_title">Nouvel équipier</string>
-    <string name="console_name">Nom</string>
-    <string name="console_role_optional">Rôle (optionnel)</string>
-    <string name="console_create">Créer</string>
-    <string name="console_add_to_fleet_title">Ajouter à une flotte</string>
-    <string name="console_fleet_lead">Chef de flotte</string>
-    <string name="console_specialty">Spécialité</string>
-    <string name="console_persona_optional">Persona (optionnel)</string>
-    <string name="console_permission_tier">Palier de permissions</string>
-    <string name="console_add">Ajouter</string>
 
     <!-- Terminal -->
-    <string name="console_section_terminal">Terminal</string>
-    <string name="console_terminal_hint">hôte · espace de travail Mercury · 30 s max</string>
-    <string name="console_terminal_empty">Session vide. Une commande tourne sur l\'hôte, pas sur le téléphone.</string>
-    <string name="console_run">Exécuter</string>
-    <string name="console_previous_command">Précédente</string>
-    <string name="console_clear">Effacer</string>
-    <string name="console_destructive_command_title">Commande destructive</string>
-    <string name="console_destructive_command_body">Cette commande peut supprimer des données ou arrêter un service :</string>
-    <string name="console_run_anyway">Exécuter quand même</string>
 
     <!-- Git -->
-    <string name="console_no_repository">Aucun dépôt git accessible dans l\'espace de travail.</string>
-    <string name="console_check_again">Vérifier à nouveau</string>
-    <string name="console_label_branch">Branche</string>
-    <string name="console_label_upstream">Amont</string>
-    <string name="console_label_sync">Synchronisation</string>
-    <string name="console_staged">Indexé</string>
-    <string name="console_unstage">désindexer</string>
-    <string name="console_modified">Modifié</string>
-    <string name="console_stage">indexer</string>
-    <string name="console_clean_tree">Arbre propre : rien à indexer.</string>
-    <string name="console_stage_all">Tout indexer</string>
-    <string name="console_unstage_all">Tout désindexer</string>
-    <string name="console_diff_unstaged">Diff non indexé</string>
-    <string name="console_diff_vide">Aucune différence.</string>
-    <string name="console_diff_staged">Diff indexé</string>
-    <string name="console_commit_message">Message de commit</string>
-    <string name="console_generate">Générer</string>
-    <string name="console_create_commit_title">Créer le commit ?</string>
-    <string name="console_create_commit_body">Le message part tel quel. Mercury ajoute lui-même la ligne « Co-authored-by » et ne commite que ce qui est indexé.</string>
-    <string name="console_commit">Valider</string>
-    <string name="console_push_branch_title">Pousser la branche ?</string>
-    <string name="console_push_body">Les commits partent sur origin. Rien n\'est réécrit, rien n\'est forcé.</string>
-    <string name="console_push">Pousser</string>
-    <string name="console_pull_title">Tirer les changements ?</string>
-    <string name="console_pull_body">git pull sur la branche courante : le répertoire de travail peut recevoir des commits distants.</string>
-    <string name="console_pull">Tirer</string>
     <string name="console_refresh">Rafraîchir</string>
-    <string name="console_label_branches">Branches</string>
-    <string name="console_switch_branch_title">Changer de branche ?</string>
-    <string name="console_switch_branch_body">Le répertoire de travail passe sur « %1$s ». Un arbre modifié peut faire échouer le changement.</string>
-    <string name="console_switch">Changer</string>
-    <string name="console_recent_commits">Derniers commits</string>
-    <string name="console_close">Fermer</string>
 
     <!-- Musique -->
     <string name="console_section_music">Musique</string>
@@ -197,5 +67,4 @@
     <string name="console_restart_dialog_body">Les tours en cours sont interrompus, le conteneur revient en quelques secondes.</string>
     <string name="console_restart">Redémarrer</string>
     <string name="console_cancel">Annuler</string>
-    <string name="console_section_git">Git</string>
 </resources>

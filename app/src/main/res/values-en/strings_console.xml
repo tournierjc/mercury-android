@@ -1,110 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Console screen: daemon supervision. -->
-    <string name="console_title">Console</string>
 
     <!-- Runtime -->
-    <string name="console_section_runtime">Runtime</string>
-    <string name="console_status_unavailable">Status unavailable.</string>
-    <string name="console_label_state">Status</string>
     <string name="console_active">active</string>
-    <string name="console_stopped">stopped</string>
-    <string name="console_label_uptime">Uptime</string>
-    <string name="console_label_daily_tokens">Tokens today</string>
-    <string name="console_label_loop_lag">Loop (p99)</string>
-    <string name="console_label_plugins">Plugins</string>
-    <string name="console_plugins_summary">%1$d active · %2$d tools</string>
-    <string name="console_label_safe_mode">Safe mode</string>
-    <string name="console_safe_mode_on">on</string>
 
     <!-- Programming mode -->
-    <string name="console_unavailable_on_runtime">Unavailable on this runtime.</string>
 
     <!-- Background tasks -->
-    <string name="console_section_background_tasks">Background tasks</string>
-    <string name="console_trailing_cancel">cancel</string>
-    <string name="console_no_tasks">No tasks running.</string>
-    <string name="console_clear_finished_tasks">Clear finished tasks</string>
 
     <!-- Schedules -->
-    <string name="console_section_schedules">Schedules</string>
-    <string name="console_trailing_delete">delete</string>
-    <string name="console_no_schedules">No scheduled automation.</string>
 
     <!-- Agents -->
-    <string name="console_section_agents">Agents</string>
     <string name="console_pause">Pause</string>
     <string name="console_stop">Stop</string>
 
     <!-- Skills -->
-    <string name="console_section_skills">Skills</string>
-    <string name="console_no_skills">No skills installed.</string>
-    <string name="console_install_url">Install (URL)</string>
-    <string name="console_registry">Registry</string>
-    <string name="console_install_skill_title">Install a skill</string>
-    <string name="console_install_url_body">Mercury downloads the package from an http(s) URL. A local folder on the server is not accepted by this route.</string>
-    <string name="console_package_url_label">Package URL</string>
-    <string name="console_install">Install</string>
-    <string name="console_install_from_registry_title">Install from the registry</string>
-    <string name="console_registry_id_body">Identifier in the category/name format, for example research/arxiv.</string>
-    <string name="console_identifier">Identifier</string>
-    <string name="console_force_reinstall">Force (reinstall)</string>
-    <string name="console_delete_skill_title">Delete the skill?</string>
-    <string name="console_delete_skill_body">The folder for “%1$s” is removed from the server, references and scripts included. This action cannot be undone.</string>
-    <string name="console_delete">Delete</string>
 
     <!-- Plugins -->
-    <string name="console_section_plugins">Plugins</string>
 
     <!-- Workspace -->
-    <string name="console_section_workspace">Workspace</string>
-    <string name="console_label_folder">Folder</string>
-    <string name="console_label_project">Project</string>
-    <string name="console_repository">repository</string>
-    <string name="console_none">none</string>
-    <string name="console_change_root">Change root</string>
-    <string name="console_change_root_title">Change the workspace root</string>
-    <string name="console_change_root_body">The folder must already exist on the Mercury machine: the path is the server\'s, not the phone\'s.</string>
-    <string name="console_absolute_path">Absolute path</string>
-    <string name="console_move">Move</string>
 
     <!-- Cost -->
-    <string name="console_section_cost">Cost</string>
-    <string name="console_cost_unavailable">Spend unavailable on this runtime.</string>
-    <string name="console_label_window">Window</string>
-    <string name="console_window_days">%1$d days</string>
-    <string name="console_label_tokens_used">Tokens used</string>
-    <string name="console_label_daily_cap">Daily cap</string>
-    <string name="console_unlimited">unlimited</string>
-    <string name="console_label_fleet">Fleet</string>
-    <string name="console_fleet_paused_cap_reached">paused — cap reached</string>
-    <string name="console_no_spend">No spend in this period.</string>
-    <string name="console_runs_count">%1$d run(s)</string>
-    <string name="console_failures_count">%1$d failure(s)</string>
-    <string name="console_bot_cap">cap %1$s/day</string>
-    <string name="console_paused">paused</string>
 
     <!-- Storage -->
-    <string name="console_section_storage">Storage</string>
-    <string name="console_storage_unavailable">Disk usage unavailable on this runtime.</string>
-    <string name="console_label_total">Total</string>
-    <string name="console_label_queue">Queue</string>
-    <string name="console_queue_pending">%1$d pending</string>
-    <string name="console_queue_in_progress">%1$d running</string>
-    <string name="console_queue_failed">%1$d failed</string>
-    <string name="console_no_teammate_dirs">No teammate folders to measure.</string>
-    <string name="console_size_with_journal">%1$s including journal %2$s</string>
 
     <!-- MCP servers -->
-    <string name="console_section_mcp">MCP servers</string>
-    <string name="console_mcp_unavailable">MCP status unavailable.</string>
-    <string name="console_mcp_not_exposed">This runtime does not expose MCP management.</string>
-    <string name="console_no_mcp_servers">No MCP servers configured.</string>
-    <string name="console_server">server</string>
-    <string name="console_label_transport">Transport</string>
-    <string name="console_label_tools">Tools</string>
-    <string name="console_tools_exposed">%1$d exposed</string>
-    <string name="console_blocked">blocked</string>
     <string name="console_mcp_state_connected">connected</string>
     <string name="console_mcp_state_connecting">connecting…</string>
     <string name="console_mcp_state_reconnecting">reconnecting…</string>
@@ -113,62 +34,11 @@
     <string name="console_mcp_state_unknown">unknown</string>
 
     <!-- Teammates -->
-    <string name="console_new_bot_title">New teammate</string>
-    <string name="console_name">Name</string>
-    <string name="console_role_optional">Role (optional)</string>
-    <string name="console_create">Create</string>
-    <string name="console_add_to_fleet_title">Add to a fleet</string>
-    <string name="console_fleet_lead">Fleet lead</string>
-    <string name="console_specialty">Specialty</string>
-    <string name="console_persona_optional">Persona (optional)</string>
-    <string name="console_permission_tier">Permission tier</string>
-    <string name="console_add">Add</string>
 
     <!-- Terminal -->
-    <string name="console_section_terminal">Terminal</string>
-    <string name="console_terminal_hint">host · Mercury workspace · 30 s max</string>
-    <string name="console_terminal_empty">Empty session. A command runs on the host, not on the phone.</string>
-    <string name="console_run">Run</string>
-    <string name="console_previous_command">Previous</string>
-    <string name="console_clear">Clear</string>
-    <string name="console_destructive_command_title">Destructive command</string>
-    <string name="console_destructive_command_body">This command can delete data or stop a service:</string>
-    <string name="console_run_anyway">Run anyway</string>
 
     <!-- Git -->
-    <string name="console_no_repository">No git repository reachable in the workspace.</string>
-    <string name="console_check_again">Check again</string>
-    <string name="console_label_branch">Branch</string>
-    <string name="console_label_upstream">Upstream</string>
-    <string name="console_label_sync">Sync</string>
-    <string name="console_staged">Staged</string>
-    <string name="console_unstage">unstage</string>
-    <string name="console_modified">Modified</string>
-    <string name="console_stage">stage</string>
-    <string name="console_clean_tree">Clean tree: nothing to stage.</string>
-    <string name="console_stage_all">Stage all</string>
-    <string name="console_unstage_all">Unstage all</string>
-    <string name="console_diff_unstaged">Unstaged diff</string>
-    <string name="console_diff_vide">No difference.</string>
-    <string name="console_diff_staged">Staged diff</string>
-    <string name="console_commit_message">Commit message</string>
-    <string name="console_generate">Generate</string>
-    <string name="console_create_commit_title">Create the commit?</string>
-    <string name="console_create_commit_body">The message goes out as typed. Mercury adds the “Co-authored-by” line itself and only commits what is staged.</string>
-    <string name="console_commit">Commit</string>
-    <string name="console_push_branch_title">Push the branch?</string>
-    <string name="console_push_body">Commits go to origin. Nothing is rewritten, nothing is forced.</string>
-    <string name="console_push">Push</string>
-    <string name="console_pull_title">Pull changes?</string>
-    <string name="console_pull_body">git pull on the current branch: the working tree may receive remote commits.</string>
-    <string name="console_pull">Pull</string>
     <string name="console_refresh">Refresh</string>
-    <string name="console_label_branches">Branches</string>
-    <string name="console_switch_branch_title">Switch branch?</string>
-    <string name="console_switch_branch_body">The working tree moves to “%1$s”. A modified tree may make the switch fail.</string>
-    <string name="console_switch">Switch</string>
-    <string name="console_recent_commits">Recent commits</string>
-    <string name="console_close">Close</string>
 
     <!-- Music -->
     <string name="console_section_music">Music</string>
@@ -197,5 +67,4 @@
     <string name="console_restart_dialog_body">Turns in progress are interrupted, the container is back in a few seconds.</string>
     <string name="console_restart">Restart</string>
     <string name="console_cancel">Cancel</string>
-    <string name="console_section_git">Git</string>
 </resources>

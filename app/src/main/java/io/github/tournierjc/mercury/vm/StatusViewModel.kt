@@ -9,6 +9,7 @@ import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
+import io.github.tournierjc.mercury.data.dto.HealthDto
 import io.github.tournierjc.mercury.data.dto.ConfigDto
 import io.github.tournierjc.mercury.data.dto.StatusDto
 import io.github.tournierjc.mercury.data.dto.UsageDto
@@ -32,6 +33,11 @@ data class StatusUiState(
     val brain: BrainStatusDto? = null,
     val usage: UsageDto? = null,
     val config: ConfigDto? = null,
+    /**
+     * The daemon's own vitals — pid, loop p99, plugins — which the console used to show on its own
+     * screen while this one showed the same state and uptime. One home for one fact.
+     */
+    val health: HealthDto? = null,
     /** The first failure, as a key the screen resolves — never a bare exception string. */
     val error: Notice? = null,
 ) {
@@ -70,13 +76,27 @@ class StatusViewModel(private val api: MercuryApi, private val container: AppCon
                 val brain = runCatching { api.brainStatus() }.getOrNull()
                 val usage = runCatching { api.usage() }.getOrNull()
                 val config = runCatching { api.config() }.getOrNull()
+                val health = runCatching { api.healthDetail() }.getOrNull()
                 _state.update {
-                    it.copy(loading = false, status = status, brain = brain, usage = usage, config = config)
+                    it.copy(loading = false, status = status, brain = brain, usage = usage, config = config, health = health)
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.toNotice()) }
             }
         }
+    }
+
+    /**
+     * Restarts the daemon. The HTTP call returns before the socket actually drops, so the refresh
+     * that follows is deliberately not awaited here — the screen reloads when the owner pulls.
+     */
+    fun restart() {
+        viewModelScope.launch { runCatching { api.restart() } }
+    }
+
+    /** Stops the daemon: nothing to refresh afterwards, the socket is going away. */
+    fun shutdown() {
+        viewModelScope.launch { runCatching { api.shutdown() } }
     }
 
     fun clearBanner() {
