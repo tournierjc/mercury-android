@@ -153,7 +153,12 @@ data class BgResponse(val tasks: List<JsonObject> = emptyList(), val available: 
 data class AgentsResponse(val agents: List<JsonObject> = emptyList(), val available: Boolean = true)
 
 @Serializable
-data class SchedulesResponse(val schedules: List<JsonObject> = emptyList(), val total: Int = 0)
+data class SchedulesResponse(
+    /** Null on a daemon that predates the witness; see [io.github.tournierjc.mercury.data.dto.UsageDto]. */
+    val available: Boolean? = null,
+    val schedules: List<JsonObject> = emptyList(),
+    val total: Int = 0,
+)
 
 @Serializable
 data class ProviderDto(

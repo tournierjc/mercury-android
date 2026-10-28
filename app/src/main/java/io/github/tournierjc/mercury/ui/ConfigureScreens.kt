@@ -336,7 +336,11 @@ fun SchedulesScreen(onBack: () -> Unit) {
     ) {
         CollapsibleSection(stringResource(R.string.configure_schedules_section), defaultOpen = true) {
             if (state.schedules.isEmpty()) {
-                EmptyLine(state.loading, R.string.configure_schedules_empty, ConfigureSlice.Schedules in state.failed)
+                EmptyLine(
+                    state.loading,
+                    R.string.configure_schedules_empty,
+                    ConfigureSlice.Schedules in state.failed || !state.schedulesAvailable,
+                )
             }
             state.schedules.forEach { schedule ->
                 val bot = schedule.botId.ifBlank { stringResource(R.string.configure_schedules_mercury) }
@@ -369,7 +373,8 @@ fun UsageScreen(onBack: () -> Unit) {
     val colors = LocalMercuryColors.current
     ConfigureScaffold(
         title = stringResource(R.string.configure_usage_title),
-        subtitle = state.usage?.let { usage ->
+        // A daemon that could not read its tracker sends zeros; they are not a quota.
+        subtitle = state.usage?.takeIf { state.usageAvailable }?.let { usage ->
             "${formatCompact(usage.dailyUsed)} / ${
                 if (usage.dailyBudget > 0) formatCompact(usage.dailyBudget) else stringResource(R.string.configure_usage_unlimited)
             }"
@@ -380,9 +385,13 @@ fun UsageScreen(onBack: () -> Unit) {
         onDismissError = viewModel::clearBanner,
     ) {
         CollapsibleSection(stringResource(R.string.configure_usage_today), defaultOpen = true) {
-            val usage = state.usage
+            val usage = state.usage?.takeIf { state.usageAvailable }
             if (usage == null) {
-                EmptyLine(state.loading, R.string.configure_usage_unavailable, ConfigureSlice.Usage in state.failed)
+                EmptyLine(
+                    state.loading,
+                    R.string.configure_usage_unavailable,
+                    ConfigureSlice.Usage in state.failed || state.usage?.available == false,
+                )
             } else {
                 Text(
                     text = "${formatCompact(usage.dailyUsed)} / ${

@@ -90,6 +90,12 @@ data class UsageEntry(
 
 @Serializable
 data class UsageDto(
+    /**
+     * The server's own statement that it could read the tracker. Null when the daemon predates the
+     * witness — absent is not the same as false, so a caller must only distrust the numbers when
+     * this is explicitly false, never when it is merely missing.
+     */
+    val available: Boolean? = null,
     val dailyUsed: Long = 0,
     val dailyBudget: Long = 0,
     val lastResetDate: String = "",
