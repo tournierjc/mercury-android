@@ -56,7 +56,6 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.TEAMMATE_MODEL_CLEARED -> R.string.notice_teammate_model_cleared
     NoticeKey.TEAMMATE_DESCRIPTION_SAVED -> R.string.notice_teammate_description_saved
     NoticeKey.TEAMMATE_BUDGET_SAVED -> R.string.notice_teammate_budget_saved
-    NoticeKey.SAVED -> R.string.notice_saved
     NoticeKey.MEMORY_ADDED -> R.string.notice_memory_added
     NoticeKey.MEMORY_FORGOTTEN -> R.string.notice_memory_forgotten
     NoticeKey.MEMORY_UPDATED -> R.string.notice_memory_updated
