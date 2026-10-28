@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Les permissions fines d'un bot : chemins, commandes, outils. -->
+<resources>
+    <!-- Éditeur de permissions : chemins -->
+    <string name="bots_perm_paths_title">Chemins autorisés</string>
+    <string name="bots_perm_folder">Dossier</string>
+    <string name="bots_perm_folder_hint">/chemin, ou * pour tout</string>
+    <string name="bots_perm_add_folder">Ajouter un dossier</string>
+    <string name="bots_perm_cd_add_folder">Ajouter le dossier</string>
+    <string name="bots_perm_cd_remove_path">Retirer %1$s</string>
+    <string name="bots_perm_read">Lire</string>
+    <string name="bots_perm_write">Écrire</string>
+    <string name="bots_perm_execute">Exécuter</string>
+    <string name="bots_perm_no_path">Aucun chemin : ce bot n\'a accès à rien.</string>
+
+    <!-- Éditeur de permissions : commandes et outils -->
+    <string name="bots_perm_commands_group">Commandes</string>
+    <string name="bots_perm_tools_group">Outils</string>
+    <string name="bots_perm_auto_title">Commandes auto-approuvées</string>
+    <string name="bots_perm_blocked_title">Commandes bloquées</string>
+    <string name="bots_perm_commands_hint">Séparées par des virgules</string>
+    <string name="bots_perm_tools_allow">Outils autorisés</string>
+    <string name="bots_perm_tools_deny">Outils interdits</string>
+    <string name="bots_perm_tools_hint">Noms d\'outils, séparés par des virgules</string>
+    <string name="bots_perm_cd_apply">Appliquer</string>
+    <string name="bots_perm_cd_save">Enregistrer les permissions</string>
+    <string name="bots_perm_tier_locked">Enregistre d\'abord : un palier réécrit tout le fichier.</string>
+    <string name="bots_perm_unsaved_title">Permissions non enregistrées</string>
+    <string name="bots_perm_unsaved_body">Les modifications ne sont pas écrites. Quitter maintenant les perd.</string>
+    <string name="bots_perm_unsaved_leave">Quitter sans enregistrer</string>
+    <string name="bots_perm_unsaved_stay">Rester</string>
+    <string name="bots_perm_note">Un déni l\'emporte sur une autorisation, et le démon refuse « * » en auto-approbation.</string>
+</resources>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A bot's fine permissions: paths, commands, tools. -->
+<resources>
+    <!-- Permissions editor: paths -->
+    <string name="bots_perm_paths_title">Allowed paths</string>
+    <string name="bots_perm_folder">Folder</string>
+    <string name="bots_perm_folder_hint">/path, or * for everything</string>
+    <string name="bots_perm_add_folder">Add a folder</string>
+    <string name="bots_perm_cd_add_folder">Add the folder</string>
+    <string name="bots_perm_cd_remove_path">Remove %1$s</string>
+    <string name="bots_perm_read">Read</string>
+    <string name="bots_perm_write">Write</string>
+    <string name="bots_perm_execute">Execute</string>
+    <string name="bots_perm_no_path">No path: this bot can reach nothing.</string>
+
+    <!-- Permissions editor: commands and tools -->
+    <string name="bots_perm_commands_group">Commands</string>
+    <string name="bots_perm_tools_group">Tools</string>
+    <string name="bots_perm_auto_title">Auto-approved commands</string>
+    <string name="bots_perm_blocked_title">Blocked commands</string>
+    <string name="bots_perm_commands_hint">Separated by commas</string>
+    <string name="bots_perm_tools_allow">Allowed tools</string>
+    <string name="bots_perm_tools_deny">Denied tools</string>
+    <string name="bots_perm_tools_hint">Tool names, separated by commas</string>
+    <string name="bots_perm_cd_apply">Apply</string>
+    <string name="bots_perm_cd_save">Save permissions</string>
+    <string name="bots_perm_tier_locked">Save first: a tier rewrites the whole file.</string>
+    <string name="bots_perm_unsaved_title">Unsaved permissions</string>
+    <string name="bots_perm_unsaved_body">Your changes are not written. Leaving now loses them.</string>
+    <string name="bots_perm_unsaved_leave">Leave without saving</string>
+    <string name="bots_perm_unsaved_stay">Stay</string>
+    <string name="bots_perm_note">A denial beats an allowance, and the daemon refuses “*” in auto-approval.</string>
+</resources>
