@@ -269,17 +269,20 @@ private fun SubconsciousTab(state: MemoryUiState, viewModel: MemoryViewModel) {
 @Composable
 internal fun MemoryRow(memory: MemoryDto, deleteLabel: String, onForget: () -> Unit) {
     val colors = LocalMercuryColors.current
+    // Forgetting is not undoable, and the glyph sat two dp from the card's edge: one stray thumb
+    // erased a memory for good. Ask first.
+    var confirming by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
-            .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = memory.type.uppercase(),
+                text = rawLabel(memory.type),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.accent,
             )
@@ -311,15 +314,37 @@ internal fun MemoryRow(memory: MemoryDto, deleteLabel: String, onForget: () -> U
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(onClick = onForget, modifier = Modifier.size(38.dp)) {
+            IconButton(onClick = { confirming = true }, modifier = Modifier.size(48.dp)) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
                     contentDescription = deleteLabel,
                     tint = colors.danger,
-                    modifier = Modifier.size(19.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
+    }
+
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.memory_forget_title), color = colors.textPrimary) },
+            text = { Text(memory.summary, color = colors.textSecondary, maxLines = 3) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirming = false
+                    onForget()
+                }) {
+                    Text(deleteLabel, color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirming = false }) {
+                    Text(stringResource(R.string.memory_forget_cancel), color = colors.textSecondary)
+                }
+            },
+        )
     }
 }
 
@@ -343,11 +368,11 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
                     .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
-                    .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+                    .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${belief.kind.uppercase()} · ${belief.statusLabel()}",
+                        text = stringResource(R.string.belief_kind_and_status, rawLabel(belief.kind), belief.statusLabel()),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.accent,
                     )
@@ -433,7 +458,7 @@ private fun QuarantineTab(state: MemoryUiState, viewModel: MemoryViewModel) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = memory.type.uppercase(),
+                        text = rawLabel(memory.type),
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
                     )

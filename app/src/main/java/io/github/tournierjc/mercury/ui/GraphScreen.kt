@@ -301,7 +301,7 @@ private fun NodePanel(node: GraphNode, onClose: () -> Unit, modifier: Modifier =
             )
             Text(
                 text = buildString {
-                    append(node.type)
+                    append(rawLabel(node.type))
                     if (node.importance > 0.0) append(" · ").append((node.importance * 100).toInt()).append(" %")
                 },
                 style = MaterialTheme.typography.labelSmall,

@@ -131,7 +131,7 @@
     <string name="configure_permissions_title">Permissions</string>
     <string name="configure_permissions_unavailable">Permissions unavailable.</string>
     <string name="configure_permissions_filesystem">Filesystem</string>
-    <string name="configure_permissions_enabled">Enabled</string>
+    <string name="configure_permissions_enabled">Access</string>
     <string name="configure_permissions_no_scope">No scope declared.</string>
     <string name="configure_permissions_read">read</string>
     <string name="configure_permissions_write">write</string>

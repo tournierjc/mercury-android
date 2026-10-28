@@ -203,7 +203,7 @@ fun PluginsScreen(onBack: () -> Unit) {
             state.plugins.forEach { plugin ->
                 val version = plugin.version.takeIf { it.isNotBlank() }
                     ?.let { stringResource(R.string.configure_version, it) }
-                val family = listOf(plugin.kind, plugin.tier).filter { it.isNotBlank() }.joinToString(" · ")
+                val family = listOf(rawLabel(plugin.kind), rawLabel(plugin.tier)).filter { it.isNotBlank() }.joinToString(" · ")
                 val running = stringResource(
                     if (plugin.running) R.string.configure_plugin_running else R.string.configure_plugin_stopped,
                 )

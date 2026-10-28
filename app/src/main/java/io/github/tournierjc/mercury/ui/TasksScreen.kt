@@ -74,7 +74,7 @@ fun TasksScreen(onBack: () -> Unit) {
                 ActionRow(
                     title = agent["id"]?.jsonPrimitive?.content ?: stringResource(R.string.tasks_agent_sans_id),
                     subtitle = listOfNotNull(
-                        agent["state"]?.jsonPrimitive?.content,
+                        agent["state"]?.jsonPrimitive?.content?.let { rawLabel(it) },
                         agent["startedAt"]?.jsonPrimitive?.content,
                     ).joinToString(" · "),
                     trailing = "",

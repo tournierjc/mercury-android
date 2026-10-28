@@ -50,4 +50,6 @@
         <item quantity="one">%1$d lien</item>
         <item quantity="other">%1$d liens</item>
     </plurals>
+    <string name="memory_forget_title">Oublier ce souvenir ?</string>
+    <string name="memory_forget_cancel">Garder</string>
 </resources>

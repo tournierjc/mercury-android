@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Server vocabularies said in the owner's language. One key per raw word, so the UI never
+     shouts an English identifier at a French reader (design review, finding 12). -->
+<resources>
+    <string name="raw_identity">Identity</string>
+    <string name="raw_preference">Preference</string>
+    <string name="raw_goal">Goal</string>
+    <string name="raw_project">Project</string>
+    <string name="raw_habit">Habit</string>
+    <string name="raw_decision">Decision</string>
+    <string name="raw_constraint">Constraint</string>
+    <string name="raw_relationship">Relationship</string>
+    <string name="raw_episode">Episode</string>
+    <string name="raw_reflection">Reflection</string>
+    <string name="raw_fact">Fact</string>
+    <string name="raw_person">Person</string>
+    <string name="raw_emotion">Emotion</string>
+    <string name="raw_skill">Skill</string>
+    <string name="raw_idle">Idle</string>
+    <string name="raw_running">Running</string>
+    <string name="raw_queued">Queued</string>
+    <string name="raw_failed">Failed</string>
+    <string name="raw_paused">Paused</string>
+    <string name="raw_waiting">Waiting</string>
+    <string name="raw_completed">Completed</string>
+    <string name="raw_cancelled">Cancelled</string>
+    <string name="raw_done">Done</string>
+    <string name="raw_blocked">Blocked</string>
+    <string name="raw_tool">Tool</string>
+    <string name="raw_renderer">Renderer</string>
+    <string name="raw_channel">Channel</string>
+    <string name="raw_provider">Provider</string>
+    <string name="raw_plugin">Plugin</string>
+    <string name="raw_builtin">Built-in</string>
+    <string name="raw_community">Community</string>
+    <string name="raw_free">Free</string>
+    <string name="raw_paid">Paid</string>
+    <string name="raw_stdio">stdio</string>
+    <string name="raw_http">HTTP</string>
+    <string name="raw_streamable">Streamable HTTP</string>
+    <string name="raw_candidate">Candidate</string>
+    <string name="raw_confirmed">Confirmed</string>
+    <string name="raw_refuted">Refuted</string>
+    <string name="raw_superseded">Superseded</string>
+    <string name="raw_active">Active</string>
+    <string name="raw_dormant">Dormant</string>
+    <string name="raw_expired">Expired</string>
+    <!-- A belief line: its kind, then its status. -->
+    <string name="belief_kind_and_status">%1$s · %2$s</string>
+</resources>

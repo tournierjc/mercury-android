@@ -118,7 +118,7 @@ private fun PersonRow(person: PersonUi) {
         Column {
             person.relation.takeIf { it.isNotBlank() }?.let { relation ->
                 Text(
-                    text = relation.uppercase(),
+                    text = rawLabel(relation),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.accent,
                 )

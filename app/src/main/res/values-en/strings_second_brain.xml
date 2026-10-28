@@ -50,4 +50,6 @@
         <item quantity="one">%1$d link</item>
         <item quantity="other">%1$d links</item>
     </plurals>
+    <string name="memory_forget_title">Forget this memory?</string>
+    <string name="memory_forget_cancel">Keep</string>
 </resources>

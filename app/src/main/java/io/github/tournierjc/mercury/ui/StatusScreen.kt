@@ -177,7 +177,7 @@ private fun BrainSection(state: StatusUiState) {
         if (brain.byType.isNotEmpty()) {
             brain.byType.toList()
                 .sortedByDescending { it.second }
-                .forEach { (type, count) -> KeyValueRow(label = type, value = formatCount(count.toLong())) }
+                .forEach { (type, count) -> KeyValueRow(label = rawLabel(type), value = formatCount(count.toLong())) }
         } else {
             Text(
                 text = stringResource(R.string.status_memories_empty),

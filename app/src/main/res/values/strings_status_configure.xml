@@ -131,7 +131,7 @@
     <string name="configure_permissions_title">Permissions</string>
     <string name="configure_permissions_unavailable">Permissions indisponibles.</string>
     <string name="configure_permissions_filesystem">Système de fichiers</string>
-    <string name="configure_permissions_enabled">Activé</string>
+    <string name="configure_permissions_enabled">Accès</string>
     <string name="configure_permissions_no_scope">Aucun périmètre déclaré.</string>
     <string name="configure_permissions_read">lecture</string>
     <string name="configure_permissions_write">écriture</string>
