@@ -105,6 +105,7 @@ import io.github.tournierjc.mercury.data.NoticeSeverity
 import io.github.tournierjc.mercury.data.BotAutonomy
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
+import io.github.tournierjc.mercury.data.BotPermissionsDoc
 import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.data.Attachments
@@ -145,7 +146,12 @@ fun BotsScreen(
 
     // Inner depth goes first: a bot's page closes before Équipiers hands Back to the screen it came
     // from, which is what « back one step » means when the step is inside the screen.
-    BackHandler(enabled = state.selectedId != null) { viewModel.select(null) }
+    // A pending permissions edit comes first of all: closing the sheet would drop it, so Back asks
+    // instead of throwing the tap away.
+    val permissionsDirty = BotPermissionsDoc.isDirty(state.permissions, state.permissionsDraft)
+    var confirmLeave by remember { mutableStateOf(false) }
+    val leaveBot: () -> Unit = { if (permissionsDirty) confirmLeave = true else viewModel.select(null) }
+    BackHandler(enabled = state.selectedId != null) { leaveBot() }
     val avatars by viewModel.avatars.collectAsState()
     // Faces are fetched only for bots whose roster entry says they have one.
     LaunchedEffect(watch.bots) { viewModel.loadAvatars(watch.bots) }
@@ -173,7 +179,7 @@ fun BotsScreen(
             } else {
                 noticeText(BotJson.stateNotice(BotJson.state(selected)))
             },
-            onBack = { if (state.selectedId == null) onBack() else viewModel.select(null) },
+            onBack = { if (state.selectedId == null) onBack() else leaveBot() },
             onRefresh = viewModel::refreshRoster,
             refreshing = state.refreshing,
             leading = selected?.let { bot -> { BotFace(bot, state.selectedId?.let { avatars[it] }, small = true) } },
@@ -185,6 +191,20 @@ fun BotsScreen(
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.bots_cd_new_bot), tint = colors.accent)
                 }
             } else {
+                // The one explicit write of the sheet: dim while the document on screen is what the
+                // daemon holds, red as soon as an edit is pending. Red is not decoration — leaving
+                // without tapping it loses the edit, and the prompt below says so.
+                val saving = state.busy
+                IconButton(
+                    onClick = { viewModel.savePermissionsDraft(state.selectedId!!) },
+                    enabled = permissionsDirty && !saving,
+                ) {
+                    Icon(
+                        Icons.Rounded.Check,
+                        contentDescription = stringResource(R.string.bots_perm_cd_save),
+                        tint = if (permissionsDirty) colors.danger else colors.textSecondary.copy(alpha = 0.4f),
+                    )
+                }
                 // The conversation is one tap away from the sheet, like in the chat's top bar.
                 IconButton(onClick = { onOpenChat(state.selectedId!!) }) {
                     Icon(
@@ -194,6 +214,30 @@ fun BotsScreen(
                     )
                 }
             }
+        }
+        if (confirmLeave) {
+            AlertDialog(
+                onDismissRequest = { confirmLeave = false },
+                containerColor = colors.surface,
+                title = { Text(stringResource(R.string.bots_perm_unsaved_title), color = colors.textPrimary) },
+                text = { Text(stringResource(R.string.bots_perm_unsaved_body), color = colors.textSecondary) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            confirmLeave = false
+                            viewModel.discardPermissionsDraft()
+                            viewModel.select(null)
+                        },
+                    ) {
+                        Text(stringResource(R.string.bots_perm_unsaved_leave), color = colors.danger)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmLeave = false }) {
+                        Text(stringResource(R.string.bots_perm_unsaved_stay), color = colors.textPrimary)
+                    }
+                },
+            )
         }
         if (showNewBot) {
             NewBotDialog(
@@ -575,6 +619,9 @@ private fun BotDetail(
     var showNewCrew by remember { mutableStateOf(false) }
     var showModelPicker by remember { mutableStateOf(false) }
     val bot = (state.manifest ?: watch.bots.firstOrNull { BotJson.id(it) == id }) ?: return
+    // A tier is written through its own route, which rewrites the whole file: applying one while a
+    // permissions edit is pending would drop it. The cells go inert until the edit is saved.
+    val permissionsDirty = BotPermissionsDoc.isDirty(state.permissions, state.permissionsDraft)
     val live = watch.activity[id].orEmpty().ifBlank { BotJson.activity(bot) }
 
     var dispatchText by remember { mutableStateOf("") }
@@ -912,7 +959,8 @@ private fun BotDetail(
                         // Tapping the active tier takes it back: a choice you cannot undo is not
                         // a choice. It returns the bot to the daemon's default document, which
                         // belongs to no tier — hence no cell lit, which is a real state.
-                        .clickable {
+                        // Inert while a fine edit is pending: the tier route replaces the file.
+                        .clickable(enabled = !permissionsDirty) {
                             if (tier == tierId) viewModel.clearTier(id) else viewModel.setTier(id, tierId)
                         }
                         .padding(vertical = 9.dp),
@@ -943,6 +991,16 @@ private fun BotDetail(
         }
         // Les permissions fines vivent dans le même fichier que le palier : l'éditeur fusionne
         // chaque modification avec le document chargé, il ne réécrit que la clé touchée.
+        if (permissionsDirty) {
+            // Without this line the inert cells above read as a bug rather than as an order of
+            // operations: the save button is up in the header, not next to the tiers.
+            Text(
+                text = stringResource(R.string.bots_perm_tier_locked),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+            )
+        }
         BotPermissionsEditor(state = state, viewModel = viewModel)
     }
 

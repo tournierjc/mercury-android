@@ -58,6 +58,16 @@ object BotPermissionsDoc {
         strings((doc?.get(TOOLS) as? JsonObject)?.get(key) as? JsonArray)
 
     /**
+     * Whether [draft] holds something [stored] does not.
+     *
+     * The save button and the "you are about to lose this" prompt both hang off this. Keying them on
+     * "a draft exists" was wrong: flipping a switch on and back off left the button lit and the
+     * prompt armed for a change that no longer exists. A draft equal to the stored document is not an
+     * edit — including the case where neither exists.
+     */
+    fun isDirty(stored: JsonObject?, draft: JsonObject?): Boolean = draft != null && draft != stored
+
+    /**
      * The document with [grant] written under `paths`, at the position the scope already had.
      *
      * A blank scope is not a path — the field is empty while it is being typed, and writing `""`

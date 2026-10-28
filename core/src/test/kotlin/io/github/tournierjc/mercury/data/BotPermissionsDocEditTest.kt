@@ -92,4 +92,29 @@ class BotPermissionsDocEditTest {
         assertTrue(BotPermissionsDoc.splitList("   \n , ").isEmpty())
         assertEquals(document(), BotPermissionsDoc.renamePath(document(), "", "/x"))
     }
+
+    @Test
+    fun `a draft that says what the file says is not an edit`() {
+        // Toggling a switch on and back off must leave the save button grey and the prompt unarmed:
+        // keying both on "a draft exists" made them shout about a change that no longer exists.
+        val stored = document()
+
+        assertEquals(false, BotPermissionsDoc.isDirty(stored, null))
+        assertEquals(false, BotPermissionsDoc.isDirty(stored, stored))
+        assertEquals(false, BotPermissionsDoc.isDirty(null, null))
+        assertTrue(BotPermissionsDoc.isDirty(stored, BotPermissionsDoc.withPath(stored, BotPermissionsDoc.PathGrant("/srv", read = true))))
+        assertTrue(BotPermissionsDoc.isDirty(null, stored))
+    }
+
+    @Test
+    fun `an edit undone by hand reads as clean again`() {
+        val stored = document()
+        val edited = BotPermissionsDoc.withPath(stored, BotPermissionsDoc.PathGrant("/srv", read = true))
+        val undone = BotPermissionsDoc.withoutPath(edited, "/srv")
+
+        assertTrue(BotPermissionsDoc.isDirty(stored, edited))
+        // Removing the row gives back the same document — key order included, which is why the
+        // comparison can be structural.
+        assertEquals(false, BotPermissionsDoc.isDirty(stored, undone))
+    }
 }

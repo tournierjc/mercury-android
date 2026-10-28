@@ -12,6 +12,7 @@ import io.github.tournierjc.mercury.data.BotAutonomy
 import kotlinx.serialization.json.put
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
+import io.github.tournierjc.mercury.data.BotPermissionsDoc
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
@@ -51,6 +52,13 @@ data class BotsUiState(
     val persona: String = "",
     val personaLoaded: Boolean = false,
     val permissions: JsonObject? = null,
+    /**
+     * The permissions document being edited. Null means "nothing pending", so every screen keeps
+     * reading [permissions]; a draft equal to it is not an edit either
+     * (`BotPermissionsDoc.isDirty`). Saving is an explicit tap on the sheet's header button, which
+     * is what makes the "your changes will be lost" prompt possible.
+     */
+    val permissionsDraft: JsonObject? = null,
     val crew: BotCrewResponse? = null,
     val tasks: List<JsonObject> = emptyList(),
     val journal: List<JsonObject> = emptyList(),
@@ -198,6 +206,7 @@ class BotsViewModel(
                 persona = "",
                 personaLoaded = false,
                 permissions = null,
+                permissionsDraft = null,
                 crew = null,
                 tasks = emptyList(),
                 journal = emptyList(),
@@ -539,19 +548,41 @@ class BotsViewModel(
     }
 
     /**
-     * Writes a whole permissions document and keeps the answer.
+     * Records an edit to the permissions document without sending it.
      *
-     * [doc] must be built from the document already loaded — `BotPermissionsDoc` merges one edit
-     * into it. `PUT /api/bots/:id/permissions` replaces the file, so a document built from scratch
-     * would erase the tier and every key the editor does not show.
+     * The sheet used to write on every tap, which left nothing to save and nothing to warn about
+     * when the owner backed out mid-edit. Edits now accumulate here, and the header button is the
+     * only thing that talks to the daemon.
      */
-    fun savePermissions(id: String, doc: JsonObject) {
+    fun draftPermissions(doc: JsonObject) {
+        _state.update { it.copy(permissionsDraft = doc) }
+    }
+
+    /** Throws the pending edit away — after the prompt, or when the sheet is left. */
+    fun discardPermissionsDraft() {
+        _state.update { it.copy(permissionsDraft = null) }
+    }
+
+    /**
+     * Writes the pending document and keeps the answer.
+     *
+     * The draft is cleared only on success: a failed write leaves the owner's edits on screen, where
+     * they can be retried, instead of dropping them into an error banner.
+     */
+    fun savePermissionsDraft(id: String) {
+        val draft = _state.value.permissionsDraft ?: return
+        if (!BotPermissionsDoc.isDirty(_state.value.permissions, draft)) {
+            // Nothing changed, so there is nothing to write: a round trip for an identical document
+            // only risks a version conflict on the daemon's side.
+            _state.update { it.copy(permissionsDraft = null) }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
-            runCatching { api.setBotPermissionsDoc(id, doc) }
+            runCatching { api.setBotPermissionsDoc(id, draft) }
                 .onSuccess { result ->
                     val stored = result["permissions"] as? JsonObject
-                    _state.update { s -> s.copy(busy = false, permissions = stored ?: s.permissions) }
+                    _state.update { s -> s.copy(busy = false, permissions = stored ?: draft, permissionsDraft = null) }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }

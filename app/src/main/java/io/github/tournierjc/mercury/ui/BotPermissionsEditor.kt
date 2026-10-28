@@ -50,13 +50,15 @@ import kotlinx.serialization.json.JsonObject
  */
 @Composable
 fun BotPermissionsEditor(state: BotsUiState, viewModel: BotsViewModel) {
-    val id = state.selectedId ?: return
+    // A bot is selected; without one there is nothing to edit or to warn about.
+    state.selectedId ?: return
     // No document, no editor: without the loaded file there is nothing to merge into, and a fresh
     // document would erase the tier and every grant it does not mention.
-    val doc = state.permissions ?: return
+    val doc = state.permissionsDraft ?: state.permissions ?: return
     val colors = LocalMercuryColors.current
+    // Edits are local until the header's save button: a tap on a chip is a decision, not a write.
     val enabled = !state.busy
-    val commit: (JsonObject) -> Unit = { next -> viewModel.savePermissions(id, next) }
+    val commit: (JsonObject) -> Unit = { next -> viewModel.draftPermissions(next) }
 
     SectionTitle(stringResource(R.string.bots_perm_paths_title))
     val grants = BotPermissionsDoc.paths(doc)

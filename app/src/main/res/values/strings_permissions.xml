@@ -23,5 +23,11 @@
     <string name="bots_perm_tools_deny">Outils interdits</string>
     <string name="bots_perm_tools_hint">Noms d\'outils, séparés par des virgules</string>
     <string name="bots_perm_cd_apply">Appliquer</string>
+    <string name="bots_perm_cd_save">Enregistrer les permissions</string>
+    <string name="bots_perm_tier_locked">Enregistre d\'abord : un palier réécrit tout le fichier.</string>
+    <string name="bots_perm_unsaved_title">Permissions non enregistrées</string>
+    <string name="bots_perm_unsaved_body">Les modifications ne sont pas écrites. Quitter maintenant les perd.</string>
+    <string name="bots_perm_unsaved_leave">Quitter sans enregistrer</string>
+    <string name="bots_perm_unsaved_stay">Rester</string>
     <string name="bots_perm_note">Un déni l\'emporte sur une autorisation, et le démon refuse « * » en auto-approbation.</string>
 </resources>

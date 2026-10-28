@@ -23,5 +23,11 @@
     <string name="bots_perm_tools_deny">Denied tools</string>
     <string name="bots_perm_tools_hint">Tool names, separated by commas</string>
     <string name="bots_perm_cd_apply">Apply</string>
+    <string name="bots_perm_cd_save">Save permissions</string>
+    <string name="bots_perm_tier_locked">Save first: a tier rewrites the whole file.</string>
+    <string name="bots_perm_unsaved_title">Unsaved permissions</string>
+    <string name="bots_perm_unsaved_body">Your changes are not written. Leaving now loses them.</string>
+    <string name="bots_perm_unsaved_leave">Leave without saving</string>
+    <string name="bots_perm_unsaved_stay">Stay</string>
     <string name="bots_perm_note">A denial beats an allowance, and the daemon refuses “*” in auto-approval.</string>
 </resources>
