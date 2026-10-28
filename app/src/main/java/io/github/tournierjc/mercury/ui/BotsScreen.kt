@@ -189,7 +189,7 @@ fun BotsScreen(
                 },
             )
         }
-        state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
+        state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
         // A downloaded deliverable is handed to the share sheet from the screen: the

@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.data.toNotice
 
 data class SettingsUiState(
     val loading: Boolean = true,
@@ -30,8 +33,9 @@ data class SettingsUiState(
     val providerTest: ProviderTestResult? = null,
     val providerTestFor: String = "",
     val busy: Boolean = false,
-    val message: String? = null,
-    val error: String? = null,
+    /** What the last finished action says (a key, resolved by the screen). */
+    val message: Notice? = null,
+    val error: Notice? = null,
 )
 
 /**
@@ -79,7 +83,7 @@ class SettingsViewModel(
             _state.update { it.copy(busy = true, error = null, message = null) }
             try {
                 api.switchModel(provider, model)
-                _state.update { it.copy(busy = false, message = "Modèle actif : $model") }
+                _state.update { it.copy(busy = false, message = Notice(NoticeKey.MODEL_ACTIVE, args = listOf(model))) }
                 refresh()
             } catch (e: Exception) {
                 _state.update { it.copy(busy = false, error = e.readable()) }
@@ -109,7 +113,7 @@ class SettingsViewModel(
                 )
             }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = "Fournisseur $id enregistré — redémarrage requis") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.PROVIDER_SAVED, args = listOf(id))) }
                     refresh()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
@@ -123,7 +127,9 @@ class SettingsViewModel(
                 .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
                 .onFailure { e ->
                     _state.update {
-                        it.copy(providerTest = ProviderTestResult(success = false, error = e.readable()), providerTestFor = id)
+                        // The DTO mirrors the server's own answer: its `error` is server words
+                        // (the `detail` of the contract), not a sentence this app writes.
+                        it.copy(providerTest = ProviderTestResult(success = false, error = e.message.orEmpty()), providerTestFor = id)
                     }
                 }
         }
@@ -138,7 +144,7 @@ class SettingsViewModel(
                     it.copy(
                         busy = false,
                         settings = settings,
-                        message = if (enabled) "Outils approuvés automatiquement" else "Demande d'approbation rétablie",
+                        message = Notice(if (enabled) NoticeKey.BYPASS_APPROVED else NoticeKey.BYPASS_ASKED),
                     )
                 }
             } catch (e: Exception) {
@@ -158,7 +164,7 @@ class SettingsViewModel(
     fun renameModel(provider: String, model: String, label: String) {
         viewModelScope.launch {
             runCatching { api.setModelPrefs(provider, model, label = label.ifBlank { null }) }
-                .onSuccess { _state.update { it.copy(message = "Libellé enregistré") }; refresh() }
+                .onSuccess { _state.update { it.copy(message = Notice(NoticeKey.LABEL_SAVED)) }; refresh() }
                 .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
         }
     }
@@ -168,7 +174,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null, message = null) }
             runCatching { api.changePassword(currentPassword, newPassword) }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = "Mot de passe modifié") } }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.PASSWORD_CHANGED)) } }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
@@ -179,7 +185,7 @@ class SettingsViewModel(
             runCatching { api.changeUsername(currentPassword, newUsername) }
                 .onSuccess {
                     container.lastUsername = newUsername
-                    _state.update { s -> s.copy(busy = false, message = "Identifiant modifié") }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.USERNAME_CHANGED)) }
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
@@ -188,7 +194,7 @@ class SettingsViewModel(
     fun logoutServer() {
         viewModelScope.launch {
             runCatching { api.logout() }
-            _state.update { it.copy(message = "Session révoquée côté serveur") }
+            _state.update { it.copy(message = Notice(NoticeKey.SESSION_REVOKED)) }
         }
     }
 
@@ -196,10 +202,8 @@ class SettingsViewModel(
         _state.update { it.copy(message = null, error = null) }
     }
 
-    private fun Throwable.readable(): String = when (this) {
-        is AuthException -> "Session expirée — reconnecte-toi"
-        else -> message ?: "Requête refusée"
-    }
+    /** One mapping for the whole app (see `toNotice`), no local copy of the wording. */
+    private fun Throwable.readable(): Notice = toNotice()
 
     companion object {
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {

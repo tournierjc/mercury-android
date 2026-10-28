@@ -86,8 +86,8 @@ fun MemoryScreen(onBack: () -> Unit) {
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
-        state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
-        state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
+        state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
+        state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
         // One segmented row: four tabs on a phone, the active one underlined in the accent.
         // Chips wrapped onto a second line and read as filters, not as sections.
