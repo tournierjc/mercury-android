@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La section « Routines » de la fiche d'un équipier : les créneaux cron qui le réveillent. -->
+<resources>
+    <string name="routines_section_title">Routines</string>
+    <string name="routines_empty">Aucune routine. Une routine est un créneau qui réveille l\'équipier avec un prompt — par exemple chaque matin à 7 h pour un résumé.</string>
+    <string name="routines_action_add">Ajouter une routine</string>
+    <string name="routines_action_edit">Modifier</string>
+    <string name="routines_action_delete">Supprimer</string>
+    <string name="routines_action_save">Enregistrer</string>
+    <string name="routines_action_cancel">Annuler</string>
+    <string name="routines_action_show_prompt">Voir le prompt</string>
+    <string name="routines_action_hide_prompt">Masquer le prompt</string>
+
+    <string name="routines_label_name">Nom</string>
+    <string name="routines_label_cron">Cron (5 champs)</string>
+    <string name="routines_label_prompt">Prompt envoyé à l\'équipier</string>
+    <string name="routines_label_deliver">Livraison</string>
+    <string name="routines_label_expects">Ce que ça produit</string>
+    <string name="routines_label_interval">Intervalle min. (minutes)</string>
+    <string name="routines_label_gate">Script de garde</string>
+    <string name="routines_hint_interval">Aucun</string>
+    <string name="routines_cron_example">0 7 * * *</string>
+    <string name="routines_error_cron">Expression invalide : cinq champs — minutes, heures, jour, mois, jour de la semaine.</string>
+
+    <string name="routines_value_deliver_bot_chat">Conversation</string>
+    <string name="routines_value_deliver_telegram">Telegram</string>
+    <string name="routines_value_deliver_none">Aucune</string>
+    <string name="routines_value_expects_work">Travail</string>
+    <string name="routines_value_expects_check">Vérification</string>
+    <string name="routines_badge_interval">%1$d min</string>
+
+    <string name="routines_confirm_delete_title">Supprimer « %1$s » ?</string>
+    <string name="routines_confirm_delete_body">La routine sera retirée du manifeste de l\'équipier.</string>
+    <string name="routines_cd_edit">Modifier %1$s</string>
+    <string name="routines_cd_delete">Supprimer %1$s</string>
+</resources>

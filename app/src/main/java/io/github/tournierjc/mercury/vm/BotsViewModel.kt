@@ -12,6 +12,7 @@ import io.github.tournierjc.mercury.data.BotAutonomy
 import kotlinx.serialization.json.put
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
+import io.github.tournierjc.mercury.data.BotRoutines
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
@@ -473,6 +474,41 @@ class BotsViewModel(
 
     fun setDailyBudget(id: String, tokens: Int) =
         setAutonomyLimit(id, BotAutonomy.DAILY_TOKENS, tokens)
+
+    /**
+     * Writes one routine, with the list rebuilt from the manifest the sheet already holds.
+     *
+     * `PATCH /api/bots/:id` replaces `schedules` wholesale, exactly like `autonomy`: sending a
+     * single entry would drop every other routine without a word of complaint from the daemon.
+     */
+    fun saveRoutine(id: String, routine: BotRoutines.Routine) {
+        // The form refuses to send an invalid one, so this is the belt to its braces: a malformed
+        // cron reaches the daemon, which stores it and never fires it, and nothing on screen says so.
+        if (!BotRoutines.isValid(routine)) return
+        writeSchedules(id, BotRoutines.upsert(BotRoutines.list(_state.value.manifest), routine))
+    }
+
+    /** Drops one routine by name; the rest of the array goes back whole, for the same reason. */
+    fun deleteRoutine(id: String, name: String) {
+        writeSchedules(id, BotRoutines.remove(BotRoutines.list(_state.value.manifest), name))
+    }
+
+    private fun writeSchedules(id: String, routines: List<JsonObject>) {
+        val body = buildJsonObject {
+            put(BotRoutines.KEY, BotRoutines.serialize(routines))
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            runCatching { api.patchBot(id, body) }
+                .onSuccess {
+                    // No banner: the list redrawing itself from the refreshed manifest is the
+                    // answer, and a notice above it shifted the whole sheet on every save.
+                    _state.update { s -> s.copy(busy = false) }
+                    refreshManifest(id)
+                }
+                .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
+        }
+    }
 
     fun savePersona(text: String) {
         val id = _state.value.selectedId ?: return
