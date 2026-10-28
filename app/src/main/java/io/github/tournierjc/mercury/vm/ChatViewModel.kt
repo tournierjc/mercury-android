@@ -42,6 +42,14 @@ class ChatViewModel(
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
+    /**
+     * True until the first round-trip of a session lands. The screen draws a moving line for it: the
+     * app used to jump from an empty transcript to a full one with nothing in between, which reads
+     * exactly like "your threads are gone" for as long as the network takes.
+     */
+    private val _syncing = MutableStateFlow(api.hasSession())
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+
     private var eventsJob: Job? = null
     private var streamSession: String? = null
 
@@ -117,6 +125,8 @@ class ChatViewModel(
                         _signedIn.value = false
                     }
                 }
+            // Arrived or failed, the startup sync is over: a line that never stops is a lie.
+            _syncing.value = false
         }
     }
 

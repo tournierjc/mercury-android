@@ -13,6 +13,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -113,6 +120,8 @@ fun ChatScreen(
     /** Bumped on every tap of a notification, so tapping the same bot twice still arrives. */
     openBotNonce: Int = 0,
     onOpenBotConsumed: () -> Unit = {},
+    /** True while the first threads/fleet round-trip is in flight (see ChatViewModel.syncing). */
+    syncing: Boolean = false,
 ) {
     val colors = LocalMercuryColors.current
     var screen by rememberSaveable { mutableStateOf(Screen.Chat) }
@@ -406,6 +415,7 @@ fun ChatScreen(
                     ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
                     onMenu = { scope.launch { drawerState.open() } },
                     onNewChat = null,
+                    syncing = syncing,
                     avatar = { if (bot != null) BotFace(bot, botAvatars[botId], small = true) },
                     actions = {
                         IconButton(onClick = { showBotDeliverables = true }) {
@@ -499,6 +509,7 @@ fun ChatScreen(
                 subtitle = listOf(state.provider, state.model).filter { it.isNotBlank() }.joinToString(" · "),
                 onMenu = { scope.launch { drawerState.open() } },
                 onNewChat = onNewChat,
+                syncing = syncing,
             )
 
             Box(modifier = Modifier.weight(1f)) {
@@ -593,8 +604,11 @@ internal fun TopBar(
     avatar: (@Composable () -> Unit)? = null,
     /** Right of the title: the actions of the current conversation. */
     actions: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
+    /** Draws the startup sync line under the title while the first round-trip is in flight. */
+    syncing: Boolean = false,
 ) {
     val colors = LocalMercuryColors.current
+    Column(modifier = Modifier.fillMaxWidth()) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -638,6 +652,31 @@ internal fun TopBar(
             }
             else -> Box(modifier = Modifier.padding(horizontal = 24.dp))
         }
+    }
+        SyncLine(visible = syncing)
+    }
+}
+
+/**
+ * The startup sync, as a line that fills and empties under the title. It is the only animation in
+ * the app on purpose: it marks the one moment where the screen is telling the truth about not
+ * knowing yet, and it leaves on its own once the first round-trip lands.
+ */
+@Composable
+private fun SyncLine(visible: Boolean) {
+    val colors = LocalMercuryColors.current
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp),
+            color = colors.accent,
+            trackColor = colors.hairline,
+        )
     }
 }
 
