@@ -75,12 +75,22 @@ class BrainContractTest {
             {"identity":{"name":"Mercury","owner":"JC","creator":"Cosmic Stack","about":""},"defaultProvider":"deepseek","tokenBudget":200000,"heartbeatInterval":60,"telegramEnabled":false,"secondBrainEnabled":true}
         """.trimIndent()
 
-        val config = json.decodeFromString(ConfigDto.serializer(), payload)
+        val config = json.decodeFromString(InstanceConfig.serializer(), payload)
 
         assertEquals("JC", config.identity.owner)
         assertEquals(200_000L, config.tokenBudget)
         assertTrue(config.secondBrainEnabled)
         assertFalse(config.telegramEnabled)
+    }
+
+    @Test
+    fun `the config write answers with the restart it asks for`() {
+        // The route reads provider and budget at boot; the app must be able to say so instead of
+        // implying the change is live.
+        val saved = json.decodeFromString(InstanceConfigSave.serializer(), """{"success":true,"restartRequired":true}""")
+
+        assertTrue(saved.success)
+        assertTrue(saved.restartRequired)
     }
 
     @Test
