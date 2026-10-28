@@ -73,6 +73,9 @@ enum class NoticeKey {
     /** The session token is no longer accepted: sign in again. */
     SESSION_EXPIRED,
 
+    /** The sign-in itself was refused: wrong password, unknown user. */
+    CREDENTIALS_REFUSED,
+
     /** The request failed for a reason only the server can name; `detail` carries it. */
     REQUEST_REFUSED,
 
@@ -195,6 +198,8 @@ enum class NoticeKey {
  * per ViewModel: the six copies drifted, and each of them spelled its French in place.
  */
 fun Throwable.toNotice(): Notice = when (this) {
+    // Ordered: the refusal happens *while* signing in, so it must not say "sign in again".
+    is CredentialsRefusedException -> Notice(NoticeKey.CREDENTIALS_REFUSED)
     is AuthException -> Notice(NoticeKey.SESSION_EXPIRED)
     else -> Notice(NoticeKey.REQUEST_REFUSED).withDetail(message)
 }

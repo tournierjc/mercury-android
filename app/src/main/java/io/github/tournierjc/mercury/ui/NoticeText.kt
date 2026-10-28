@@ -32,6 +32,7 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.RESTART_REFUSED -> R.string.notice_restart_refused
     NoticeKey.ATTACHMENT_TOO_LARGE -> R.string.notice_attachment_too_large
     NoticeKey.SERVER_WARNING -> R.string.notice_server_warning
+    NoticeKey.CREDENTIALS_REFUSED -> R.string.notice_credentials_refused
     NoticeKey.SESSION_EXPIRED -> R.string.notice_session_expired
     NoticeKey.REQUEST_REFUSED -> R.string.notice_request_refused
     NoticeKey.CREW_PHOTO_SAVED -> R.string.notice_crew_photo_saved

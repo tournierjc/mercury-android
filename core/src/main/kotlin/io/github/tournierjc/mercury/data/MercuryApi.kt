@@ -102,7 +102,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class MercuryException(message: String) : IOException(message)
 
-class AuthException(message: String) : IOException(message)
+open class AuthException(message: String) : IOException(message)
+
+/**
+ * The sign-in was refused (wrong password, unknown user) — not the same thing as a session that
+ * expired mid-use, and it must not tell the owner to sign in again when they are signing in.
+ */
+class CredentialsRefusedException(message: String) : AuthException(message)
 
 /**
  * Thin client over the HTTP API that Mercury's web dashboard already exposes
@@ -147,7 +153,7 @@ class MercuryApi(
                 when {
                     response.code in 200..399 -> Unit
                     response.code == 401 || response.code == 403 ->
-                        throw AuthException("Identifiants refusés par Mercury")
+                        throw CredentialsRefusedException("sign-in refused")
 
                     else -> throw MercuryException("Échec de connexion : HTTP ${response.code}")
                 }
@@ -248,7 +254,7 @@ class MercuryApi(
                     val parsed = json.parseToJsonElement(body) as JsonObject
                     (parsed["error"] as? JsonPrimitive)?.contentOrNull
                 }.getOrNull()
-                throw MercuryException(reason ?: "Création refusée (${response.code})")
+                throw MercuryException(reason ?: "create: HTTP ${response.code}")
             }
             json.parseToJsonElement(body) as JsonObject
         }
@@ -337,7 +343,7 @@ class MercuryApi(
                 .build()
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
-                if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+                if (response.code == 401 || response.code == 403) throw AuthException("session expired")
                 runCatching { json.decodeFromString(BotDispatch.serializer(), body) }.getOrNull()
                     ?: BotDispatch(accepted = false, reasonCode = if (body.isBlank()) "HTTP ${response.code}" else body.take(120))
             }
@@ -376,9 +382,9 @@ class MercuryApi(
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
                         throw if (response.code == 401) {
-                            AuthException("Session expirée")
+                            AuthException("session expired")
                         } else {
-                            MercuryException("Flux équipiers indisponible : HTTP ${response.code}")
+                            MercuryException("crew stream: HTTP ${response.code}")
                         }
                     }
                     val source = response.body?.source() ?: run { close(); return@use }
@@ -416,7 +422,7 @@ class MercuryApi(
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
                         throw if (response.code == 401 || response.code == 403) {
-                            AuthException("Session expirée")
+                            AuthException("session expired")
                         } else {
                             MercuryException("Flux du plateau indisponible : HTTP ${response.code}")
                         }
@@ -781,7 +787,7 @@ class MercuryApi(
                     fileName = DownloadedAttachment.fileNameFrom(response.header("Content-Disposition")),
                 )
 
-                response.code == 401 || response.code == 403 -> throw AuthException("Session expirée")
+                response.code == 401 || response.code == 403 -> throw AuthException("session expired")
                 else -> throw MercuryException(
                     apiError(body?.string().orEmpty()) ?: "HTTP ${response.code}",
                 )
@@ -967,7 +973,7 @@ class MercuryApi(
             .build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (response.code == 401) throw AuthException("Session expirée")
+            if (response.code == 401) throw AuthException("session expired")
             runCatching { json.decodeFromString(ShutdownResult.serializer(), body) }.getOrNull()
                 ?: ShutdownResult(ok = false, error = body.take(160).ifBlank { "HTTP ${response.code}" })
         }
@@ -1034,7 +1040,7 @@ class MercuryApi(
             .build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+            if (response.code == 401 || response.code == 403) throw AuthException("session expired")
             runCatching { json.decodeFromString(ProviderTestResult.serializer(), body) }.getOrNull()
                 ?: ProviderTestResult(
                     success = false,
@@ -1131,7 +1137,7 @@ class MercuryApi(
             .build()
         client.newCall(request).execute().use { response ->
             when {
-                response.code == 401 || response.code == 403 -> throw AuthException("Session expirée")
+                response.code == 401 || response.code == 403 -> throw AuthException("session expired")
                 response.code == 404 -> throw MercuryException("Livrable introuvable")
                 !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
                 else -> response.body?.bytes() ?: ByteArray(0)
@@ -1159,7 +1165,7 @@ class MercuryApi(
             .build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+            if (response.code == 401 || response.code == 403) throw AuthException("session expired")
             runCatching { json.decodeFromString(DlqReplay.serializer(), body) }.getOrNull()
                 ?: DlqReplay(accepted = false, reasonCode = "HTTP ${response.code}")
         }
@@ -1242,7 +1248,7 @@ class MercuryApi(
                 .build()
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
-                if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+                if (response.code == 401 || response.code == 403) throw AuthException("session expired")
                 runCatching { json.decodeFromString(BundleImportResponse.serializer(), body) }.getOrNull()
                     ?: BundleImportResponse(error = body.take(160).ifBlank { "HTTP ${response.code}" })
             }
@@ -1410,7 +1416,7 @@ class MercuryApi(
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
                         throw if (response.code == 401) {
-                            AuthException("Session expirée")
+                            AuthException("session expired")
                         } else {
                             MercuryException("Flux SSE indisponible : HTTP ${response.code}")
                         }
@@ -1522,7 +1528,7 @@ class MercuryApi(
         client.newCall(request).execute().use { response ->
             when {
                 response.code == 404 -> null
-                response.code == 401 || response.code == 403 -> throw AuthException("Session expirée")
+                response.code == 401 || response.code == 403 -> throw AuthException("session expired")
                 !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
                 else -> response.body?.bytes()
             }
@@ -1578,7 +1584,7 @@ class MercuryApi(
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                if (response.code == 401 || response.code == 403) throw AuthException("Session expirée")
+                if (response.code == 401 || response.code == 403) throw AuthException("session expired")
                 throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
             }
             body

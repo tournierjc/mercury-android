@@ -15,6 +15,7 @@
     <string name="notice_restart_refused">Relance refusée</string>
     <string name="notice_attachment_too_large">%1$s dépasse %2$s Mo</string>
     <string name="notice_server_warning">Avertissement du serveur</string>
+    <string name="notice_credentials_refused">Identifiants refusés</string>
     <string name="notice_session_expired">Session expirée — reconnecte-toi</string>
     <string name="notice_request_refused">Requête refusée</string>
     <string name="notice_crew_photo_saved">Photo enregistrée</string>
