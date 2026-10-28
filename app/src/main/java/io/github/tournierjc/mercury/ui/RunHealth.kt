@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -213,11 +215,17 @@ fun DlqSection(
                 onClick = { onReplay(job) },
             )
         }
-        ButtonRow {
-            TextButton(onClick = { confirmClear = true }, enabled = !busy) {
-                Text(stringResource(R.string.run_purge), color = colors.danger)
-            }
-        }
+        IconActionBar(
+            listOf(
+                QuickAction(
+                    icon = Icons.Rounded.DeleteSweep,
+                    label = stringResource(R.string.run_purge),
+                    tint = colors.danger,
+                    enabled = !busy,
+                    onClick = { confirmClear = true },
+                ),
+            ),
+        )
     }
 
     if (confirmClear) {

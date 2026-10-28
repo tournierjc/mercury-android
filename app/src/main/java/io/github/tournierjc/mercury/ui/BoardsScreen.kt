@@ -502,7 +502,7 @@ private fun CardColumns(
         return
     }
     state.grouped.forEach { (status, cards) ->
-        CollapsibleSection("$status · ${cards.size}", stateKey = "board-status-$status") {
+        CollapsibleSection("$status · ${cards.size}", defaultOpen = true, stateKey = "board-status-$status") {
             cards.forEach { card ->
                 val cardId = BoardJson.id(card)
                 ActionRow(

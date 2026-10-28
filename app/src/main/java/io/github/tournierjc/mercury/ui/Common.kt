@@ -116,14 +116,16 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
  * default, the sheet becomes a list of names you can scan and open one at a time; the two the
  * screen exists for (the summary and "write to it") are passed `defaultOpen = true`.
  *
- * `rememberSaveable(title)` keeps one section's state across a rotation without tying it to a
- * sibling's.
+ * `rememberSaveable` keeps one section's state across a rotation without tying it to a sibling's.
+ * The key is `stateKey` when given, the title otherwise — so a heading whose text moves with its
+ * own count (`bots_section_waiting`, 3 → 4) must pass a stable `stateKey`, or the section folds
+ * and unfolds every time that number changes.
  */
 @Composable
 fun CollapsibleSection(
     title: String,
     defaultOpen: Boolean = false,
-    /** Save key when the title itself moves (a status heading carrying its card count). */
+    /** Stable save key for a heading whose text carries a count; the title is the key otherwise. */
     stateKey: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -427,19 +429,3 @@ fun JsonObject.detailHint(): String {
     return parts.joinToString(" · ")
 }
 
-/** Row of compact text actions under a list entry (start/stop/delete…). */
-@Composable
-@OptIn(ExperimentalLayoutApi::class)
-fun ButtonRow(content: @Composable () -> Unit) {
-    // FlowRow, not Row: four actions in a card overflowed on a phone and the last one
-    // ("Désactiver") was pushed off the screen edge instead of wrapping.
-    FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp)
-            .background(LocalMercuryColors.current.surfaceMuted, MaterialTheme.shapes.extraSmall)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.Center,
-    ) { content() }
-}

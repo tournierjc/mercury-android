@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Image
@@ -415,9 +416,15 @@ fun BotDeliverablesSheet(
                 onShare = onShare,
                 onDelete = onDelete,
             )
-            ButtonRow {
-                TextButton(onClick = onReload) { Text(stringResource(R.string.out_refresh)) }
-            }
+            IconActionBar(
+                listOf(
+                    QuickAction(
+                        icon = Icons.Rounded.Refresh,
+                        label = stringResource(R.string.out_refresh),
+                        onClick = onReload,
+                    ),
+                ),
+            )
         }
     }
 }
