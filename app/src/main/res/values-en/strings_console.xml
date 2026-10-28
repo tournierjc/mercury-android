@@ -18,7 +18,6 @@
     <string name="console_safe_mode_on">on</string>
 
     <!-- Programming mode -->
-    <string name="console_section_programming_mode">Programming mode</string>
     <string name="console_unavailable_on_runtime">Unavailable on this runtime.</string>
 
     <!-- Background tasks -->

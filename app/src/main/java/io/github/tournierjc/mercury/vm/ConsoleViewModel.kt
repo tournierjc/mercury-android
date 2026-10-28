@@ -77,7 +77,6 @@ data class ConsoleUiState(
     val status: StatusDto? = null,
     val health: HealthDto? = null,
     val brain: BrainStatusDto? = null,
-    val code: CodeStatusDto? = null,
     val workspace: WorkspaceInfoDto? = null,
     val skills: List<SkillDto> = emptyList(),
     val plugins: List<PluginDto> = emptyList(),
@@ -177,7 +176,6 @@ class ConsoleViewModel(
                 val status = api.status()
                 val health = runCatching { api.healthDetail() }.getOrNull()
                 val brain = runCatching { api.brainStatus() }.getOrNull()
-                val code = runCatching { api.codeStatus() }.getOrNull()
                 val workspace = runCatching { api.workspaceInfo() }.getOrNull()
                 val skills = runCatching { api.skills() }.getOrDefault(emptyList())
                 val plugins = runCatching { api.plugins() }.getOrDefault(emptyList())
@@ -197,7 +195,6 @@ class ConsoleViewModel(
                         status = status,
                         health = health,
                         brain = brain,
-                        code = code,
                         workspace = workspace,
                         skills = skills,
                         plugins = plugins,
@@ -280,8 +277,6 @@ class ConsoleViewModel(
     fun closeBot() {
         _state.update { it.copy(botDetail = null) }
     }
-
-    fun setCodeMode(state: String) = action(Notice(NoticeKey.CODE_MODE_SET, args = listOf(state))) { api.setCodeMode(state) }
 
     /** Restarts the daemon: the HTTP call returns before the socket actually drops. */
     fun restart() = action(Notice(NoticeKey.DAEMON_RESTART_REQUESTED)) { api.restart() }

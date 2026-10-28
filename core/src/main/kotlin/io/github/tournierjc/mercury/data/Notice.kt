@@ -303,6 +303,8 @@ enum class NoticeKey {
     TERMINAL_EXIT_CODE,
     TERMINAL_OK,
     CODE_MODE_SET,
+    /** The mode could not be changed — the conversation says so instead of redrawing silently. */
+    CODE_MODE_FAILED,
     WORKSPACE_SET,
     CREW_IMPORT_FAILED,
 

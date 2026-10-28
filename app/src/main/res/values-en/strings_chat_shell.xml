@@ -22,4 +22,20 @@
     <string name="connect_sign_in">Sign in</string>
     <string name="connect_reachability_hint">The Mercury dashboard must be reachable from the phone (Tailscale + `tailscale serve`, or an SSH tunnel).</string>
     <string name="common_loading">Loading…</string>
+    <string name="composer_commands">Commands</string>
+    <string name="composer_commands_search">Search a command</string>
+    <string name="composer_commands_none">No command matches.</string>
+    <string name="chat_trace_count">%1$d tools</string>
+    <string name="chat_trace_failures">%1$d failed</string>
+    <string name="chat_trace_show">expand</string>
+    <string name="chat_trace_hide">collapse</string>
+    <string name="chat_mode_title">PROGRAMMING MODE</string>
+    <string name="chat_mode_off">normal mode</string>
+    <string name="chat_mode_auto">auto</string>
+    <string name="chat_mode_plan">plan</string>
+    <string name="chat_mode_execute">execute</string>
+    <string name="chat_mode_off_hint">Mercury answers, without touching code.</string>
+    <string name="chat_mode_auto_hint">It switches to programming mode when the request calls for it.</string>
+    <string name="chat_mode_plan_hint">It reads and proposes a plan, and writes nothing.</string>
+    <string name="chat_mode_execute_hint">It edits files on the Spark directly.</string>
 </resources>

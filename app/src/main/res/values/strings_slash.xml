@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La palette de commandes du composeur : ce que chaque commande fait, en clair. -->
+    <string name="slash_cat_general">Général</string>
+    <string name="slash_cat_agents">Agents</string>
+    <string name="slash_cat_background">Arrière-plan</string>
+    <string name="slash_cat_models">Modèles</string>
+    <string name="slash_cat_code">Code</string>
+    <string name="slash_cat_spotify">Spotify</string>
+    <string name="slash_cat_budget">Budget</string>
+    <string name="slash_cat_memory">Mémoire</string>
+    <string name="slash_cat_workspace">Espace de travail</string>
+    <string name="slash_help">Toutes les commandes disponibles</string>
+    <string name="slash_progress">Où en est la tâche en cours</string>
+    <string name="slash_halt">Arrêter les sous-agents</string>
+    <string name="slash_stop">Arrêter les agents et vider les tâches</string>
+    <string name="slash_permissions">Changer le mode de permissions</string>
+    <string name="slash_exit">Éteindre Mercury</string>
+    <string name="slash_agents">Lister les sous-agents actifs et leur état</string>
+    <string name="slash_agents_kill">Tuer un sous-agent précis</string>
+    <string name="slash_bg">Lancer une commande shell en arrière-plan</string>
+    <string name="slash_bg_delegate">Confier une tâche LLM à l\'arrière-plan</string>
+    <string name="slash_bg_list">Lister les tâches de fond</string>
+    <string name="slash_bg_current">Passer la tâche active en arrière-plan</string>
+    <string name="slash_bg_stop">Arrêter une tâche de fond</string>
+    <string name="slash_bg_killall">Arrêter toutes les tâches de fond</string>
+    <string name="slash_bg_clear">Purger les tâches de fond terminées</string>
+    <string name="slash_models">Lister les modèles disponibles</string>
+    <string name="slash_models_use">Passer à un autre modèle</string>
+    <string name="slash_code">Basculer le mode programmation</string>
+    <string name="slash_code_plan">Mode plan seulement</string>
+    <string name="slash_code_execute">Mode exécution</string>
+    <string name="slash_code_off">Quitter le mode programmation</string>
+    <string name="slash_spotify">État et commandes Spotify</string>
+    <string name="slash_spotify_play">Jouer, ou chercher un morceau</string>
+    <string name="slash_spotify_pause">Mettre en pause</string>
+    <string name="slash_spotify_next">Morceau suivant</string>
+    <string name="slash_spotify_prev">Morceau précédent</string>
+    <string name="slash_spotify_queue">Voir la file d\'attente</string>
+    <string name="slash_budget">État du budget de tokens</string>
+    <string name="slash_budget_override">Dépasser le budget pour la prochaine requête</string>
+    <string name="slash_budget_reset">Remettre à zéro le compteur du jour</string>
+    <string name="slash_budget_set">Fixer une nouvelle limite quotidienne</string>
+    <string name="slash_memory">Gérer la mémoire (second cerveau)</string>
+    <string name="slash_ws">Fichiers de l\'espace de travail</string>
+</resources>

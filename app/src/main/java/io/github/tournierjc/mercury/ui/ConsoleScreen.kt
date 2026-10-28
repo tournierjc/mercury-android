@@ -154,8 +154,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             RuntimeSection(state)
             // No Mémoire block: the memory screen owns it (souvenirs, croyances, quarantaine,
             // runtime), and this summary contradicted it on the pause state.
-            CodeSection(state, viewModel)
-            // No Équipiers block here: the fleet has its own screen (roster, sheets, dispatch),
+                        // No Équipiers block here: the fleet has its own screen (roster, sheets, dispatch),
             // and a second, read-only copy in the Console only ever disagreed with it.
             // La flotte vit dans l'écran Équipiers : l'import de bundle et les chefs y sont,
             // avec les visages et les fiches, au lieu d'une rangée de puces ici.
@@ -269,39 +268,6 @@ private fun RuntimeSection(state: ConsoleUiState) {
             KeyValueRow(stringResource(R.string.console_label_loop_lag), "${health.loopLag.p99Ms} ms")
             KeyValueRow(stringResource(R.string.console_label_plugins), stringResource(R.string.console_plugins_summary, health.plugins.running, health.plugins.tools))
             if (health.plugins.safeMode) KeyValueRow(stringResource(R.string.console_label_safe_mode), stringResource(R.string.console_safe_mode_on), highlight = true)
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CodeSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
-    val code = state.code ?: return
-    CollapsibleSection(stringResource(R.string.console_section_programming_mode)) {
-        Text(
-            text = code.statusText.ifBlank { code.state },
-            style = MaterialTheme.typography.bodyLarge,
-            color = LocalMercuryColors.current.textPrimary,
-        )
-        if (code.available) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("off", "auto", "plan", "execute").forEach { mode ->
-                    FilterChip(
-                        selected = code.state == mode,
-                        onClick = { viewModel.setCodeMode(mode) },
-                        label = { Text(mode) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = LocalMercuryColors.current.accent,
-                        ),
-                    )
-                }
-            }
-        } else {
-            Text(
-                text = stringResource(R.string.console_unavailable_on_runtime),
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalMercuryColors.current.textSecondary,
-            )
         }
     }
 }
