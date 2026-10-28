@@ -28,6 +28,7 @@ import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.vm.ConfigureUiState
+import io.github.tournierjc.mercury.vm.ConfigureSlice
 import io.github.tournierjc.mercury.vm.ConfigureViewModel
 
 /**
@@ -51,11 +52,15 @@ fun ProvidersScreen(onBack: () -> Unit) {
     val (viewModel, state) = rememberConfigure()
     ConfigureScaffold(
         title = stringResource(R.string.configure_providers_title),
-        subtitle = pluralStringResource(
-            R.plurals.configure_providers_count,
-            state.providers.size,
-            state.providers.size,
-        ),
+        subtitle = if (ConfigureSlice.Providers in state.failed) {
+            null
+        } else {
+            pluralStringResource(
+                R.plurals.configure_providers_count,
+                state.providers.size,
+                state.providers.size,
+            )
+        },
         onBack = onBack,
         onRefresh = viewModel::refresh,
         error = state.error,
@@ -63,7 +68,7 @@ fun ProvidersScreen(onBack: () -> Unit) {
     ) {
         CollapsibleSection(stringResource(R.string.configure_providers_title), defaultOpen = true) {
             if (state.providers.isEmpty()) {
-                EmptyLine(state.loading, R.string.configure_providers_empty)
+                EmptyLine(state.loading, R.string.configure_providers_empty, ConfigureSlice.Providers in state.failed)
             }
             state.providers.forEach { provider ->
                 // The app already has exactly one provider row (Réglages). `busy` greys its two
@@ -100,7 +105,7 @@ fun SkillsScreen(onBack: () -> Unit) {
     ) {
         CollapsibleSection(stringResource(R.string.configure_skills_title), defaultOpen = true) {
             if (state.skills.isEmpty()) {
-                EmptyLine(state.loading, R.string.configure_skills_empty)
+                EmptyLine(state.loading, R.string.configure_skills_empty, ConfigureSlice.Skills in state.failed)
             }
             state.skills.forEach { skill ->
                 val version = stringResource(R.string.configure_version, skill.version?.takeIf { it.isNotBlank() } ?: UNNAMED)
@@ -154,7 +159,7 @@ fun McpScreen(onBack: () -> Unit) {
                     color = colors.textSecondary,
                 )
 
-                state.mcpServers.isEmpty() -> EmptyLine(state.loading, R.string.configure_mcp_empty)
+                state.mcpServers.isEmpty() -> EmptyLine(state.loading, R.string.configure_mcp_empty, ConfigureSlice.Mcp in state.failed)
             }
             state.mcpServers.forEach { server ->
                 val tools = pluralStringResource(R.plurals.configure_mcp_tools, server.toolCount, server.toolCount)
@@ -186,11 +191,15 @@ fun PluginsScreen(onBack: () -> Unit) {
     val colors = LocalMercuryColors.current
     ConfigureScaffold(
         title = stringResource(R.string.configure_plugins_title),
-        subtitle = pluralStringResource(
-            R.plurals.configure_plugins_count,
-            state.plugins.size,
-            state.plugins.size,
-        ),
+        subtitle = if (ConfigureSlice.Plugins in state.failed) {
+            null
+        } else {
+            pluralStringResource(
+                R.plurals.configure_plugins_count,
+                state.plugins.size,
+                state.plugins.size,
+            )
+        },
         onBack = onBack,
         onRefresh = viewModel::refresh,
         error = state.error,
@@ -198,7 +207,7 @@ fun PluginsScreen(onBack: () -> Unit) {
     ) {
         CollapsibleSection(stringResource(R.string.configure_plugins_title), defaultOpen = true) {
             if (state.plugins.isEmpty()) {
-                EmptyLine(state.loading, R.string.configure_plugins_empty)
+                EmptyLine(state.loading, R.string.configure_plugins_empty, ConfigureSlice.Plugins in state.failed)
             }
             state.plugins.forEach { plugin ->
                 val version = plugin.version.takeIf { it.isNotBlank() }
@@ -251,7 +260,7 @@ fun PermissionsScreen(onBack: () -> Unit) {
         val permissions = state.permissions
         CollapsibleSection(stringResource(R.string.configure_permissions_filesystem), defaultOpen = true) {
             if (permissions == null) {
-                EmptyLine(state.loading, R.string.configure_permissions_unavailable)
+                EmptyLine(state.loading, R.string.configure_permissions_unavailable, ConfigureSlice.Permissions in state.failed)
             } else {
                 KeyValueRow(
                     label = stringResource(R.string.configure_permissions_enabled),
@@ -276,7 +285,7 @@ fun PermissionsScreen(onBack: () -> Unit) {
         }
         CollapsibleSection(stringResource(R.string.configure_permissions_shell), defaultOpen = true) {
             if (permissions == null) {
-                EmptyLine(state.loading, R.string.configure_permissions_unavailable)
+                EmptyLine(state.loading, R.string.configure_permissions_unavailable, ConfigureSlice.Permissions in state.failed)
             } else {
                 KeyValueRow(
                     label = stringResource(R.string.configure_permissions_enabled),
@@ -312,11 +321,15 @@ fun SchedulesScreen(onBack: () -> Unit) {
     val colors = LocalMercuryColors.current
     ConfigureScaffold(
         title = stringResource(R.string.configure_schedules_title),
-        subtitle = pluralStringResource(
-            R.plurals.configure_schedules_count,
-            state.schedules.size,
-            state.schedules.size,
-        ),
+        subtitle = if (ConfigureSlice.Schedules in state.failed) {
+            null
+        } else {
+            pluralStringResource(
+                R.plurals.configure_schedules_count,
+                state.schedules.size,
+                state.schedules.size,
+            )
+        },
         onBack = onBack,
         onRefresh = viewModel::refresh,
         error = state.error,
@@ -324,7 +337,7 @@ fun SchedulesScreen(onBack: () -> Unit) {
     ) {
         CollapsibleSection(stringResource(R.string.configure_schedules_title), defaultOpen = true) {
             if (state.schedules.isEmpty()) {
-                EmptyLine(state.loading, R.string.configure_schedules_empty)
+                EmptyLine(state.loading, R.string.configure_schedules_empty, ConfigureSlice.Schedules in state.failed)
             }
             state.schedules.forEach { schedule ->
                 val bot = schedule.botId.ifBlank { stringResource(R.string.configure_schedules_mercury) }
@@ -367,7 +380,7 @@ fun UsageScreen(onBack: () -> Unit) {
         CollapsibleSection(stringResource(R.string.configure_usage_today), defaultOpen = true) {
             val usage = state.usage
             if (usage == null) {
-                EmptyLine(state.loading, R.string.configure_usage_unavailable)
+                EmptyLine(state.loading, R.string.configure_usage_unavailable, ConfigureSlice.Usage in state.failed)
             } else {
                 Text(
                     text = "${formatCompact(usage.dailyUsed)} / ${
@@ -558,9 +571,17 @@ private fun DetailCard(
 
 /** The one empty/loading line every section falls back to — never a blank screen. */
 @Composable
-private fun EmptyLine(loading: Boolean, @StringRes emptyState: Int) {
+private fun EmptyLine(loading: Boolean, @StringRes emptyState: Int, failed: Boolean = false) {
     Text(
-        text = stringResource(if (loading) R.string.common_loading else emptyState),
+        // Three states, three sentences: still loading, we could not ask, and the server answered
+        // that there is nothing. Collapsing the middle one into the last one lies about the server.
+        text = stringResource(
+            when {
+                loading -> R.string.common_loading
+                failed -> R.string.configure_unavailable
+                else -> emptyState
+            },
+        ),
         style = MaterialTheme.typography.bodyMedium,
         color = LocalMercuryColors.current.textSecondary,
     )

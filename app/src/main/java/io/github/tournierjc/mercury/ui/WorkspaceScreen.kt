@@ -585,7 +585,17 @@ private fun ColumnScope.GitTab(state: WorkspaceUiState, viewModel: WorkspaceView
     val git = state.git
 
     if (git == null) {
-        QuietLine(stringResource(R.string.workspace_git_aucun_depot))
+        // A failed request and a folder that is not a repository are two different facts: the
+        // first one is ours to admit, the second one is the workspace's.
+        QuietLine(
+            stringResource(
+                if (state.info?.isGit == false) {
+                    R.string.workspace_git_aucun_depot
+                } else {
+                    R.string.workspace_git_indisponible
+                },
+            ),
+        )
         TextButton(onClick = viewModel::refreshGit, enabled = !state.busy) {
             Text(stringResource(R.string.workspace_git_rafraichir))
         }

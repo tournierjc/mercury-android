@@ -166,4 +166,5 @@
     <string name="configure_usage_recent">Recent requests</string>
     <string name="configure_usage_no_requests">No logged request.</string>
     <string name="configure_usage_counts">input %1$s · output %2$s</string>
+    <string name="configure_unavailable">The server did not answer — this route is not exposed by this version of the daemon.</string>
 </resources>

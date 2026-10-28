@@ -166,4 +166,5 @@
     <string name="configure_usage_recent">Dernières requêtes</string>
     <string name="configure_usage_no_requests">Aucune requête journalisée.</string>
     <string name="configure_usage_counts">entrée %1$s · sortie %2$s</string>
+    <string name="configure_unavailable">Le serveur n\'a pas répondu — cette route n\'est pas exposée par cette version du démon.</string>
 </resources>

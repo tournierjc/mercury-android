@@ -73,4 +73,5 @@
     <string name="workspace_confirmer_corps">This changes the workspace repository.</string>
     <string name="workspace_confirmer">Confirm</string>
     <string name="workspace_annuler">Cancel</string>
+    <string name="workspace_git_indisponible">Git did not answer — we cannot tell whether this folder is a repository.</string>
 </resources>

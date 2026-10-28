@@ -109,7 +109,16 @@ data class ConfigureUiState(
     val byChannel: List<UsageSlice> = emptyList(),
     val recent: List<UsageRequest> = emptyList(),
     val error: Notice? = null,
+    /**
+     * The routes that did not answer. A failed route leaves its list empty, and an empty list
+     * rendered as "aucun fournisseur / 0 planification" is a claim about the server made out of our
+     * own failure — the 401 after every restart is not an edge case here, it is the default state.
+     */
+    val failed: Set<ConfigureSlice> = emptySet(),
 )
+
+/** One per route, named so a screen can ask whether its own slice is trustworthy. */
+enum class ConfigureSlice { Providers, Skills, Mcp, Plugins, Permissions, Schedules, Usage }
 
 /**
  * Reads the seven Configure routes once and hands each screen its slice.
@@ -136,21 +145,19 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
                 if (failure == null) failure = e.toNotice()
             }
 
-            val providers = runCatching { api.providers() }.getOrElse { note(it); emptyList() }
-            val skills = runCatching { api.skills() }.getOrElse { note(it); emptyList() }
-            val mcp = runCatching { api.mcpServers() }.getOrElse { note(it); null }
+            val failed = mutableSetOf<ConfigureSlice>()
+            suspend fun <T> slice(which: ConfigureSlice, block: suspend () -> T, fallback: T): T =
+                runCatching { block() }.getOrElse { note(it); failed += which; fallback }
+
+            val providers = slice(ConfigureSlice.Providers, { api.providers() }, emptyList())
+            val skills = slice(ConfigureSlice.Skills, { api.skills() }, emptyList())
+            val mcp = slice(ConfigureSlice.Mcp, { api.mcpServers() }, null)
             // Plugins need fields PluginDto does not carry (enabled, running, tools, renderers),
             // so this one route is read raw.
-            val pluginList = runCatching { api.getJson("/api/plugins") }
-                .map { raw -> plugins(raw) }
-                .getOrElse { note(it); emptyList() }
-            val permissionSummary = runCatching { api.permissions() }
-                .map { dto -> permissions(dto) }
-                .getOrElse { note(it); null }
-            val scheduleList = runCatching { api.schedules() }
-                .map { rows -> rows.map { row -> schedule(row) } }
-                .getOrElse { note(it); emptyList() }
-            val usage = runCatching { api.usage() }.getOrElse { note(it); null }
+            val pluginList = slice(ConfigureSlice.Plugins, { plugins(api.getJson("/api/plugins")) }, emptyList())
+            val permissionSummary = slice(ConfigureSlice.Permissions, { permissions(api.permissions()) }, null)
+            val scheduleList = slice(ConfigureSlice.Schedules, { api.schedules().map { row -> schedule(row) } }, emptyList())
+            val usage = slice(ConfigureSlice.Usage, { api.usage() }, null)
 
             _state.update {
                 it.copy(
@@ -167,6 +174,7 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
                     byChannel = usage?.requestLog.orEmpty().let { log -> slices(log) { entry -> entry.channelType } },
                     recent = usage?.requestLog.orEmpty().let(::recent),
                     error = failure,
+                    failed = failed,
                 )
             }
         }

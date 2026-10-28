@@ -182,7 +182,7 @@ fun ThreadDrawer(
                             .fillMaxWidth()
                             .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { onOpen(AppScreen.Bots) }
-                            .padding(horizontal = 8.dp, vertical = 14.dp),
+                            .padding(horizontal = 8.dp, vertical = 16.dp),
                     ) {
                         Icon(
                             Icons.Rounded.SmartToy,

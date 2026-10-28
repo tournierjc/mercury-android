@@ -73,4 +73,5 @@
     <string name="workspace_confirmer_corps">Cette action modifie le dépôt de l\'espace de travail.</string>
     <string name="workspace_confirmer">Confirmer</string>
     <string name="workspace_annuler">Annuler</string>
+    <string name="workspace_git_indisponible">Git n\'a pas répondu — on ne sait pas si ce dossier est un dépôt.</string>
 </resources>
