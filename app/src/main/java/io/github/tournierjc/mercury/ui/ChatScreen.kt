@@ -714,7 +714,7 @@ private fun Welcome(onPick: (String) -> Unit) {
             Row(
                 modifier = Modifier
                     .padding(bottom = 8.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(colors.surface)
                     .clickable { onPick(suggestion) }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -870,7 +870,7 @@ internal fun MessageItem(
         ) {
             Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(22.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(colors.userBubble)
                     .then(press)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -915,7 +915,7 @@ internal fun MessageItem(
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(colors.surface)
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )

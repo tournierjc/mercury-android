@@ -900,7 +900,7 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+                .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             Text(

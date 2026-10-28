@@ -103,7 +103,7 @@ fun MemoryScreen(onBack: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .clickable { viewModel.selectTab(tab) }
                         .padding(vertical = 8.dp),
                 ) {

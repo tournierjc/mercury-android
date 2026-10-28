@@ -132,7 +132,7 @@ fun RunDetailDialog(
                         color = colors.danger,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+                            .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
                             .padding(10.dp),
                     )
                 }
@@ -174,7 +174,7 @@ private fun Block(label: String, text: String) {
         color = colors.textPrimary,
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+            .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
             .padding(10.dp),
     )
 }

@@ -38,7 +38,7 @@ fun InteractionCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(22.dp))
+            .background(colors.surface, MaterialTheme.shapes.medium)
             .padding(18.dp),
     ) {
         Text(

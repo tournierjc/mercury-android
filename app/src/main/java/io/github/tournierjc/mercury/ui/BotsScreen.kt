@@ -664,7 +664,7 @@ private fun BotDetail(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(11.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(if (canSend) colors.accent else colors.surfaceMuted)
                     .clickable(enabled = canSend) {
                         viewModel.dispatch(dispatchText, dispatchFiles)

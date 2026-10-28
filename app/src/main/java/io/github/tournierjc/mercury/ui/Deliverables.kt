@@ -126,7 +126,7 @@ fun DeliverablesSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .clickable { onPreview(output) }
                         .padding(vertical = 6.dp),
                 ) {
@@ -274,7 +274,7 @@ fun OutputPreviewDialog(
                             color = colors.textPrimary,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+                                .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
                                 .padding(10.dp),
                         )
                         if (state.truncated) {
