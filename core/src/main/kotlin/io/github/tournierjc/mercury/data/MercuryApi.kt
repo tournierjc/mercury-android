@@ -1138,7 +1138,7 @@ class MercuryApi(
         client.newCall(request).execute().use { response ->
             when {
                 response.code == 401 || response.code == 403 -> throw AuthException("session expired")
-                response.code == 404 -> throw MercuryException("Livrable introuvable")
+                response.code == 404 -> throw MercuryException("404: output not found")
                 !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
                 else -> response.body?.bytes() ?: ByteArray(0)
             }
@@ -1418,7 +1418,7 @@ class MercuryApi(
                         throw if (response.code == 401) {
                             AuthException("session expired")
                         } else {
-                            MercuryException("Flux SSE indisponible : HTTP ${response.code}")
+                            MercuryException("sse: HTTP ${response.code}")
                         }
                     }
                     val source = response.body?.source()
@@ -1436,7 +1436,7 @@ class MercuryApi(
                 }
                 close()
             } catch (t: Throwable) {
-                trySend(ChatEvent.Failure(t.message ?: "Flux interrompu"))
+                trySend(ChatEvent.Failure(t.message.orEmpty()))
                 close()
             }
         }
@@ -1620,7 +1620,7 @@ class MercuryApi(
 
         private fun urlFor(base: String, path: String): HttpUrl.Builder {
             val url = (base.trimEnd('/') + path).toHttpUrlOrNull()
-                ?: throw MercuryException("URL invalide : $base")
+                ?: throw MercuryException("invalid base url: $base")
             return url.newBuilder()
         }
     }
