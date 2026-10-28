@@ -39,3 +39,29 @@ fun backAction(
     conversation != null -> BackAction.CloseConversation
     else -> BackAction.LeaveApp
 }
+
+/**
+ * The last thing the system button does in this app: leaving takes two presses.
+ *
+ * One press on the main screen arms the exit and says so; a second press inside [windowMs] leaves,
+ * and anything later starts over. A single press that quits an app with unsent work in a composer
+ * is the most expensive mis-tap a thumb can make, and a window this short costs nothing to a
+ * deliberate exit.
+ *
+ * Pure and time-injected: the window is a fact to test, not a `System.currentTimeMillis()` buried in
+ * a composable.
+ */
+class ExitGate(private val windowMs: Long = 2_000) {
+    private var armedAt: Long? = null
+
+    /** True when this press leaves the app; false when it armed the exit instead. */
+    fun press(nowMs: Long): Boolean {
+        val armed = armedAt
+        if (armed != null && nowMs - armed in 0..windowMs) {
+            armedAt = null
+            return true
+        }
+        armedAt = nowMs
+        return false
+    }
+}

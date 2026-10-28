@@ -126,4 +126,5 @@
     <!-- How many further faults the spec had: the card only prints the first one. -->
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">en %1$s</string>
+    <string name="chat_exit_prompt">Appuie encore une fois pour quitter</string>
 </resources>
