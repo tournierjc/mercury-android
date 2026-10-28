@@ -92,6 +92,7 @@ fun MemoryScreen(onBack: () -> Unit) {
             ),
             onBack = onBack,
             onRefresh = viewModel::refresh,
+            refreshing = state.loading,
         )
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }

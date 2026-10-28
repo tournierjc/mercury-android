@@ -138,6 +138,7 @@ fun BoardsScreen(onBack: () -> Unit) {
             },
             onBack = { if (state.openBoardId == null) onBack() else viewModel.close() },
             onRefresh = viewModel::refresh,
+            refreshing = state.loading,
         )
         state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
         state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }

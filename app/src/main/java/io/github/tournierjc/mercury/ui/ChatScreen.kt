@@ -370,7 +370,13 @@ fun ChatScreen(
     // The message being answered, if any: the composer shows it as a chip and the send prepends
     // it as a blockquote, which is how the quote reaches the daemon and survives a reload.
     var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
-    LaunchedEffect(botChat) { replyTo = null }
+    /** Files waiting to be sent to the bot on screen. */
+    var botFiles by remember { mutableStateOf<List<PendingFile>>(emptyList()) }
+    LaunchedEffect(botChat) {
+        replyTo = null
+        // Files belong to the correspondent they were picked for.
+        botFiles = emptyList()
+    }
     var voiceError by remember { mutableStateOf<String?>(null) }
     var attachmentError by remember { mutableStateOf<String?>(null) }
 
@@ -385,7 +391,11 @@ fun ChatScreen(
                 null
             }
         }
-        if (files.isNotEmpty()) onPickAttachments(files)
+        if (files.isNotEmpty()) {
+            // A bot's conversation carries its own files: dropping a photo into Mercury's thread
+            // because the bot was on screen would send it to the wrong correspondent.
+            if (botChat != null) botFiles = (botFiles + files).take(MAX_BOT_FILES) else onPickAttachments(files)
+        }
     }
 
     // Read once, in the composable: the launcher callbacks are not composable scopes.
@@ -569,23 +579,26 @@ fun ChatScreen(
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                     )
                 }
+                AttachmentStrip(attachments = botFiles, onRemove = { index -> botFiles = botFiles.filterIndexed { i, _ -> i != index } })
                 replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
                 Composer(
                     value = composerText,
                     onValueChange = { composerText = it },
                     onSend = {
                         val text = composerText.trim()
-                        if (text.isNotEmpty()) {
+                        val files = botFiles
+                        if (text.isNotEmpty() || files.isNotEmpty()) {
                             composerText = ""
+                            botFiles = emptyList()
                             val payload = replyTo?.let { QuoteReply.compose(it.text, text) } ?: text
                             replyTo = null
                             // Chat mode: the bot answers, it does not file a work report.
-                            botsVm.dispatch(payload, chat = true)
+                            botsVm.dispatch(payload, files, chat = true)
                         }
                     },
                     onVoice = { startVoice() },
-                    onAttach = null,
-                    attachmentCount = 0,
+                    onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf")) },
+                    attachmentCount = botFiles.size,
                     busy = botsState.busy,
                     hint = stringResource(R.string.chat_bot_write, botName),
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1000,6 +1013,9 @@ internal fun MessageList(
  * and — once chosen there — native text selection, which is why [selecting] swaps the bubble
  * content for a [SelectionContainer] instead of fighting it for the long press.
  */
+/** How many files one message to a bot may carry: the chat route's own limit, not a phone's. */
+private const val MAX_BOT_FILES = 5
+
 /**
  * A message, in the shape every phone chat has taught its owner to read: the answer on the left in
  * a bubble, the message on the right in another, the tail corner pointing at whoever spoke, and

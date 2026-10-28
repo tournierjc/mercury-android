@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +55,12 @@ fun ScreenHeader(
     subtitle: String? = null,
     onBack: () -> Unit,
     onRefresh: (() -> Unit)? = null,
+    /**
+     * True while the screen is reading its routes. The button then spins and refuses a second tap:
+     * a refresh that changes nothing on screen for two seconds reads as a button that does nothing,
+     * and a second tap doubles the requests for the same answer.
+     */
+    refreshing: Boolean = false,
     /** Before the title — a bot's face, when the screen is about someone. */
     leading: (@Composable () -> Unit)? = null,
     /** Extra trailing actions — a "+", a menu — drawn after the refresh button. */
@@ -91,8 +98,20 @@ fun ScreenHeader(
             }
         }
         if (onRefresh != null) {
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.common_refresh), tint = colors.textSecondary)
+            IconButton(onClick = onRefresh, enabled = !refreshing) {
+                if (refreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = colors.accent,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        Icons.Rounded.Refresh,
+                        contentDescription = stringResource(R.string.common_refresh),
+                        tint = colors.textSecondary,
+                    )
+                }
             }
         }
         actions()

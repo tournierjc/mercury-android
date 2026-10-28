@@ -49,9 +49,13 @@ import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
-/** Every control in the capsule is this size, so the row reads as one line and not as three. */
-private val CONTROL = 40.dp
-private val CONTROL_ICON = 20.dp
+/**
+ * Every control in a "type and send" strip is this size, so the row reads as one line and not as
+ * three. Shared with the bot sheet's quick task, which had its own 36 dp buttons beside a 44 dp
+ * field and a 6 dp nudge that left the words below the glyphs.
+ */
+internal val ComposerControlSize = 40.dp
+internal val ComposerControlIcon = 20.dp
 
 @Composable
 fun Composer(
@@ -163,13 +167,13 @@ private fun ComposerControl(
     onClick: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    Box(modifier = Modifier.size(CONTROL), contentAlignment = Alignment.Center) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(CONTROL)) {
+    Box(modifier = Modifier.size(ComposerControlSize), contentAlignment = Alignment.Center) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(ComposerControlSize)) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
                 tint = if (enabled) colors.textSecondary else colors.textSecondary.copy(alpha = 0.4f),
-                modifier = Modifier.size(CONTROL_ICON),
+                modifier = Modifier.size(ComposerControlIcon),
             )
         }
         if (badge != null) {
