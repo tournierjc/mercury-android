@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- BoardsScreen -->
-    <string name="boards_erreur_ecriture">Écriture impossible dans cet emplacement</string>
-    <string name="boards_aucune_app_ouverture">Aucune application ne peut ouvrir %1$s</string>
     <string name="boards_titre_plateau">Plateau</string>
     <string name="boards_titre_plateaux">Plateaux</string>
     <string name="boards_sous_titre_nb_plateaux">%1$d plateaux</string>
@@ -132,4 +130,5 @@
     <string name="memory_corriger_croyance">Corriger la croyance</string>
     <string name="memory_formulation">Formulation correcte</string>
     <string name="memory_enregistrer">Enregistrer</string>
+    <string name="boards_apercu_tronque">… aperçu tronqué — télécharge le fichier pour le texte entier</string>
 </resources>

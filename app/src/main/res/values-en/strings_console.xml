@@ -150,6 +150,7 @@
     <string name="console_stage_all">Stage all</string>
     <string name="console_unstage_all">Unstage all</string>
     <string name="console_diff_unstaged">Unstaged diff</string>
+    <string name="console_diff_vide">No difference.</string>
     <string name="console_diff_staged">Staged diff</string>
     <string name="console_commit_message">Commit message</string>
     <string name="console_generate">Generate</string>

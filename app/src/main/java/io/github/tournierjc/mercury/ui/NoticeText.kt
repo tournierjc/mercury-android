@@ -71,6 +71,78 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.MEMORY_RESTORED -> R.string.notice_memory_restored
     NoticeKey.BYPASS_APPROVED -> R.string.notice_bypass_approved
     NoticeKey.BYPASS_ASKED -> R.string.notice_bypass_asked
+    NoticeKey.BOARD_CREATED -> R.string.notice_board_created
+    NoticeKey.BOARD_DELETED -> R.string.notice_board_deleted
+    NoticeKey.BOARD_ACTIVATED -> R.string.notice_board_activated
+    NoticeKey.BOARD_DEACTIVATED -> R.string.notice_board_deactivated
+    NoticeKey.BOARD_DECISION_REQUESTED -> R.string.notice_board_decision_requested
+    NoticeKey.CARD_ADDED -> R.string.notice_card_added
+    NoticeKey.CARD_DELETED -> R.string.notice_card_deleted
+    NoticeKey.CARD_STARTED -> R.string.notice_card_started
+    NoticeKey.CARD_HALTED -> R.string.notice_card_halted
+    NoticeKey.CASCADE_REQUESTED -> R.string.notice_cascade_requested
+    NoticeKey.CARDS_ALL_STARTED -> R.string.notice_cards_all_started
+    NoticeKey.CARDS_ALL_HALTED -> R.string.notice_cards_all_halted
+    NoticeKey.SMART_RUN_REQUESTED -> R.string.notice_smart_run_requested
+    NoticeKey.DONE_CARDS_CLEARED -> R.string.notice_done_cards_cleared
+    NoticeKey.GENERATION_REQUESTED -> R.string.notice_generation_requested
+    NoticeKey.INSTRUCTIONS_SAVED -> R.string.notice_instructions_saved
+    NoticeKey.DIRECTORY_SAVED -> R.string.notice_directory_saved
+    NoticeKey.KNOWLEDGE_SAVED -> R.string.notice_knowledge_saved
+    NoticeKey.VARIABLE_SAVED -> R.string.notice_variable_saved
+    NoticeKey.FEEDBACK_SENT -> R.string.notice_feedback_sent
+    NoticeKey.COMMENT_ADDED -> R.string.notice_comment_added
+    NoticeKey.COMMENT_DELETED -> R.string.notice_comment_deleted
+    NoticeKey.BOARD_ATTACHMENT_ADDED -> R.string.notice_board_attachment_added
+    NoticeKey.BOARD_ATTACHMENT_REMOVED -> R.string.notice_board_attachment_removed
+    NoticeKey.CARD_LABEL_ADDED -> R.string.notice_card_label_added
+    NoticeKey.CARD_LABEL_REMOVED -> R.string.notice_card_label_removed
+    NoticeKey.DEPENDENCY_ADDED -> R.string.notice_dependency_added
+    NoticeKey.DEPENDENCY_REMOVED -> R.string.notice_dependency_removed
+    NoticeKey.CARD_PARENT_SET -> R.string.notice_card_parent_set
+    NoticeKey.BOARD_WRITE_FAILED -> R.string.notice_board_write_failed
+    NoticeKey.NO_APP_FOR_TYPE -> R.string.notice_no_app_for_type
+    NoticeKey.TASK_CANCELLED -> R.string.notice_task_cancelled
+    NoticeKey.FINISHED_TASKS_CLEARED -> R.string.notice_finished_tasks_cleared
+    NoticeKey.AGENTS_HALTED -> R.string.notice_agents_halted
+    NoticeKey.AGENTS_STOPPED -> R.string.notice_agents_stopped
+    NoticeKey.SCHEDULE_DELETED -> R.string.notice_schedule_deleted
+    NoticeKey.SKILL_ENABLED -> R.string.notice_skill_enabled
+    NoticeKey.SKILL_DISABLED -> R.string.notice_skill_disabled
+    NoticeKey.SKILL_INSTALLED_FROM_URL -> R.string.notice_skill_installed_from_url
+    NoticeKey.SKILL_INSTALLED_FROM_REGISTRY -> R.string.notice_skill_installed_from_registry
+    NoticeKey.SKILL_DELETED -> R.string.notice_skill_deleted
+    NoticeKey.BOTS_ALL_STARTED -> R.string.notice_bots_all_started
+    NoticeKey.BOTS_ALL_STOPPED -> R.string.notice_bots_all_stopped
+    NoticeKey.TEAMMATE_ENABLED -> R.string.notice_teammate_enabled
+    NoticeKey.TEAMMATE_DISABLED -> R.string.notice_teammate_disabled
+    NoticeKey.TEAMMATE_DELETED_NAMED -> R.string.notice_teammate_deleted_named
+    NoticeKey.RESTART_REQUESTED -> R.string.notice_restart_requested
+    NoticeKey.SHUTDOWN_ACCEPTED -> R.string.notice_shutdown_accepted
+    NoticeKey.SHUTDOWN_REFUSED -> R.string.notice_shutdown_refused
+    NoticeKey.CREW_IMPORT_NOTHING -> R.string.notice_crew_import_nothing
+    NoticeKey.CREW_IMPORTED -> R.string.notice_crew_imported
+    NoticeKey.TIER_APPLIED -> R.string.notice_tier_applied
+    NoticeKey.FILE_STAGED -> R.string.notice_file_staged
+    NoticeKey.FILES_STAGED -> R.string.notice_files_staged
+    NoticeKey.FILE_UNSTAGED -> R.string.notice_file_unstaged
+    NoticeKey.FILES_UNSTAGED -> R.string.notice_files_unstaged
+    NoticeKey.COMMIT_CREATED -> R.string.notice_commit_created
+    NoticeKey.PUSHED -> R.string.notice_pushed
+    NoticeKey.PULLED -> R.string.notice_pulled
+    NoticeKey.BRANCH_CHECKED_OUT -> R.string.notice_branch_checked_out
+
+    NoticeKey.TERMINAL_REQUEST_FAILED -> R.string.notice_terminal_request_failed
+    NoticeKey.TERMINAL_EXIT_CODE -> R.string.notice_terminal_exit_code
+    NoticeKey.TERMINAL_OK -> R.string.notice_terminal_ok
+    NoticeKey.CODE_MODE_SET -> R.string.notice_code_mode_set
+    NoticeKey.WORKSPACE_SET -> R.string.notice_workspace_set
+    NoticeKey.CREW_IMPORT_FAILED -> R.string.notice_crew_import_failed
+
+
+
+    NoticeKey.PREVIEW_TRUNCATED -> R.string.notice_preview_truncated
+
 
 }
 

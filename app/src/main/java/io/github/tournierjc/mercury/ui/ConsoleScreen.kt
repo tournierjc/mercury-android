@@ -116,8 +116,8 @@ fun ConsoleScreen(onBack: () -> Unit) {
             onBack = onBack,
             onRefresh = viewModel::refresh,
         )
-        state.message?.let { InlineBanner(it, isError = false, onDismiss = viewModel::clearBanner) }
-        state.error?.let { InlineBanner(it, isError = true, onDismiss = viewModel::clearBanner) }
+        state.message?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
+        state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
 
         // Same handoff as the bot sheet: bytes downloaded, FileProvider URI, share sheet.
         val pendingShare = state.pendingShare
@@ -897,9 +897,9 @@ private fun TerminalSection(state: ConsoleUiState, viewModel: ConsoleViewModel) 
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                         color = if (entry.failure != null || !entry.ok) colors.danger else colors.textPrimary,
                     )
-                    if (entry.status.isNotBlank()) {
+                    entry.status?.let { notice ->
                         Text(
-                            text = "— ${entry.status}",
+                            text = "— ${noticeText(notice)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.textSecondary,
                         )
@@ -1271,7 +1271,13 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
             containerColor = colors.surface,
             title = {
                 Text(
-                    text = state.gitDiffTitle.ifBlank { "Diff" },
+                    // The dialog's own words come from the resources that already had them.
+                    text = listOfNotNull(
+                        stringResource(
+                            if (state.gitDiffStaged) R.string.console_diff_staged else R.string.console_diff_unstaged,
+                        ),
+                        state.gitDiffPath,
+                    ).joinToString(" · "),
                     color = colors.textPrimary,
                     style = MaterialTheme.typography.titleSmall,
                 )
@@ -1280,7 +1286,7 @@ private fun GitSection(state: ConsoleUiState, viewModel: ConsoleViewModel) {
                 // The patch as text: this branch has no diff renderer, and pretending to
                 // colour one would be worse than showing git's own output.
                 Text(
-                    text = diff,
+                    text = diff.ifBlank { stringResource(R.string.console_diff_vide) },
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = colors.textPrimary,
                     modifier = Modifier.verticalScroll(rememberScrollState()),

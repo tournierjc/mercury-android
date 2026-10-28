@@ -62,9 +62,7 @@ fun DeliverablesScreen(onBack: () -> Unit) {
         )
         FleetDeliverablesSection(state, viewModel, avatars)
         // Same banner as every other screen: the error is dismissable, not a permanent stray line.
-        state.error?.let { message ->
-            InlineBanner(message = message, isError = true, onDismiss = viewModel::clearBanner)
-        }
+        state.error?.let { notice -> NoticeBanner(notice, onDismiss = viewModel::clearBanner) }
     }
 
     OutputPreviewHost(state, viewModel)

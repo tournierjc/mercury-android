@@ -10,6 +10,9 @@ import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.BoardEvent
 import io.github.tournierjc.mercury.data.BoardJson
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
+import io.github.tournierjc.mercury.data.toNotice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,9 +45,11 @@ data class AttachmentPreview(
     val isImage: Boolean,
     val isText: Boolean = false,
     val text: String? = null,
+    /** The text is only the head of the file: the dialog says so, the words are not in the data. */
+    val truncated: Boolean = false,
     val bytes: ByteArray? = null,
     val loading: Boolean = true,
-    val error: String? = null,
+    val error: Notice? = null,
 )
 
 /** Bytes ready for the system: the viewer for [download] = false, a copy for true. */
@@ -67,8 +72,9 @@ data class BoardsUiState(
     /** True while `/api/boards/:id/events` is delivering frames. */
     val live: Boolean = false,
     val busy: Boolean = false,
-    val message: String? = null,
-    val error: String? = null,
+    /** What the last finished action says (a key, resolved by the screen). */
+    val message: Notice? = null,
+    val error: Notice? = null,
 ) {
     val boardName: String get() = if (board != null) BoardJson.title(board) else ""
     val grouped: List<Pair<String, List<JsonObject>>> get() = BoardJson.byStatus(cards)
@@ -211,7 +217,7 @@ class BoardsViewModel(
                 val question = BoardJson.feedbackQuestion(event.request)
                 current.copy(
                     feedback = merged,
-                    message = question.ifBlank { null }?.let { "Décision demandée : $it" },
+                    message = question.ifBlank { null }?.let { Notice(NoticeKey.BOARD_DECISION_REQUESTED, args = listOf(it)) },
                     live = true,
                 )
             }
@@ -234,37 +240,37 @@ class BoardsViewModel(
 
     fun createBoard(name: String, description: String?) {
         if (name.isBlank()) return
-        act("Plateau créé") { api.createBoard(name.trim(), description?.trim()?.ifBlank { null }) }
+        act(Notice(NoticeKey.BOARD_CREATED)) { api.createBoard(name.trim(), description?.trim()?.ifBlank { null }) }
     }
 
-    fun deleteBoard(id: String) = act("Plateau supprimé") { api.deleteBoard(id) }
+    fun deleteBoard(id: String) = act(Notice(NoticeKey.BOARD_DELETED)) { api.deleteBoard(id) }
 
-    fun activate() = actOnBoard("Plateau activé") { api.activateBoard(it) }
+    fun activate() = actOnBoard(Notice(NoticeKey.BOARD_ACTIVATED)) { api.activateBoard(it) }
 
-    fun deactivate() = actOnBoard("Plateau désactivé") { api.deactivateBoard(it) }
+    fun deactivate() = actOnBoard(Notice(NoticeKey.BOARD_DEACTIVATED)) { api.deactivateBoard(it) }
 
     fun addCard(task: String, priority: String?) {
         if (task.isBlank()) return
-        actOnBoard("Carte ajoutée") { api.addCard(it, task.trim(), priority?.ifBlank { null }) }
+        actOnBoard(Notice(NoticeKey.CARD_ADDED)) { api.addCard(it, task.trim(), priority?.ifBlank { null }) }
     }
 
-    fun deleteCard(cardId: String) = actOnBoard("Carte supprimée") { api.deleteCard(it, cardId) }
+    fun deleteCard(cardId: String) = actOnBoard(Notice(NoticeKey.CARD_DELETED)) { api.deleteCard(it, cardId) }
 
-    fun runCard(cardId: String) = actOnBoard("Carte lancée") { api.runCard(it, cardId) }
+    fun runCard(cardId: String) = actOnBoard(Notice(NoticeKey.CARD_STARTED)) { api.runCard(it, cardId) }
 
-    fun haltCard(cardId: String) = actOnBoard("Carte arrêtée") { api.haltCard(it, cardId) }
+    fun haltCard(cardId: String) = actOnBoard(Notice(NoticeKey.CARD_HALTED)) { api.haltCard(it, cardId) }
 
-    fun cascadeCard(cardId: String) = actOnBoard("Cascade demandée") { api.cascadeCard(it, cardId) }
+    fun cascadeCard(cardId: String) = actOnBoard(Notice(NoticeKey.CASCADE_REQUESTED)) { api.cascadeCard(it, cardId) }
 
-    fun runAll() = actOnBoard("Exécution de toutes les cartes demandée") { api.runAllCards(it) }
+    fun runAll() = actOnBoard(Notice(NoticeKey.CARDS_ALL_STARTED)) { api.runAllCards(it) }
 
-    fun haltAll() = actOnBoard("Exécution interrompue") { api.haltAllCards(it) }
+    fun haltAll() = actOnBoard(Notice(NoticeKey.CARDS_ALL_HALTED)) { api.haltAllCards(it) }
 
-    fun smartExecute() = actOnBoard("Exécution intelligente demandée") { api.smartExecute(it) }
+    fun smartExecute() = actOnBoard(Notice(NoticeKey.SMART_RUN_REQUESTED)) { api.smartExecute(it) }
 
-    fun clearDone() = actOnBoard("Cartes terminées effacées") { api.clearDoneCards(it) }
+    fun clearDone() = actOnBoard(Notice(NoticeKey.DONE_CARDS_CLEARED)) { api.clearDoneCards(it) }
 
-    fun generate(prompt: String?) = actOnBoard("Génération demandée") { api.generateCards(it, prompt?.ifBlank { null }) }
+    fun generate(prompt: String?) = actOnBoard(Notice(NoticeKey.GENERATION_REQUESTED)) { api.generateCards(it, prompt?.ifBlank { null }) }
 
     fun loadPlan() {
         val boardId = _state.value.openBoardId ?: return
@@ -284,14 +290,14 @@ class BoardsViewModel(
         }
     }
 
-    fun setInstructions(text: String) = actOnBoard("Consignes enregistrées") { api.setContextInstructions(it, text) }
+    fun setInstructions(text: String) = actOnBoard(Notice(NoticeKey.INSTRUCTIONS_SAVED)) { api.setContextInstructions(it, text) }
 
-    fun setDirectory(text: String) = actOnBoard("Dossier enregistré") { api.setContextDirectory(it, text) }
+    fun setDirectory(text: String) = actOnBoard(Notice(NoticeKey.DIRECTORY_SAVED)) { api.setContextDirectory(it, text) }
 
-    fun setKnowledge(text: String) = actOnBoard("Connaissances enregistrées") { api.setContextKnowledge(it, text) }
+    fun setKnowledge(text: String) = actOnBoard(Notice(NoticeKey.KNOWLEDGE_SAVED)) { api.setContextKnowledge(it, text) }
 
     fun setVariable(key: String, value: String) =
-        actOnBoard("Variable enregistrée") { api.setContextVariable(it, key, value) }
+        actOnBoard(Notice(NoticeKey.VARIABLE_SAVED)) { api.setContextVariable(it, key, value) }
 
     fun loadFeedback() {
         val boardId = _state.value.openBoardId ?: return
@@ -302,7 +308,7 @@ class BoardsViewModel(
         }
     }
 
-    fun respondFeedback(feedbackId: String, response: String) = actOnBoard("Réponse envoyée") {
+    fun respondFeedback(feedbackId: String, response: String) = actOnBoard(Notice(NoticeKey.FEEDBACK_SENT)) {
         api.respondFeedback(it, feedbackId, response)
     }
 
@@ -377,7 +383,13 @@ class BoardsViewModel(
                 preview.isText -> runCatching {
                     api.cardAttachmentContent(boardId, cardId, attachmentId)
                 }.fold(
-                    onSuccess = { root -> preview.copy(text = readableText(BoardJson.attachmentContent(root))) },
+                    onSuccess = { root ->
+                        val content = BoardJson.attachmentContent(root)
+                        preview.copy(
+                            text = content.take(MAX_PREVIEW_CHARS),
+                            truncated = content.length > MAX_PREVIEW_CHARS,
+                        )
+                    },
                     onFailure = { e -> preview.copy(error = e.readable()) },
                 )
 
@@ -441,35 +453,35 @@ class BoardsViewModel(
     }
 
     /** The UI explains a system refusal it alone can see (no app opens this type, no saver). */
-    fun report(message: String) {
-        _state.update { it.copy(error = message) }
+    fun report(notice: Notice) {
+        _state.update { it.copy(error = notice) }
     }
 
     fun addComment(text: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Commentaire ajouté") { api.addComment(boardId, cardId, text) }
+        act(Notice(NoticeKey.COMMENT_ADDED)) { api.addComment(boardId, cardId, text) }
         openCard(cardId)
     }
 
     fun deleteComment(commentId: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Commentaire supprimé") { api.deleteComment(boardId, cardId, commentId) }
+        act(Notice(NoticeKey.COMMENT_DELETED)) { api.deleteComment(boardId, cardId, commentId) }
         openCard(cardId)
     }
 
     fun addAttachment(name: String, path: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Pièce jointe ajoutée") { api.addAttachment(boardId, cardId, name, path) }
+        act(Notice(NoticeKey.BOARD_ATTACHMENT_ADDED)) { api.addAttachment(boardId, cardId, name, path) }
         openCard(cardId)
     }
 
     fun deleteAttachment(attachmentId: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Pièce jointe retirée") { api.deleteAttachment(boardId, cardId, attachmentId) }
+        act(Notice(NoticeKey.BOARD_ATTACHMENT_REMOVED)) { api.deleteAttachment(boardId, cardId, attachmentId) }
         closeAttachment()
         openCard(cardId)
     }
@@ -477,35 +489,35 @@ class BoardsViewModel(
     fun addLabel(name: String, color: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Étiquette ajoutée") { api.addLabel(boardId, cardId, name, color) }
+        act(Notice(NoticeKey.CARD_LABEL_ADDED)) { api.addLabel(boardId, cardId, name, color) }
         openCard(cardId)
     }
 
     fun removeLabel(labelId: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Étiquette retirée") { api.removeLabel(boardId, cardId, labelId) }
+        act(Notice(NoticeKey.CARD_LABEL_REMOVED)) { api.removeLabel(boardId, cardId, labelId) }
         openCard(cardId)
     }
 
     fun addDependency(dependsOnCardId: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Dépendance ajoutée") { api.addDependency(boardId, cardId, dependsOnCardId) }
+        act(Notice(NoticeKey.DEPENDENCY_ADDED)) { api.addDependency(boardId, cardId, dependsOnCardId) }
         openCard(cardId)
     }
 
     fun removeDependency(dependencyId: String) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Dépendance retirée") { api.removeDependency(boardId, cardId, dependencyId) }
+        act(Notice(NoticeKey.DEPENDENCY_REMOVED)) { api.removeDependency(boardId, cardId, dependencyId) }
         openCard(cardId)
     }
 
     fun setParent(parentId: String?) {
         val boardId = _state.value.openBoardId ?: return
         val cardId = _state.value.cardDetail?.cardId ?: return
-        act("Parent défini") { api.setCardParent(boardId, cardId, parentId?.ifBlank { null }) }
+        act(Notice(NoticeKey.CARD_PARENT_SET)) { api.setCardParent(boardId, cardId, parentId?.ifBlank { null }) }
         openCard(cardId)
     }
 
@@ -523,27 +535,25 @@ class BoardsViewModel(
         }
     }
 
-    private fun actOnBoard(successMessage: String, block: suspend (String) -> Any?) {
+    private fun actOnBoard(success: Notice, block: suspend (String) -> Any?) {
         val boardId = _state.value.openBoardId ?: return
-        act(successMessage) { block(boardId) }
+        act(success) { block(boardId) }
     }
 
-    private fun act(successMessage: String, block: suspend () -> Any?) {
+    private fun act(success: Notice, block: suspend () -> Any?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { block() }
                 .onSuccess {
-                    _state.update { s -> s.copy(busy = false, message = successMessage) }
+                    _state.update { s -> s.copy(busy = false, message = success) }
                     refresh()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
 
-    private fun Throwable.readable(): String = when (this) {
-        is AuthException -> "Session expirée — reconnecte-toi"
-        else -> message ?: "Requête refusée"
-    }
+    /** One mapping for the whole app (see `toNotice`). */
+    private fun Throwable.readable(): Notice = toNotice()
 
     companion object {
         /** One poll each while the stream is down: fast enough to see a card move. */
@@ -554,13 +564,6 @@ class BoardsViewModel(
 
         /** A markdown deliverable can be long; the sheet shows the head, the file the rest. */
         private const val MAX_PREVIEW_CHARS = 40_000
-
-        private fun readableText(raw: String): String =
-            if (raw.length <= MAX_PREVIEW_CHARS) {
-                raw
-            } else {
-                raw.take(MAX_PREVIEW_CHARS) + "\n\n… aperçu tronqué — télécharge le fichier pour le texte entier"
-            }
 
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer { BoardsViewModel(container.api, container) }

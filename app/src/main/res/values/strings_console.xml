@@ -150,6 +150,7 @@
     <string name="console_stage_all">Tout indexer</string>
     <string name="console_unstage_all">Tout désindexer</string>
     <string name="console_diff_unstaged">Diff non indexé</string>
+    <string name="console_diff_vide">Aucune différence.</string>
     <string name="console_diff_staged">Diff indexé</string>
     <string name="console_commit_message">Message de commit</string>
     <string name="console_generate">Générer</string>
