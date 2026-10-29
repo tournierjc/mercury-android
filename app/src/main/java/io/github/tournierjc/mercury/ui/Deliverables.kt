@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.style.TextOverflow
 import io.github.tournierjc.mercury.data.DeliverableFilter
 import io.github.tournierjc.mercury.data.DeliverableGroup
+import io.github.tournierjc.mercury.data.matchingBots
 import io.github.tournierjc.mercury.data.OutputKind
 import io.github.tournierjc.mercury.data.filteredBy
 import io.github.tournierjc.mercury.data.groupedByBot
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +48,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -84,7 +87,6 @@ import io.github.tournierjc.mercury.util.OutputPreviewState
  */
 @Composable
 fun DeliverablesSection(
-    title: String,
     outputs: List<DeliverableDto>,
     botNames: Map<String, String> = emptyMap(),
     /** The bots themselves, for the face and the monogram of each group. */
@@ -114,18 +116,25 @@ fun DeliverablesSection(
         botId = botFilter,
     )
     val shown = remember(outputs, filter) { outputs.filteredBy(filter) }
+    // The picker lists every bot that has files, never the filter's own result: a filter that
+    // shrank its own menu to the one bot already chosen would be a filter you cannot change.
+    val botChoices = remember(outputs, botNames, showOrigin) {
+        if (!showOrigin) emptyList() else outputs.groupedByBot(botNames).filter { it.botId.isNotBlank() }
+    }
     val groups = remember(shown, botNames, showOrigin) {
         if (showOrigin) shown.groupedByBot(botNames) else listOf(DeliverableGroup("", "", shown.sortedByDescending { it.mtimeMs }))
     }
 
-    CollapsibleSection(title, defaultOpen = true) {
+    // The list is the screen: it had a heading of its own above the search field, while the bar
+    // already says « Livrables ». One less level to unfold before reading a file.
+    Column(modifier = Modifier.fillMaxWidth()) {
         if (outputs.isEmpty()) {
             Text(
                 text = emptyText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
-            return@CollapsibleSection
+            return@Column
         }
 
         DeliverableSearch(
@@ -133,7 +142,7 @@ fun DeliverablesSection(
             onQuery = { query = it },
             filter = filter,
             onKind = { picked -> kindName = picked?.name },
-            bots = if (showOrigin) groups.map { it.botId to it.name } else emptyList(),
+            bots = botChoices,
             botFilter = botFilter,
             onBot = { botFilter = it },
         )
@@ -148,7 +157,7 @@ fun DeliverablesSection(
             TextButton(onClick = { query = ""; kindName = null; botFilter = null }) {
                 Text(stringResource(R.string.out_filters_clear), color = colors.accent)
             }
-            return@CollapsibleSection
+            return@Column
         }
 
         // Only worth saying when the three controls actually narrowed something.
@@ -266,11 +275,12 @@ private fun DeliverableSearch(
     onQuery: (String) -> Unit,
     filter: DeliverableFilter,
     onKind: (OutputKind?) -> Unit,
-    bots: List<Pair<String, String>>,
+    bots: List<DeliverableGroup>,
     botFilter: String?,
     onBot: (String?) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
+    var pickingBot by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -337,17 +347,140 @@ private fun DeliverableSearch(
             label = stringResource(R.string.out_filter_other),
         ) { onKind(OutputKind.Binary) }
         if (bots.size > 1) {
-            bots.forEach { (botId, name) ->
-                FilterChip(selected = botFilter == botId, label = name, accent = true) {
-                    onBot(if (botFilter == botId) null else botId)
+            // One chip, not one per bot: ten teammates turned this line into a scroll nobody could
+            // search, and the chip that was already on could scroll out of reach. It opens a list
+            // with a field; the selected bot's name is the label, and its × clears the filter.
+            val picked = bots.firstOrNull { it.botId == botFilter }
+            FilterChip(
+                selected = picked != null,
+                label = picked?.name ?: stringResource(R.string.out_filter_bot_all),
+                accent = true,
+                onClear = if (picked != null) ({ onBot(null) }) else null,
+            ) { pickingBot = true }
+        }
+    }
+
+    if (pickingBot) {
+        BotFilterDialog(
+            bots = bots,
+            selected = botFilter,
+            onPick = { picked ->
+                // Tapping the bot already chosen takes the filter off: the same gesture as the ×,
+                // for the hand that expects a second tap to undo the first.
+                onBot(if (picked != null && picked == botFilter) null else picked)
+                pickingBot = false
+            },
+            onDismiss = { pickingBot = false },
+        )
+    }
+}
+
+/**
+ * The bots that have files, with a field to find one.
+ *
+ * A list, not a row of chips: the fleet of ten that made this screen worth grouping is already
+ * more names than a phone shows on one line, and what the owner knows is a fragment of the name.
+ * Matching forgives case and accents, like the search above it.
+ */
+@Composable
+private fun BotFilterDialog(
+    bots: List<DeliverableGroup>,
+    selected: String?,
+    onPick: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    var query by remember { mutableStateOf("") }
+    val matches = remember(bots, query) { bots.matchingBots(query) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = { Text(stringResource(R.string.out_filter_bot_title), color = colors.textPrimary) },
+        text = {
+            Column(modifier = Modifier.heightIn(max = 380.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text(stringResource(R.string.out_filter_bot_search)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column(modifier = Modifier.padding(top = 8.dp).verticalScroll(rememberScrollState())) {
+                    BotFilterRow(
+                        name = stringResource(R.string.out_filter_bot_all),
+                        detail = null,
+                        selected = selected == null,
+                        onTap = { onPick(null) },
+                    )
+                    matches.forEach { group ->
+                        BotFilterRow(
+                            name = group.name,
+                            detail = stringResource(R.string.out_n_files, group.files.size),
+                            selected = group.botId == selected,
+                            onTap = { onPick(group.botId) },
+                        )
+                    }
+                    if (matches.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.out_filter_bot_none),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(vertical = 10.dp),
+                        )
+                    }
                 }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.out_filter_bot_close)) }
+        },
+    )
+}
+
+@Composable
+private fun BotFilterRow(name: String, detail: String?, selected: Boolean, onTap: () -> Unit) {
+    val colors = LocalMercuryColors.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.extraSmall)
+            .clickable(onClick = onTap)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (detail != null) {
+                Text(text = detail, style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+            }
+        }
+        if (selected) {
+            Icon(
+                Icons.Rounded.Check,
+                contentDescription = null,
+                tint = colors.accent,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun FilterChip(selected: Boolean, label: String, accent: Boolean = false, onClick: () -> Unit) {
+private fun FilterChip(
+    selected: Boolean,
+    label: String,
+    accent: Boolean = false,
+    /** Drawn inside the chip when a value is on: one tap takes the filter off. */
+    onClear: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
     val colors = LocalMercuryColors.current
     val tint = if (accent) colors.accent else colors.textPrimary
     Row(
@@ -366,7 +499,25 @@ private fun FilterChip(selected: Boolean, label: String, accent: Boolean = false
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) tint else colors.textSecondary,
             maxLines = 1,
+            modifier = Modifier.weight(1f, fill = false),
         )
+        if (onClear != null) {
+            Box(
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .size(16.dp)
+                    .clip(RoundedCornerShape(50))
+                    .clickable(onClick = onClear),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.out_filter_bot_clear),
+                    tint = tint,
+                    modifier = Modifier.size(13.dp),
+                )
+            }
+        }
     }
 }
 
@@ -545,7 +696,6 @@ fun FleetDeliverablesSection(
     val names = bots.associate { BotJson.id(it) to BotJson.name(it) }
     val byId = bots.associateBy { BotJson.id(it) }
     DeliverablesSection(
-        title = stringResource(R.string.out_title),
         outputs = outputs,
         botNames = names,
         bots = byId,
@@ -652,7 +802,6 @@ fun BotDeliverablesSheet(
                 }
             }
             DeliverablesSection(
-                title = stringResource(R.string.out_files),
                 outputs = outputs,
                 botNames = mapOf(botId to botName),
                 showOrigin = false,

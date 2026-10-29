@@ -111,4 +111,22 @@ class DeliverableViewTest {
         // Named by its identifier rather than by nothing: the file still exists.
         assertEquals("bot-supprime", groups.last().name)
     }
+
+    @Test
+    fun `the bot picker finds a name by a fragment, without case or accents`() {
+        val groups = listOf("Œil", "Gardien", "Mercury Android").map { DeliverableGroup(it, it, emptyList()) }
+
+        assertEquals(listOf("Œil"), groups.matchingBots("oeil").map { it.name })
+        assertEquals(listOf("Gardien"), groups.matchingBots("  GARDIEN ").map { it.name })
+        assertEquals(listOf("Mercury Android"), groups.matchingBots("android").map { it.name })
+        assertTrue(groups.matchingBots("zzz").isEmpty())
+    }
+
+    @Test
+    fun `an empty bot query opens on the whole fleet`() {
+        val groups = listOf("Œil", "Gardien", "Mercury Android").map { DeliverableGroup(it, it, emptyList()) }
+
+        assertEquals(groups, groups.matchingBots(""))
+        assertEquals(groups, groups.matchingBots("   "))
+    }
 }

@@ -1198,7 +1198,6 @@ private fun BotDetail(
     // What the bot produced, what it did, and what the queue gave up on. The three
     // sections read the deliverables, runs and DLQ routes of this bot.
     DeliverablesSection(
-        title = stringResource(R.string.bots_section_deliverables),
         outputs = state.outputs,
         busy = state.busy,
         emptyText = stringResource(R.string.bots_empty_deliverables),
