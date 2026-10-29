@@ -63,6 +63,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -86,6 +87,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.bots.AppVisibility
 import io.github.tournierjc.mercury.bots.BotThread
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.BotJson
@@ -482,6 +484,10 @@ fun ChatScreen(
                 .imePadding(),
         ) {
             val botId = botChat
+            // The screen knows which teammate it is showing; the notifier needs the same fact to
+            // stay quiet about a message that is already on screen.
+            LaunchedEffect(botId) { AppVisibility.openBotId = botId }
+            DisposableEffect(Unit) { onDispose { AppVisibility.openBotId = null } }
             val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
             val botLive = botId?.let { botWatch.live[it] }
             val botName = bot?.let { BotJson.name(it) } ?: botId.orEmpty()

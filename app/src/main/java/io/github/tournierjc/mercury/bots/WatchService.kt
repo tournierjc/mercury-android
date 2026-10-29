@@ -45,7 +45,7 @@ class WatchService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            AttentionPrefs(this).persistent = false
+            AttentionPrefs(this).watchDisabled = true
             stopSelf()
             return START_NOT_STICKY
         }
@@ -88,7 +88,16 @@ class WatchService : Service() {
         ensureChannel()
         val notification = build(text)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            // `remoteMessaging` (API 34+) is the type that fits "keep a message stream open": it
+            // is not capped at six hours per day like `dataSync`, and Android 15 lets it start
+            // from BOOT_COMPLETED — which `dataSync` may not. The watch is useless if it dies at
+            // the sixth hour or never comes back after a reboot.
+            val type = if (Build.VERSION.SDK_INT >= 34) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            }
+            startForeground(NOTIFICATION_ID, notification, type)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }

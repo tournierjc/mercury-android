@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_channel_messages">Messages des équipiers</string>
+    <string name="notification_channel_messages_desc">Un message arrivé d\'un équipier, quand l\'app n\'est pas ouverte sur lui.</string>
     <string name="notification_channel_crew">Équipiers</string>
     <string name="notification_channel_crew_desc">Un équipier a besoin de vous, ou a terminé son travail.</string>
     <string name="notification_watch_title">Mercury — veille</string>
