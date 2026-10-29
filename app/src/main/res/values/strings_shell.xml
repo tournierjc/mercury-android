@@ -111,6 +111,9 @@
     <string name="prov_disabled">désactivé</string>
     <string name="prov_no_key">sans clé</string>
     <string name="prov_ready">prêt</string>
+    <string name="prov_routing_order">Ordre des fournisseurs (séparés par des virgules)</string>
+    <string name="prov_routing_quant">Quantisation (fp8, fp4…)</string>
+    <string name="prov_routing_hint">Épingle un endpoint précis du modèle. Vide, la passerelle choisit.</string>
     <string name="prov_edit">Modifier %1$s</string>
     <string name="prov_test">Tester %1$s</string>
     <string name="prov_connected">Connecté · %1$d modèle(s)</string>

@@ -178,6 +178,19 @@ data class ProviderDto(
     val model: String = "",
     val enabled: Boolean = false,
     val recommended: Boolean = false,
+    /** OpenRouter only: the endpoint pin, null when nothing is pinned. */
+    val routing: ProviderRoutingDto? = null,
+)
+
+/**
+ * OpenRouter fronts many hosts for the same weights; this says which one answers. Server side it
+ * is written into the request body as the gateway's `provider` block.
+ */
+@Serializable
+data class ProviderRoutingDto(
+    val order: List<String> = emptyList(),
+    val quantizations: List<String> = emptyList(),
+    val allowFallbacks: Boolean? = null,
 )
 
 @Serializable
