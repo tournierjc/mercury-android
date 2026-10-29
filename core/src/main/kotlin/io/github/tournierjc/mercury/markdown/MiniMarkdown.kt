@@ -3,8 +3,10 @@ package io.github.tournierjc.mercury.markdown
 /**
  * A deliberately small markdown subset, rendered without pulling a renderer
  * dependency: fenced code blocks, headings, bullet lists, `inline code`,
- * **bold** and *italic*. Anything else stays literal, which is the honest
- * behaviour for an agent that can emit arbitrary text.
+ * **bold**, *italic*, and `[links](https://…)` — plus a bare `https://…`,
+ * which an agent writes as often as a bracketed link. Anything else stays
+ * literal, which is the honest behaviour for an agent that can emit arbitrary
+ * text.
  */
 sealed interface MdBlock {
     data class Paragraph(val spans: List<MdSpan>) : MdBlock
@@ -18,11 +20,30 @@ data class MdSpan(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val code: Boolean = false,
+    /**
+     * Where the span points when it is a link. Only `http(s)` ever lands here: the renderer hands
+     * it to the platform's browser, so a `javascript:` or `intent:` target stays literal text.
+     */
+    val url: String? = null,
 )
 
 object MiniMarkdown {
 
-    private val inlinePattern = Regex("(\\*\\*[^*]+\\*\\*|\\*[^*]+\\*|`[^`]+`)")
+    // Ordered as it is for a reason: at one position, the first alternative that matches wins. A
+    // backtick before `[` keeps `` `[a](b)` `` code, and a link before the bare URL keeps the label
+    // the author wrote instead of cutting the span at the scheme.
+    private val inlinePattern = Regex(
+        "(\\[[^\\]\\n]+\\]\\([^()\\s]+\\)|`[^`]+`|\\*\\*[^*]+\\*\\*|\\*[^*]+\\*|https?://[^\\s<>()\\[\\]]+)",
+    )
+
+    /** A target the platform may open. Anything else — `javascript:`, `intent:`, `file:` — is text. */
+    fun isWebUrl(target: String): Boolean {
+        val lowered = target.trim().lowercase()
+        return lowered.startsWith("http://") || lowered.startsWith("https://")
+    }
+
+    /** Trailing punctuation belongs to the sentence, not to the URL it follows. */
+    private const val URL_TAIL = ".,;:!?»\"'"
 
     fun parse(text: String): List<MdBlock> {
         val blocks = ArrayList<MdBlock>()
@@ -102,11 +123,31 @@ object MiniMarkdown {
             }
             val token = match.value
             when {
-                token.startsWith("**") && token.endsWith("**") ->
-                    spans += MdSpan(token.removeSurrounding("**"), bold = true)
+                token.startsWith("[") && token.contains("](") -> {
+                    val label = token.substringAfter("[").substringBefore("]")
+                    val target = token.substringAfter("](").removeSuffix(")")
+                    // A target the browser cannot open is not a link: the markdown stays as typed,
+                    // which is more honest than a tap that does nothing or opens something else.
+                    if (isWebUrl(target)) {
+                        spans += MdSpan(label, url = target)
+                    } else {
+                        spans += MdSpan(token)
+                    }
+                }
 
                 token.startsWith("`") && token.endsWith("`") ->
                     spans += MdSpan(token.removeSurrounding("`"), code = true)
+
+                token.startsWith("**") && token.endsWith("**") ->
+                    spans += MdSpan(token.removeSurrounding("**"), bold = true)
+
+                token.startsWith("http") -> {
+                    // « Voir https://idealo.fr/x. » — the full stop ends the sentence, not the link.
+                    val url = token.trimEnd { it in URL_TAIL }
+                    spans += MdSpan(url, url = url)
+                    val tail = token.substring(url.length)
+                    if (tail.isNotEmpty()) spans += MdSpan(tail)
+                }
 
                 else -> spans += MdSpan(token.removeSurrounding("*"), italic = true)
             }

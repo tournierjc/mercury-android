@@ -16,11 +16,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -47,13 +51,13 @@ fun MarkdownText(
             val spacing = if (index == 0) 0.dp else 10.dp
             when (block) {
                 is MdBlock.Paragraph -> Text(
-                    text = annotated(block.spans, color),
+                    text = annotated(block.spans, color, colors.accent),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = spacing),
                 )
 
                 is MdBlock.Heading -> Text(
-                    text = annotated(block.spans, color),
+                    text = annotated(block.spans, color, colors.accent),
                     style = MaterialTheme.typography.headlineSmall,
                     color = color,
                     modifier = Modifier.padding(top = spacing),
@@ -69,7 +73,7 @@ fun MarkdownText(
                                 modifier = Modifier.padding(end = 8.dp),
                             )
                             Text(
-                                text = annotated(item, color),
+                                text = annotated(item, color, colors.accent),
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }
@@ -120,8 +124,22 @@ fun MarkdownText(
     }
 }
 
-private fun annotated(spans: List<MdSpan>, color: Color): AnnotatedString = buildAnnotatedString {
+private fun annotated(spans: List<MdSpan>, color: Color, link: Color): AnnotatedString = buildAnnotatedString {
     spans.forEach { span ->
+        val target = span.url
+        if (target != null) {
+            // A LinkAnnotation is what makes the run tappable at all: styled text that looks like a
+            // link but is not one is a dead end, and the platform opens what it points at.
+            withLink(
+                LinkAnnotation.Url(
+                    url = target,
+                    styles = TextLinkStyles(
+                        style = SpanStyle(color = link, textDecoration = TextDecoration.Underline),
+                    ),
+                ),
+            ) { append(span.text) }
+            return@forEach
+        }
         val style = SpanStyle(
             color = if (span.code) LocalCodeColor else color,
             fontWeight = if (span.bold) FontWeight.SemiBold else null,
