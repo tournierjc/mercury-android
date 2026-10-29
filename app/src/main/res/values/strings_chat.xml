@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="chat_jump_to_bottom">Aller au dernier message</string>
     <!-- L'âge d'un tour, sous sa bulle : « à l'instant », « il y a 3 min »… -->
     <string name="chat_age_now">à l\'instant</string>
     <plurals name="chat_age_minutes">

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="chat_jump_to_bottom">Jump to the last message</string>
     <!-- A turn's age, under its bubble. -->
     <string name="chat_age_now">just now</string>
     <plurals name="chat_age_minutes">

@@ -21,6 +21,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.LinearProgressIndicator
@@ -38,14 +40,17 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Close
@@ -56,6 +61,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
@@ -66,6 +72,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,6 +105,7 @@ import io.github.tournierjc.mercury.data.CodeMode
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.QuoteReply
 import io.github.tournierjc.mercury.data.RelativeAge
+import io.github.tournierjc.mercury.data.isAtBottom
 import io.github.tournierjc.mercury.data.relativeAge
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.util.MediaPicker
@@ -931,6 +939,24 @@ internal fun MessageList(
     onLoadFull: (String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
+    // The round « back to the end » button is decided from the list's own layout: shown the moment
+    // the last message stops being the one on screen, gone as soon as it is back.
+    val atBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            isAtBottom(
+                lastVisibleIndex = last?.index ?: -1,
+                itemsCount = info.totalItemsCount,
+                lastItemBottom = last?.let { it.offset + it.size } ?: 0,
+                viewportEnd = info.viewportEndOffset,
+            )
+        }
+    }
+    val scrollScope = rememberCoroutineScope()
+    // A programmatic scroll also leaves the bottom for a moment; the button belongs to the owner's
+    // own scrolling, not to our animation, so it stays quiet while we drive the list.
+    var autoScrolling by remember { mutableStateOf(false) }
     val lastLength = messages.lastOrNull()?.text?.length ?: 0
     val clipboard = LocalClipboardManager.current
     // One menu at a time, one message in selection mode at a time: both are modal gestures on
@@ -945,7 +971,12 @@ internal fun MessageList(
         if (messages.isEmpty()) return@LaunchedEffect
         if (shownConversation.value == conversationKey) {
             // Same conversation, a new message: the smooth scroll is the right gesture.
-            listState.animateScrollToItem(messages.lastIndex)
+            autoScrolling = true
+            try {
+                listState.animateScrollToItem(messages.lastIndex)
+            } finally {
+                autoScrolling = false
+            }
         } else {
             // Entering (or returning to) a conversation: land at the end, instantly — animating
             // there from the previous conversation's position scrolled the whole history.
@@ -972,56 +1003,121 @@ internal fun MessageList(
                 TextButton(onClick = { selecting = null }) { Text(stringResource(R.string.chat_done)) }
             }
         }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                // Narrower gutters than a reading screen: the bubbles need the width they lose.
-                .padding(horizontal = 10.dp),
-            // A chat's rhythm, not a document's: 22 dp between two bubbles read as paragraph
-            // breaks, and the bubbles' own margins now do the separating.
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
-        ) {
-            items(messages, key = { it.id }) { message ->
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    MessageItem(
-                        message = message,
-                        selecting = selecting == message.id,
-                        onLongPress = {
-                            if (selecting == null) menuFor = message.id
-                        },
-                        onLoadFull = if (message.truncated) ({ onLoadFull(message.id) }) else null,
-                    )
-                    DropdownMenu(
-                        expanded = menuFor == message.id,
-                        onDismissRequest = { menuFor = null },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_reply)) },
-                            onClick = {
-                                menuFor = null
-                                onReply(message)
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Narrower gutters than a reading screen: the bubbles need the width they lose.
+                    .padding(horizontal = 10.dp),
+                // A chat's rhythm, not a document's: 22 dp between two bubbles read as paragraph
+                // breaks, and the bubbles' own margins now do the separating.
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
+            ) {
+                items(messages, key = { it.id }) { message ->
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        MessageItem(
+                            message = message,
+                            selecting = selecting == message.id,
+                            onLongPress = {
+                                if (selecting == null) menuFor = message.id
                             },
+                            onLoadFull = if (message.truncated) ({ onLoadFull(message.id) }) else null,
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_copy)) },
-                            onClick = {
-                                menuFor = null
-                                clipboard.setText(AnnotatedString(message.text))
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_select_text)) },
-                            onClick = {
-                                menuFor = null
-                                selecting = message.id
-                            },
-                        )
+                        DropdownMenu(
+                            expanded = menuFor == message.id,
+                            onDismissRequest = { menuFor = null },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_reply)) },
+                                onClick = {
+                                    menuFor = null
+                                    onReply(message)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_copy)) },
+                                onClick = {
+                                    menuFor = null
+                                    clipboard.setText(AnnotatedString(message.text))
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_select_text)) },
+                                onClick = {
+                                    menuFor = null
+                                    selecting = message.id
+                                },
+                            )
+                        }
                     }
                 }
             }
+
+            // Back to the end of the conversation. It belongs to the list, so it floats over it,
+            // bottom right, where the thumb already is — never over the input bar.
+            JumpToBottomOverlay(
+                visible = !atBottom && !autoScrolling && messages.isNotEmpty(),
+                onClick = {
+                    scrollScope.launch {
+                        autoScrolling = true
+                        try {
+                            listState.animateScrollToItem(messages.lastIndex)
+                        } finally {
+                            autoScrolling = false
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 4.dp, bottom = 10.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The wrapper exists for one reason: `AnimatedVisibility` has a `ColumnScope` overload, and called
+ * from inside a column that also holds a box, the wrong one wins. Away from both receivers the
+ * plain function is the only candidate.
+ */
+@Composable
+private fun JumpToBottomOverlay(visible: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + scaleIn(initialScale = 0.85f),
+        exit = fadeOut() + scaleOut(targetScale = 0.85f),
+        modifier = modifier,
+    ) {
+        JumpToBottom(onClick = onClick)
+    }
+}
+
+/**
+ * The round arrow that takes the owner back to the last message: one tap, no gesture to learn.
+ * A circle because it is a target, not a sentence — and drawn with the app's own surface so it
+ * reads as floating over the conversation rather than as a button of the composer.
+ */
+@Composable
+private fun JumpToBottom(onClick: () -> Unit) {
+    val colors = LocalMercuryColors.current
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = colors.surface,
+        contentColor = colors.textPrimary,
+        shadowElevation = 6.dp,
+        border = BorderStroke(1.dp, colors.hairlineStrong),
+        modifier = Modifier.size(44.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Rounded.ArrowDownward,
+                contentDescription = stringResource(R.string.chat_jump_to_bottom),
+                tint = colors.textPrimary,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
