@@ -1,5 +1,13 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.compose.foundation.text.selection.SelectionContainer
+import io.github.tournierjc.mercury.markdown.isMarkdownFile
+import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +47,8 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
@@ -602,9 +612,13 @@ private fun DeliverableRow(
 }
 
 /**
- * The preview: text inline (the route already caps at 64 kB), a small image decoded with
- * `BitmapFactory`, and a plain sentence for everything else — a phone is not a viewer for
- * every format, and the share sheet is one tap away.
+ * The preview, as a window of its own rather than a popup.
+ *
+ * A deliverable is often a report: headings, lists, tables. Printed raw in a 380 dp dialog it read as
+ * a wall of asterisks, so markdown is drawn with the same renderer as the conversation, the page gets
+ * the whole screen, and the raw text is one tap away when the owner wants to copy a line.
+ *
+ * The route already caps the body at 64 kB; a longer file says so instead of pretending to be whole.
  */
 @Composable
 fun OutputPreviewDialog(
@@ -617,49 +631,117 @@ fun OutputPreviewDialog(
     val bitmap = remember(image) {
         image?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
     }
+    val markdown = isMarkdownFile(state.output.name)
+    // Rendered by default: that is what « un aperçu » means. The raw view stays reachable.
+    var rendered by remember(state.output.name) { mutableStateOf(true) }
+    val kindLabel = if (state.output.final) {
+        stringResource(R.string.out_kind_final)
+    } else {
+        stringResource(R.string.out_kind_work)
+    }
+    val sizeLabel = BotOps.sizeNotice(state.output.bytes)?.let { noticeText(it) }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = colors.surface,
-        title = { Text(state.output.name, color = colors.textPrimary, style = MaterialTheme.typography.titleMedium) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 380.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                KeyValueRow(
-                    stringResource(R.string.out_row_file),
-                    listOf(
-                        if (state.output.final) stringResource(R.string.out_kind_final) else stringResource(R.string.out_kind_work),
-                        BotOps.sizeNotice(state.output.bytes)?.let { noticeText(it) }.orEmpty(),
-                    ).joinToString(" · "),
-                )
-                when {
-                    state.loading -> Text(
-                        text = stringResource(R.string.common_loading),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
-
-                    bitmap != null -> Image(
-                        bitmap = bitmap,
-                        contentDescription = stringResource(R.string.out_preview_of, state.output.name),
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    state.text != null -> {
-                        Text(
-                            text = state.text.ifBlank { stringResource(R.string.out_empty_file) },
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            color = colors.textPrimary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
-                                .padding(10.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = colors.canvas) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 2.dp),
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.out_close),
+                            tint = colors.textPrimary,
                         )
+                    }
+                    Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                        Text(
+                            text = state.output.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.textPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = listOfNotNull(kindLabel, sizeLabel).joinToString(" · "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    if (markdown && state.text != null) {
+                        IconButton(onClick = { rendered = !rendered }) {
+                            Icon(
+                                imageVector = if (rendered) Icons.Rounded.Code else Icons.Rounded.Visibility,
+                                contentDescription = stringResource(
+                                    if (rendered) R.string.out_preview_raw else R.string.out_preview_rendered,
+                                ),
+                                tint = colors.textSecondary,
+                            )
+                        }
+                    }
+                    IconButton(onClick = onShare) {
+                        Icon(
+                            Icons.Rounded.Share,
+                            contentDescription = stringResource(R.string.out_share),
+                            tint = colors.textPrimary,
+                        )
+                    }
+                }
+                HorizontalDivider(color = colors.hairline)
+
+                when {
+                    state.loading -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.common_loading),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
+
+                    bitmap != null -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                    ) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = stringResource(R.string.out_preview_of, state.output.name),
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
+                    state.text != null -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            // Reading gutters, wider than a chat bubble's: a report is read, not
+                            // skimmed while walking.
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val body = state.text.ifBlank { stringResource(R.string.out_empty_file) }
+                        if (markdown && rendered) {
+                            SelectionContainer { MarkdownText(text = body, color = colors.textPrimary) }
+                        } else {
+                            Text(
+                                text = body,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                color = colors.textPrimary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
+                                    .padding(10.dp),
+                            )
+                        }
                         if (state.truncated) {
                             Text(
                                 text = stringResource(R.string.out_truncated),
@@ -669,17 +751,20 @@ fun OutputPreviewDialog(
                         }
                     }
 
-                    else -> Text(
-                        text = state.note?.let { noticeText(it) } ?: stringResource(R.string.out_unavailable),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
+                    else -> Box(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = state.note?.let { noticeText(it) } ?: stringResource(R.string.out_unavailable),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.out_close)) } },
-        dismissButton = { TextButton(onClick = onShare) { Text(stringResource(R.string.out_share)) } },
-    )
+        }
+    }
 }
 
 

@@ -81,6 +81,30 @@ fun MarkdownText(
                     }
                 }
 
+                is MdBlock.Numbered -> Column(modifier = Modifier.padding(top = spacing)) {
+                    block.items.forEachIndexed { position, item ->
+                        Row(modifier = Modifier.padding(bottom = 4.dp)) {
+                            // The number is the point of the block: a procedure read as bullets
+                            // loses the only thing it had to say.
+                            Text(
+                                text = "${position + 1}.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                            Text(
+                                text = annotated(item, color, colors.accent, colors.surfaceMuted),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+                }
+
+                is MdBlock.Rule -> HorizontalDivider(
+                    color = colors.hairline,
+                    modifier = Modifier.padding(top = spacing, bottom = 2.dp),
+                )
+
                 is MdBlock.Table -> TableBlock(
                     table = block,
                     color = color,
