@@ -51,13 +51,13 @@ fun MarkdownText(
             val spacing = if (index == 0) 0.dp else 10.dp
             when (block) {
                 is MdBlock.Paragraph -> Text(
-                    text = annotated(block.spans, color, colors.accent),
+                    text = annotated(block.spans, color, colors.accent, colors.surfaceMuted),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(top = spacing),
                 )
 
                 is MdBlock.Heading -> Text(
-                    text = annotated(block.spans, color, colors.accent),
+                    text = annotated(block.spans, color, colors.accent, colors.surfaceMuted),
                     style = MaterialTheme.typography.headlineSmall,
                     color = color,
                     modifier = Modifier.padding(top = spacing),
@@ -73,7 +73,7 @@ fun MarkdownText(
                                 modifier = Modifier.padding(end = 8.dp),
                             )
                             Text(
-                                text = annotated(item, color, colors.accent),
+                                text = annotated(item, color, colors.accent, colors.surfaceMuted),
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }
@@ -124,7 +124,12 @@ fun MarkdownText(
     }
 }
 
-private fun annotated(spans: List<MdSpan>, color: Color, link: Color): AnnotatedString = buildAnnotatedString {
+private fun annotated(
+    spans: List<MdSpan>,
+    color: Color,
+    link: Color,
+    codeBackground: Color,
+): AnnotatedString = buildAnnotatedString {
     spans.forEach { span ->
         val target = span.url
         if (target != null) {
@@ -141,7 +146,11 @@ private fun annotated(spans: List<MdSpan>, color: Color, link: Color): Annotated
             return@forEach
         }
         val style = SpanStyle(
-            color = if (span.code) LocalCodeColor else color,
+            // Inline code is quoted, not highlighted: a monospace run on a muted chip, in the
+            // message's own colour. The cyan it used to carry read as a link (a path the eye tries
+            // to tap), and the flat run sat in the sentence with nothing to tell it apart.
+            color = color,
+            background = if (span.code) codeBackground else Color.Unspecified,
             fontWeight = if (span.bold) FontWeight.SemiBold else null,
             fontStyle = if (span.italic) FontStyle.Italic else null,
             fontFamily = if (span.code) FontFamily.Monospace else null,
@@ -150,5 +159,3 @@ private fun annotated(spans: List<MdSpan>, color: Color, link: Color): Annotated
         withStyle(style) { append(span.text) }
     }
 }
-
-private val LocalCodeColor = Color(0xFF9CE8FF)

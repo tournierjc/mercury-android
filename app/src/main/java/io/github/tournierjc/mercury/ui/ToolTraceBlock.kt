@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -85,10 +87,16 @@ fun ToolTraceBlock(
                 )
             }
             Box(modifier = Modifier.weight(1f))
-            Text(
-                text = stringResource(if (open) R.string.chat_trace_hide else R.string.chat_trace_show),
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.accent,
+            // A triangle, not the word « déplier »: the whole header is the target, and a label
+            // there competed with the count on its left. The words survive as the tap's
+            // description, where a screen reader still needs them.
+            Icon(
+                imageVector = if (open) Icons.Rounded.ArrowDropUp else Icons.Rounded.ArrowDropDown,
+                contentDescription = stringResource(
+                    if (open) R.string.chat_trace_hide else R.string.chat_trace_show,
+                ),
+                tint = colors.textSecondary,
+                modifier = Modifier.size(20.dp),
             )
         }
         if (open) {
@@ -108,36 +116,36 @@ fun ToolTraceBlock(
 private fun ToolTraceRow(step: ToolStep) {
     val colors = LocalMercuryColors.current
     val failed = step.summary?.startsWith("✗") == true
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = step.tool,
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-            color = if (failed) colors.danger else colors.accent,
-            maxLines = 1,
-            // The tool's name anchors the row: it may not be squeezed to nothing by its arguments.
-            modifier = Modifier.widthIn(max = 110.dp),
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = step.label,
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-            color = colors.textSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 6.dp),
-        )
+    // Two lines, never one truncated: the arguments keep their own line, and the outcome its own.
+    // On a single row both were cut to an ellipsis — « ✗ Error: No p… » hid exactly the sentence
+    // that says what went wrong, which is the only reason to open the block.
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = step.tool,
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = if (failed) colors.danger else colors.accent,
+                maxLines = 1,
+                // The tool's name anchors the row: it may not be squeezed to nothing by its
+                // arguments. Cut here, because a name is one word and the arguments are the detail.
+                modifier = Modifier.widthIn(max = 110.dp),
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = step.label,
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = colors.textSecondary,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 6.dp),
+            )
+        }
         step.summary?.takeIf { it.isNotBlank() }?.let { outcome ->
             Text(
                 text = outcome,
                 style = MaterialTheme.typography.labelSmall,
                 color = if (failed) colors.danger else colors.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .widthIn(max = 96.dp)
-                    .padding(start = 6.dp),
+                modifier = Modifier.padding(start = 2.dp, top = 1.dp),
             )
         }
     }
