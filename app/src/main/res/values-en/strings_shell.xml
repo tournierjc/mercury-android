@@ -141,6 +141,12 @@
     <string name="out_filter_text">Text</string>
     <string name="out_filter_images">Images</string>
     <string name="out_filter_other">Other</string>
+    <string name="out_filter_bot_all">All bots</string>
+    <string name="out_filter_bot_title">Filter by bot</string>
+    <string name="out_filter_bot_search">Search a bot</string>
+    <string name="out_filter_bot_none">No bot matches.</string>
+    <string name="out_filter_bot_clear">Clear the bot filter</string>
+    <string name="out_filter_bot_close">Close</string>
     <string name="out_no_match">No deliverable matches this filter.</string>
     <string name="out_filters_clear">Clear all</string>
     <string name="out_showing">%1$d of %2$d files</string>

@@ -143,6 +143,12 @@
     <string name="out_filter_text">Textes</string>
     <string name="out_filter_images">Images</string>
     <string name="out_filter_other">Autres</string>
+    <string name="out_filter_bot_all">Tous les bots</string>
+    <string name="out_filter_bot_title">Filtrer par bot</string>
+    <string name="out_filter_bot_search">Chercher un bot</string>
+    <string name="out_filter_bot_none">Aucun bot ne correspond.</string>
+    <string name="out_filter_bot_clear">Retirer le filtre du bot</string>
+    <string name="out_filter_bot_close">Fermer</string>
     <string name="out_no_match">Aucun livrable ne correspond à ce filtre.</string>
     <string name="out_filters_clear">Tout effacer</string>
     <string name="out_showing">%1$d sur %2$d fichiers</string>

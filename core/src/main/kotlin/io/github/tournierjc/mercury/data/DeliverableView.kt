@@ -42,17 +42,19 @@ private fun haystack(output: DeliverableDto): String =
 
 internal fun String.foldToAscii(): String = lowercase().map { char ->
     when (char) {
-        'à', 'á', 'â', 'ã', 'ä', 'å' -> 'a'
-        'ç' -> 'c'
-        'è', 'é', 'ê', 'ë' -> 'e'
-        'ì', 'í', 'î', 'ï' -> 'i'
-        'ñ' -> 'n'
-        'ò', 'ó', 'ô', 'õ', 'ö' -> 'o'
-        'ù', 'ú', 'û', 'ü' -> 'u'
-        'ý', 'ÿ' -> 'y'
-        'œ' -> 'o'
-        'æ' -> 'a'
-        else -> char
+        'à', 'á', 'â', 'ã', 'ä', 'å' -> "a"
+        'ç' -> "c"
+        'è', 'é', 'ê', 'ë' -> "e"
+        'ì', 'í', 'î', 'ï' -> "i"
+        'ñ' -> "n"
+        'ò', 'ó', 'ô', 'õ', 'ö' -> "o"
+        'ù', 'ú', 'û', 'ü' -> "u"
+        'ý', 'ÿ' -> "y"
+        // Two letters, not one: « Œil » is typed "oeil" on a phone keyboard, and a fold that
+        // answered "oil" would make the fleet's own bot unfindable by its name.
+        'œ' -> "oe"
+        'æ' -> "ae"
+        else -> char.toString()
     }
 }.joinToString("")
 
@@ -67,6 +69,18 @@ data class DeliverableGroup(
     val name: String,
     val files: List<DeliverableDto>,
 )
+
+/**
+ * The groups whose bot name matches a typed fragment, forgiving case and accents like the file
+ * search above them — an empty query is the whole fleet, which is what the picker opens on.
+ *
+ * It lives here, not in the screen, for the same reason [filteredBy] does: the rule is data, and
+ * "oeil" finding « Œil » is a fact worth a test rather than a look at a phone.
+ */
+fun List<DeliverableGroup>.matchingBots(query: String): List<DeliverableGroup> {
+    val needle = query.foldToAscii().trim()
+    return if (needle.isEmpty()) this else filter { it.name.foldToAscii().contains(needle) }
+}
 
 /**
  * Groups in the order the owner will look for them: by name, with the bots the roster no longer
