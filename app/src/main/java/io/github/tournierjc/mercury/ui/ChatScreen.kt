@@ -1063,7 +1063,24 @@ internal fun MessageList(
                     scrollScope.launch {
                         autoScrolling = true
                         try {
-                            listState.animateScrollToItem(messages.lastIndex)
+                            // Two taps when the last message is taller than the screen: the first
+                            // brings its beginning into view, the second its end. One tap when it
+                            // fits, or when the list is still above it — there the end and the
+                            // beginning are the same place, and a half-gesture would read as a
+                            // button that does nothing.
+                            val info = listState.layoutInfo
+                            val last = info.visibleItemsInfo.firstOrNull { it.index == messages.lastIndex }
+                            val screen = info.viewportEndOffset - info.viewportStartOffset
+                            val tallerThanScreen = last != null && screen > 0 && last.size > screen
+                            // `offset` is relative to the viewport start: it is 0 when the message
+                            // begins at the top, negative once the reader is inside it.
+                            val beginningInView = last != null && last.offset <= 4
+                            val target = if (tallerThanScreen && beginningInView) {
+                                Pair(messages.lastIndex, last!!.size)
+                            } else {
+                                Pair(messages.lastIndex, 0)
+                            }
+                            listState.animateScrollToItem(target.first, target.second)
                         } finally {
                             autoScrolling = false
                         }
