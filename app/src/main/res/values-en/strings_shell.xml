@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Drawer, device bridge, runs, deliverables and providers. -->
 <resources>
+    <!-- A deliverable's preview: the formatting, or the raw text when a line has to be copied. -->
+    <string name="out_preview_raw">Show raw text</string>
+    <string name="out_preview_rendered">Show formatted text</string>
     <!-- Drawer -->
     <string name="drawer_section_crew">Teammates</string>
     <!-- One teammate's row: two gestures, two destinations. -->

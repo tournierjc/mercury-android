@@ -12,6 +12,16 @@ sealed interface MdBlock {
     data class Paragraph(val spans: List<MdSpan>) : MdBlock
     data class Heading(val level: Int, val spans: List<MdSpan>) : MdBlock
     data class Bullets(val items: List<List<MdSpan>>) : MdBlock
+
+    /**
+     * A numbered list. Its own block, not a [Bullets] with a hint: a procedure read as bullets loses
+     * the order it exists to carry, and a deliverable is often a procedure.
+     */
+    data class Numbered(val items: List<List<MdSpan>>) : MdBlock
+
+    /** `---` on its own line: the cut between two parts of a document. */
+    data object Rule : MdBlock
+
     data class Code(val language: String, val content: String) : MdBlock
 
     /**
@@ -60,6 +70,12 @@ object MiniMarkdown {
     private fun isTableSeparator(line: String): Boolean =
         line.contains('|') && tableSeparator.matches(line.trim())
 
+    /** `1. ` or `1) ` — up to three digits, so `2026. Rapport` stays a paragraph. */
+    private val numberedItem = Regex("^\\d{1,3}[.)]\\s+(.+)$")
+
+    /** `---`, `***`, `___` (three or more, nothing else): a horizontal rule. */
+    private val rule = Regex("^(?:-{3,}|\\*{3,}|_{3,})$")
+
     private fun cells(line: String): List<String> =
         line.trim().removePrefix("|").removeSuffix("|").split('|').map { it.trim() }
 
@@ -69,6 +85,7 @@ object MiniMarkdown {
         var index = 0
         val paragraph = ArrayList<String>()
         val bullets = ArrayList<String>()
+        val numbered = ArrayList<String>()
 
         fun flushParagraph() {
             if (paragraph.isEmpty()) return
@@ -82,6 +99,12 @@ object MiniMarkdown {
             bullets.clear()
         }
 
+        fun flushNumbered() {
+            if (numbered.isEmpty()) return
+            blocks += MdBlock.Numbered(numbered.map { inline(it) })
+            numbered.clear()
+        }
+
         while (index < lines.size) {
             val line = lines[index]
             val trimmed = line.trimStart()
@@ -91,6 +114,7 @@ object MiniMarkdown {
                 trimmed.startsWith("|") && index + 1 < lines.size && isTableSeparator(lines[index + 1]) -> {
                     flushParagraph()
                     flushBullets()
+                    flushNumbered()
                     val header = cells(trimmed).map { inline(it) }
                     val rows = ArrayList<List<List<MdSpan>>>()
                     index += 2
@@ -105,6 +129,7 @@ object MiniMarkdown {
                 trimmed.startsWith("```") -> {
                     flushParagraph()
                     flushBullets()
+                    flushNumbered()
                     val language = trimmed.removePrefix("```").trim()
                     val code = StringBuilder()
                     index++
@@ -116,14 +141,29 @@ object MiniMarkdown {
                     blocks += MdBlock.Code(language = language, content = code.toString())
                 }
 
+                rule.matches(trimmed) -> {
+                    flushParagraph()
+                    flushBullets()
+                    flushNumbered()
+                    blocks += MdBlock.Rule
+                }
+
+                numberedItem.matches(trimmed) -> {
+                    flushParagraph()
+                    flushBullets()
+                    numbered += numberedItem.matchEntire(trimmed)!!.groupValues[1].trim()
+                }
+
                 trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") -> {
                     flushParagraph()
+                    flushNumbered()
                     bullets += trimmed.substring(2).trim()
                 }
 
                 trimmed.startsWith("#") -> {
                     flushParagraph()
                     flushBullets()
+                    flushNumbered()
                     val hashes = trimmed.takeWhile { it == '#' }.length
                     val level = hashes.coerceAtMost(3)
                     val title = trimmed.dropWhile { it == '#' }.trim()
@@ -133,10 +173,12 @@ object MiniMarkdown {
                 trimmed.isEmpty() -> {
                     flushParagraph()
                     flushBullets()
+                    flushNumbered()
                 }
 
                 else -> {
                     flushBullets()
+                    flushNumbered()
                     paragraph += trimmed
                 }
             }
@@ -144,6 +186,7 @@ object MiniMarkdown {
         }
         flushParagraph()
         flushBullets()
+        flushNumbered()
         return blocks
     }
 
@@ -190,4 +233,14 @@ object MiniMarkdown {
         if (cursor < text.length) spans += MdSpan(text.substring(cursor))
         return spans
     }
+}
+
+/**
+ * Whether a deliverable is markdown, by its name. The daemon names files; the viewer decides how to
+ * draw one from that name alone, because a content sniff on 64 kB of text guesses wrong on a report
+ * that happens to start with a code fence.
+ */
+fun isMarkdownFile(name: String): Boolean {
+    val lowered = name.trim().lowercase()
+    return lowered.endsWith(".md") || lowered.endsWith(".markdown") || lowered.endsWith(".mdx")
 }

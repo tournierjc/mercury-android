@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Le tiroir, le pont, les runs, les livrables et les fournisseurs. -->
 <resources>
+    <!-- L'aperçu d'un livrable : la mise en forme, ou le texte brut quand on veut copier une ligne. -->
+    <string name="out_preview_raw">Afficher le texte brut</string>
+    <string name="out_preview_rendered">Afficher la mise en forme</string>
     <!-- Tiroir -->
     <string name="drawer_section_crew">Équipiers</string>
     <!-- La rangée d'un équipier : deux gestes, deux destinations. -->

@@ -1,6 +1,7 @@
 package io.github.tournierjc.mercury.markdown
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -153,5 +154,45 @@ class MiniMarkdownTest {
         assertEquals("neuf FE", spans[0].text)
         assertEquals("https://idealo.fr/neuf", spans[0].url)
         assertEquals(" ~4 800 €", spans[1].text)
+    }
+
+    @Test
+    fun `a numbered list keeps its order`() {
+        val blocks = MiniMarkdown.parse("1. ouvrir le fichier\n2. corriger la ligne\n3. relancer les tests")
+        val numbered = blocks.single() as MdBlock.Numbered
+        assertEquals(3, numbered.items.size)
+        assertEquals("ouvrir le fichier", numbered.items[0].single().text)
+        assertEquals("relancer les tests", numbered.items[2].single().text)
+    }
+
+    @Test
+    fun `a numbered list ends when prose resumes`() {
+        val blocks = MiniMarkdown.parse("1. premier\n\nUn paragraphe.\n\n1) second")
+        assertTrue(blocks[0] is MdBlock.Numbered)
+        assertTrue(blocks[1] is MdBlock.Paragraph)
+        assertTrue(blocks[2] is MdBlock.Numbered)
+    }
+
+    @Test
+    fun `a decimal number is not a list item`() {
+        val blocks = MiniMarkdown.parse("2026. Rapport de veille")
+        assertTrue(blocks.single() is MdBlock.Paragraph)
+        assertEquals("2026. Rapport de veille", (blocks.single() as MdBlock.Paragraph).spans.single().text)
+    }
+
+    @Test
+    fun `three dashes on their own line are a rule`() {
+        val blocks = MiniMarkdown.parse("Avant\n\n---\n\nAprès")
+        assertEquals(3, blocks.size)
+        assertTrue(blocks[1] is MdBlock.Rule)
+    }
+
+    @Test
+    fun `a markdown file is recognised by its name`() {
+        assertTrue(isMarkdownFile("2026-10-29 veille.md"))
+        assertTrue(isMarkdownFile("RAPPORT.MARKDOWN"))
+        assertFalse(isMarkdownFile("script.sh"))
+        assertFalse(isMarkdownFile("md"))
+        assertFalse(isMarkdownFile("notes.md.txt"))
     }
 }
