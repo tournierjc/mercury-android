@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- A turn's age, under its bubble. -->
+    <string name="chat_age_now">just now</string>
+    <plurals name="chat_age_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="chat_age_hours">
+        <item quantity="one">%1$d h ago</item>
+        <item quantity="other">%1$d h ago</item>
+    </plurals>
+    <plurals name="chat_age_days">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
     <!-- Mercury conversation -->
     <string name="chat_title">Talk to Mercury</string>
     <string name="chat_subtitle">Sessions and teammates</string>

@@ -147,4 +147,22 @@ class ChatReducerTest {
         val state = ChatReducer.addUserMessage(initial, "salut")
         assertEquals(state, ChatReducer.onEvent(state, ChatEvent.Ignored("status")))
     }
+
+    @Test
+    fun `each turn carries the moment it happened`() {
+        var state = ChatReducer.addUserMessage(initial, "salut", at = 1_000L)
+        assertEquals(1_000L, state.messages.last().sentAt)
+
+        state = ChatReducer.onEvent(state, ChatEvent.TextDelta("Bon"), at = 2_000L)
+        assertEquals(2_000L, state.messages.last().sentAt)
+
+        state = ChatReducer.onEvent(state, ChatEvent.TextDone("Bonjour !", 900), at = 3_000L)
+        assertEquals(3_000L, state.messages.last().sentAt)
+    }
+
+    @Test
+    fun `a message with no clock stays at zero rather than borrowing one`() {
+        val state = ChatReducer.addUserMessage(initial, "salut")
+        assertEquals(0L, state.messages.last().sentAt)
+    }
 }

@@ -97,10 +97,13 @@ import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.CodeMode
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.QuoteReply
+import io.github.tournierjc.mercury.data.RelativeAge
+import io.github.tournierjc.mercury.data.relativeAge
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.R
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -1111,6 +1114,18 @@ internal fun MessageItem(
                     }
                 }
             }
+            // The age, under the bubble, on the bubble's own side — the way the webapp says it.
+            // Nothing while the answer is still arriving: "à l'instant" under a cursor is noise,
+            // and the timestamp is only true once the turn is over.
+            val age = if (!message.streaming) remember(message.sentAt) { relativeAge(System.currentTimeMillis(), message.sentAt) } else null
+            if (age != null) {
+                Text(
+                    text = ageLabel(age),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 3.dp, start = 4.dp, end = 4.dp),
+                )
+            }
             // The journal cuts an answer at 300 characters, which is inside a fenced block as
             // often as not: the bubble says its text is a summary, and offers the rest.
             if (message.truncated && onLoadFull != null) {
@@ -1138,6 +1153,18 @@ internal fun MessageItem(
             }
         }
     }
+}
+
+/**
+ * « à l'instant », « il y a 3 min » — the words, in the app's language. Core hands back the unit
+ * and the count; the plurals are resources, like every other sentence on this screen.
+ */
+@Composable
+private fun ageLabel(age: RelativeAge): String = when (age) {
+    RelativeAge.JustNow -> stringResource(R.string.chat_age_now)
+    is RelativeAge.Minutes -> pluralStringResource(R.plurals.chat_age_minutes, age.count, age.count)
+    is RelativeAge.Hours -> pluralStringResource(R.plurals.chat_age_hours, age.count, age.count)
+    is RelativeAge.Days -> pluralStringResource(R.plurals.chat_age_days, age.count, age.count)
 }
 
 /** The body of a bubble: plain words for the owner, rendered markdown for the agent. */
