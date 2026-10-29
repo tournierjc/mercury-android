@@ -40,6 +40,10 @@
     <string name="notice_teammate_budget_saved">Budget quotidien enregistré</string>
     <string name="notice_memory_added">Souvenir ajouté</string>
     <string name="notice_memory_forgotten">Souvenir oublié</string>
+        <string name="notice_goal_added">Objectif ajouté</string>
+    <string name="notice_goal_forgotten">Objectif supprimé</string>
+    <string name="notice_project_added">Projet ajouté</string>
+    <string name="notice_project_forgotten">Projet supprimé</string>
     <string name="notice_memory_updated">Souvenir mis à jour</string>
     <string name="notice_model_active">Modèle actif : %1$s</string>
     <string name="notice_provider_saved">Fournisseur %1$s enregistré — redémarrage requis</string>

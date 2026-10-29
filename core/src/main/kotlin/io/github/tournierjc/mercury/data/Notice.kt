@@ -107,6 +107,15 @@ enum class NoticeKey {
     MEMORY_ADDED,
     MEMORY_FORGOTTEN,
     MEMORY_UPDATED,
+    /**
+     * Objectifs et projets are memories with a type, but the owner never calls them « souvenirs »:
+     * a confirmation that says « Souvenir ajouté » after adding a project is the wrong word for the
+     * screen it appears on.
+     */
+    GOAL_ADDED,
+    GOAL_FORGOTTEN,
+    PROJECT_ADDED,
+    PROJECT_FORGOTTEN,
     MODEL_ACTIVE,
     PROVIDER_SAVED,
     LABEL_SAVED,

@@ -60,6 +60,10 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.MEMORY_ADDED -> R.string.notice_memory_added
     NoticeKey.MEMORY_FORGOTTEN -> R.string.notice_memory_forgotten
     NoticeKey.MEMORY_UPDATED -> R.string.notice_memory_updated
+    NoticeKey.GOAL_ADDED -> R.string.notice_goal_added
+    NoticeKey.GOAL_FORGOTTEN -> R.string.notice_goal_forgotten
+    NoticeKey.PROJECT_ADDED -> R.string.notice_project_added
+    NoticeKey.PROJECT_FORGOTTEN -> R.string.notice_project_forgotten
     NoticeKey.MODEL_ACTIVE -> R.string.notice_model_active
     NoticeKey.PROVIDER_SAVED -> R.string.notice_provider_saved
     NoticeKey.LABEL_SAVED -> R.string.notice_label_saved
