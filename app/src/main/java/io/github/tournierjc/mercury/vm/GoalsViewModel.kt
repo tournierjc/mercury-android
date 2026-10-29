@@ -23,6 +23,20 @@ import kotlinx.coroutines.launch
  */
 enum class GoalTab { Goals, Projects }
 
+/**
+ * The word the confirmation banner uses.
+ *
+ * Objectifs and projets live in the memory route, and the screen used to reuse the memory notices:
+ * adding a project answered « Souvenir ajouté ». The owner never calls them souvenirs, and a
+ * confirmation that names the wrong object reads as a bug in what was just saved.
+ */
+internal fun noticeForAdd(tab: GoalTab): NoticeKey =
+    if (tab == GoalTab.Goals) NoticeKey.GOAL_ADDED else NoticeKey.PROJECT_ADDED
+
+/** Deleting is ambiguous — the same `-` sits on both tabs — so the list the row came from decides. */
+internal fun noticeForForget(wasGoal: Boolean): NoticeKey =
+    if (wasGoal) NoticeKey.GOAL_FORGOTTEN else NoticeKey.PROJECT_FORGOTTEN
+
 data class GoalsUiState(
     val loading: Boolean = true,
     val tab: GoalTab = GoalTab.Goals,
@@ -71,16 +85,21 @@ class GoalsViewModel(private val api: MercuryApi) : ViewModel() {
     /** Adds to the type of the open tab; the summary is the only required field, as in the webapp. */
     fun add(summary: String, detail: String?) {
         if (summary.isBlank()) return
-        val type = if (_state.value.tab == GoalTab.Goals) GOAL else PROJECT
+        val goal = _state.value.tab == GoalTab.Goals
+        val type = if (goal) GOAL else PROJECT
+        val added = noticeForAdd(_state.value.tab)
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null, message = null) }
             runCatching { api.addMemory(type, summary.trim(), detail?.trim()?.ifBlank { null }) }
-                .onSuccess { _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.MEMORY_ADDED)) }; refresh() }
+                .onSuccess { _state.update { s -> s.copy(busy = false, message = Notice(added)) }; refresh() }
                 .onFailure { failure -> _state.update { it.copy(busy = false, error = failure.toNotice()) } }
         }
     }
 
     fun forget(id: String) {
+        // Which list holds the row decides the word: the same `-` button deletes an objectif or a
+        // projet, and the confirmation belongs to the one that just went away.
+        val forgotten = noticeForForget(wasGoal = _state.value.goals.any { it.id == id })
         viewModelScope.launch {
             runCatching { api.forgetMemory(id) }
                 .onSuccess {
@@ -88,7 +107,7 @@ class GoalsViewModel(private val api: MercuryApi) : ViewModel() {
                         s.copy(
                             goals = s.goals.filterNot { it.id == id },
                             projects = s.projects.filterNot { it.id == id },
-                            message = Notice(NoticeKey.MEMORY_FORGOTTEN),
+                            message = Notice(forgotten),
                         )
                     }
                 }

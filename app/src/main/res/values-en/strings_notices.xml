@@ -39,6 +39,10 @@
     <string name="notice_teammate_budget_saved">Daily budget saved</string>
     <string name="notice_memory_added">Memory added</string>
     <string name="notice_memory_forgotten">Memory forgotten</string>
+        <string name="notice_goal_added">Objective added</string>
+    <string name="notice_goal_forgotten">Objective deleted</string>
+    <string name="notice_project_added">Project added</string>
+    <string name="notice_project_forgotten">Project deleted</string>
     <string name="notice_memory_updated">Memory updated</string>
     <string name="notice_model_active">Active model: %1$s</string>
     <string name="notice_provider_saved">Provider %1$s saved — restart required</string>
