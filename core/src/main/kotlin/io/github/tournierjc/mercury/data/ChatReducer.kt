@@ -18,6 +18,11 @@ data class ChatMessage(
      * to load the rest instead of pretending this is all there was.
      */
     val truncated: Boolean = false,
+    /**
+     * When the turn happened, epoch ms — 0 when nothing said (an older daemon, or a message built
+     * before the app had a clock). The bubble shows an age only when it knows one.
+     */
+    val sentAt: Long = 0,
 ) {
     enum class Role { User, Assistant }
 }
@@ -83,8 +88,8 @@ data class ChatState(
 
 object ChatReducer {
 
-    fun addUserMessage(state: ChatState, text: String): ChatState {
-        val message = ChatMessage(id = "user-${state.messages.size}", role = ChatMessage.Role.User, text = text)
+    fun addUserMessage(state: ChatState, text: String, at: Long = 0): ChatState {
+        val message = ChatMessage(id = "user-${state.messages.size}", role = ChatMessage.Role.User, text = text, sentAt = at)
         return state.copy(messages = state.messages + message, error = null)
     }
 
@@ -107,24 +112,24 @@ object ChatReducer {
         error = null,
     )
 
-    fun onEvent(state: ChatState, event: ChatEvent): ChatState = when (event) {
+    fun onEvent(state: ChatState, event: ChatEvent, at: Long = 0): ChatState = when (event) {
         is ChatEvent.Connected -> state.copy(
             connected = true,
             provider = event.provider.ifBlank { state.provider },
             model = event.model.ifBlank { state.model },
         )
 
-        is ChatEvent.TextDelta -> appendDelta(state, event.text)
+        is ChatEvent.TextDelta -> appendDelta(state, event.text, at)
 
-        is ChatEvent.TextDone -> finishAssistant(state, event.fullText)
+        is ChatEvent.TextDone -> finishAssistant(state, event.fullText, at)
 
         ChatEvent.Thinking -> state.copy(streaming = true)
 
-        is ChatEvent.StepStart -> updateAssistant(state) { message ->
+        is ChatEvent.StepStart -> updateAssistant(state, at) { message ->
             message.copy(steps = message.steps + ToolStep(event.tool, event.label))
         }
 
-        is ChatEvent.StepDone -> updateAssistant(state) { message ->
+        is ChatEvent.StepDone -> updateAssistant(state, at) { message ->
             val index = message.steps.indexOfLast { it.tool == event.tool && it.summary == null }
             if (index >= 0) {
                 message.copy(
@@ -192,7 +197,7 @@ object ChatReducer {
             state.copy(interactions = state.interactions + interaction)
         }
 
-    private fun appendDelta(state: ChatState, delta: String): ChatState {
+    private fun appendDelta(state: ChatState, delta: String, at: Long = 0): ChatState {
         if (delta.isEmpty()) return state
         val messages = state.messages
         val last = messages.lastOrNull()
@@ -209,19 +214,26 @@ object ChatReducer {
                     role = ChatMessage.Role.Assistant,
                     text = delta,
                     streaming = true,
+                    sentAt = at,
                 ),
             )
         }
     }
 
-    private fun finishAssistant(state: ChatState, fullText: String): ChatState {
+    private fun finishAssistant(state: ChatState, fullText: String, at: Long = 0): ChatState {
         val messages = state.messages
         val last = messages.lastOrNull()
         return if (last != null && last.role == ChatMessage.Role.Assistant) {
             state.copy(
                 streaming = false,
                 messages = messages.dropLast(1) +
-                    last.copy(text = fullText.ifBlank { last.text }, streaming = false),
+                    last.copy(
+                        text = fullText.ifBlank { last.text },
+                        streaming = false,
+                        // The turn is over now: that is the moment the age under the bubble counts
+                        // from, not the first token's.
+                        sentAt = at,
+                    ),
             )
         } else {
             state.copy(
@@ -231,12 +243,13 @@ object ChatReducer {
                     role = ChatMessage.Role.Assistant,
                     text = fullText,
                     streaming = false,
+                    sentAt = at,
                 ),
             )
         }
     }
 
-    private fun updateAssistant(state: ChatState, transform: (ChatMessage) -> ChatMessage): ChatState {
+    private fun updateAssistant(state: ChatState, at: Long = 0, transform: (ChatMessage) -> ChatMessage): ChatState {
         val messages = state.messages
         val last = messages.lastOrNull()
         return if (last != null && last.role == ChatMessage.Role.Assistant) {
@@ -248,6 +261,7 @@ object ChatReducer {
                         id = "assistant-${messages.size}",
                         role = ChatMessage.Role.Assistant,
                         streaming = true,
+                        sentAt = at,
                     ),
                 ),
             )

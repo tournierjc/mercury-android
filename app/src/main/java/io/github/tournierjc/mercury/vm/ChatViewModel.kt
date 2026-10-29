@@ -11,6 +11,7 @@ import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.data.ChatReducer
 import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.epochMillis
 import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.data.ChatState
@@ -172,7 +173,8 @@ class ChatViewModel(
         // A photo with no caption still shows as a turn: name what travels rather than count it,
         // so the bubble needs no sentence (and no translation).
         val shown = trimmed.ifBlank { files.joinToString(" · ") { it.name } }
-        _state.update { ChatReducer.addUserMessage(it, shown) }
+        val now = System.currentTimeMillis()
+        _state.update { ChatReducer.addUserMessage(it, shown, now) }
         viewModelScope.launch {
             try {
                 val sessionId = api.send(trimmed, _state.value.sessionId, files.map { it.toUpload() })
@@ -261,6 +263,7 @@ class ChatViewModel(
                                 text = if (trace) "" else dto.content,
                                 steps = if (trace) ToolTrace.parse(dto.content) else emptyList(),
                                 toolTrace = trace,
+                                sentAt = epochMillis(dto.timestamp),
                             )
                         })
                     }
@@ -300,7 +303,8 @@ class ChatViewModel(
         streamSession = sessionId
         eventsJob = viewModelScope.launch {
             api.events(sessionId).collect { event ->
-                _state.update { ChatReducer.onEvent(it, event) }
+                val now = System.currentTimeMillis()
+                _state.update { ChatReducer.onEvent(it, event, now) }
             }
         }
     }

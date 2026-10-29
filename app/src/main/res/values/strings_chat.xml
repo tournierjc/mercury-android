@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- L'âge d'un tour, sous sa bulle : « à l'instant », « il y a 3 min »… -->
+    <string name="chat_age_now">à l\'instant</string>
+    <plurals name="chat_age_minutes">
+        <item quantity="one">il y a %1$d min</item>
+        <item quantity="other">il y a %1$d min</item>
+    </plurals>
+    <plurals name="chat_age_hours">
+        <item quantity="one">il y a %1$d h</item>
+        <item quantity="other">il y a %1$d h</item>
+    </plurals>
+    <plurals name="chat_age_days">
+        <item quantity="one">il y a %1$d jour</item>
+        <item quantity="other">il y a %1$d jours</item>
+    </plurals>
     <!-- Conversation Mercury -->
     <string name="chat_title">Parle à Mercury</string>
     <string name="chat_subtitle">Sessions et équipiers</string>
