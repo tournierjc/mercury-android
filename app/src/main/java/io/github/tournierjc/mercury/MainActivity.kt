@@ -18,7 +18,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.tournierjc.mercury.bots.AppVisibility
 import io.github.tournierjc.mercury.bots.AttentionPrefs
+import io.github.tournierjc.mercury.bots.AttentionSchedule
 import io.github.tournierjc.mercury.device.LocaleStore
 import io.github.tournierjc.mercury.bots.BotNotifier
 import io.github.tournierjc.mercury.bots.WatchService
@@ -56,7 +58,12 @@ class MainActivity : ComponentActivity() {
         // The watch service survives the activity, but a reboot (or a system kill) does not
         // restart it for us on Android 14+: re-arm it every time the owner opens the app,
         // which is a foreground start and therefore always allowed.
-        if (AttentionPrefs(this).persistent) WatchService.start(this)
+        //
+        // The watch is on by default: a bot answering while the phone sits in a pocket is the
+        // case it exists for, and asking the owner to find a switch first was the wrong default.
+        if (AttentionPrefs(this).persistent) {
+            if (!WatchService.start(this)) AttentionSchedule.apply(this)
+        }
         setContent {
             MercuryTheme {
                 Box(
@@ -73,6 +80,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AppVisibility.foreground = true
+    }
+
+    override fun onStop() {
+        AppVisibility.foreground = false
+        AppVisibility.openBotId = null
+        super.onStop()
     }
 
     /**

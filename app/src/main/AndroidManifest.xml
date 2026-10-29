@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Messagerie : le type remoteMessaging (API 34+) n'est pas plafonné à 6 h par jour et peut
+         démarrer au démarrage ; dataSync, lui, ne le peut plus à partir d'Android 15. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <queries>
@@ -51,7 +54,7 @@
         <service
             android:name=".bots.WatchService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync|remoteMessaging" />
 
         <receiver
             android:name=".bots.BootReceiver"

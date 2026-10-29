@@ -239,7 +239,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                         checked = watchOn,
                         onCheckedChange = { on ->
                             if (!on) {
-                                attention.persistent = false
+                                attention.watchDisabled = true
                                 watchOn = false
                                 WatchService.stop(context)
                             } else {
@@ -253,10 +253,10 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                                 // ouvrir l'app ; s'il refuse de démarrer, on retombe sur la
                                 // vérification périodique au lieu d'afficher un interrupteur menteur.
                                 if (WatchService.start(context)) {
-                                    attention.persistent = true
+                                    attention.watchDisabled = false
                                     watchOn = true
                                 } else {
-                                    attention.persistent = false
+                                    attention.watchDisabled = true
                                     watchOn = false
                                     AttentionSchedule.apply(context)
                                 }

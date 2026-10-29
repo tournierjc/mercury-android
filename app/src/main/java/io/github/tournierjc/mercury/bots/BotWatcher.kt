@@ -82,26 +82,49 @@ class BotWatcher(
                                 _state.update { it.copy(bots = event.bots, queue = event.queue, connected = true, error = null) }
                                 BotJson.attention(previous, event.bots).forEach(notifier::notify)
                             }
-                            is BotEvent.Activity -> _state.update { current ->
-                                val writing = event.textTail.isNotBlank() || event.reasoningTail.isNotBlank()
+                            is BotEvent.Activity -> {
+                                _state.update { current ->
+                                    val writing = event.textTail.isNotBlank() || event.reasoningTail.isNotBlank()
+                                    val finished = event.kind == "turn-end" || event.kind == "turn-end-error"
+                                    current.copy(
+                                        activity = if (event.label.isBlank()) current.activity else current.activity + (event.botId to event.label),
+                                        recent = (listOf(ActivityLine(event.botId, event.label, event.kind, event.status)) + current.recent).take(40),
+                                        live = when {
+                                            writing -> current.live + (event.botId to LiveTurn(
+                                                jobId = event.jobId,
+                                                text = event.textTail,
+                                                reasoning = event.reasoningTail,
+                                                running = !finished,
+                                            ))
+                                            // The turn ended without a text tail (a tool-only turn):
+                                            // keep nothing to stream, but do not leave a bubble
+                                            // pretending to still be writing.
+                                            finished -> current.live - event.botId
+                                            else -> current.live
+                                        },
+                                    )
+                                }
+                                // Outside the atomic update on purpose: `update` may re-run its
+                                // lambda under contention, and a notification posted twice is worse
+                                // than one posted a moment late. A finished turn that wrote something
+                                // is a message that arrived; the tail is the last 600 characters the
+                                // daemon sends, enough to know what it says.
                                 val finished = event.kind == "turn-end" || event.kind == "turn-end-error"
-                                current.copy(
-                                    activity = if (event.label.isBlank()) current.activity else current.activity + (event.botId to event.label),
-                                    recent = (listOf(ActivityLine(event.botId, event.label, event.kind, event.status)) + current.recent).take(40),
-                                    live = when {
-                                        writing -> current.live + (event.botId to LiveTurn(
-                                            jobId = event.jobId,
-                                            text = event.textTail,
-                                            reasoning = event.reasoningTail,
-                                            running = !finished,
-                                        ))
-                                        // The turn ended without a text tail (a tool-only turn):
-                                        // keep nothing to stream, but do not leave a bubble
-                                        // pretending to still be writing.
-                                        finished -> current.live - event.botId
-                                        else -> current.live
-                                    },
-                                )
+                                if (
+                                    finished &&
+                                    event.textTail.isNotBlank() &&
+                                    BotNotifier.shouldNotify(
+                                        foreground = AppVisibility.foreground,
+                                        openBotId = AppVisibility.openBotId,
+                                        botId = event.botId,
+                                    )
+                                ) {
+                                    val name = _state.value.bots
+                                        .firstOrNull { BotJson.id(it) == event.botId }
+                                        ?.let { BotJson.name(it) }
+                                        ?.ifBlank { null }
+                                    notifier.message(event.botId, name ?: event.botId, event.textTail)
+                                }
                             }
                             is BotEvent.Notice -> if (event.message.isNotBlank()) notifier.notice(event.message)
                             is BotEvent.Unknown -> Unit

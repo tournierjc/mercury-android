@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_channel_messages">Teammate messages</string>
+    <string name="notification_channel_messages_desc">A message from a teammate, while the app is not open on it.</string>
     <string name="notification_channel_crew">Teammates</string>
     <string name="notification_channel_crew_desc">A teammate needs you, or has finished its work.</string>
     <string name="notification_watch_title">Mercury — watch</string>
