@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,6 +81,14 @@ fun MarkdownText(
                     }
                 }
 
+                is MdBlock.Table -> TableBlock(
+                    table = block,
+                    color = color,
+                    link = colors.accent,
+                    codeBackground = colors.surfaceMuted,
+                    modifier = Modifier.padding(top = spacing),
+                )
+
                 is MdBlock.Code -> when {
                     // A rendered answer from the openui contract: components instead of source.
                     block.language.trim().lowercase() == OpenUi.FENCE -> Column(modifier = Modifier.padding(top = spacing)) {
@@ -120,6 +129,50 @@ fun MarkdownText(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * A pipe table, drawn the way the webapp draws it: the first row as a label, one hairline under it,
+ * and equal columns that wrap instead of being cut. Two columns of prose on a phone is the common
+ * case; four are readable because every cell wraps to as many lines as it needs.
+ *
+ * No outer frame and no zebra stripes: the conversation is a flat column of labels and rows, and a
+ * boxed table in the middle of it reads as an embedded picture rather than as the answer.
+ */
+@Composable
+private fun TableBlock(
+    table: MdBlock.Table,
+    color: Color,
+    link: Color,
+    codeBackground: Color,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalMercuryColors.current
+    val columns = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+            repeat(columns) { column ->
+                Text(
+                    text = annotated(table.header.getOrNull(column).orEmpty(), colors.textSecondary, link, codeBackground),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+            }
+        }
+        HorizontalDivider(color = colors.hairline)
+        table.rows.forEachIndexed { index, row ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                repeat(columns) { column ->
+                    Text(
+                        text = annotated(row.getOrNull(column).orEmpty(), color, link, codeBackground),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                }
+            }
+            if (index < table.rows.lastIndex) HorizontalDivider(color = colors.hairline)
         }
     }
 }

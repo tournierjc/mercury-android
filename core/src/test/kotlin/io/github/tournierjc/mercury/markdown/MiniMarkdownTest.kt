@@ -97,6 +97,54 @@ class MiniMarkdownTest {
     }
 
     @Test
+    fun `a pipe table keeps its header and its rows`() {
+        val blocks = MiniMarkdown.parse(
+            "Avant\n\n| Format | Vérifié |\n| --- | --- |\n| PDF (pdfkit) | ✓ |\n| Word (.docx) | ✓ |\n\nAprès",
+        )
+        assertEquals(3, blocks.size)
+        assertTrue(blocks[0] is MdBlock.Paragraph)
+
+        val table = blocks[1] as MdBlock.Table
+        assertEquals(listOf("Format", "Vérifié"), table.header.map { it.single().text })
+        assertEquals(2, table.rows.size)
+        assertEquals(listOf("PDF (pdfkit)", "✓"), table.rows[0].map { it.single().text })
+        assertEquals(listOf("Word (.docx)", "✓"), table.rows[1].map { it.single().text })
+        assertTrue(blocks[2] is MdBlock.Paragraph)
+    }
+
+    @Test
+    fun `a pipe line without a separator row stays prose`() {
+        // `a | b` is a sentence with a bar in it, not a table: nothing follows that says otherwise.
+        val blocks = MiniMarkdown.parse("cout | prix\net le reste")
+        val paragraph = blocks.single() as MdBlock.Paragraph
+        assertEquals("cout | prix et le reste", paragraph.spans.joinToString("") { it.text })
+    }
+
+    @Test
+    fun `alignment markers are read as a separator`() {
+        val blocks = MiniMarkdown.parse("| a | b | c |\n|:---|---:|:---:|\n| 1 | 2 | 3 |")
+        val table = blocks.single() as MdBlock.Table
+        assertEquals(3, table.header.size)
+        assertEquals(1, table.rows.size)
+    }
+
+    @Test
+    fun `a cell keeps its inline formatting`() {
+        val blocks = MiniMarkdown.parse("| Nom | État |\n| --- | --- |\n| **docx** | `npm i docx` |")
+        val table = blocks.single() as MdBlock.Table
+        assertTrue(table.rows.single()[0].single().bold)
+        assertTrue(table.rows.single()[1].single().code)
+    }
+
+    @Test
+    fun `a table ends at the first line that is not a row`() {
+        val blocks = MiniMarkdown.parse("| a | b |\n| --- | --- |\n| 1 | 2 |\nConclusion sans barre")
+        assertEquals(2, blocks.size)
+        assertEquals(1, (blocks[0] as MdBlock.Table).rows.size)
+        assertTrue(blocks[1] is MdBlock.Paragraph)
+    }
+
+    @Test
     fun `a link in a bullet is linked like one in a paragraph`() {
         val blocks = MiniMarkdown.parse("- [neuf FE](https://idealo.fr/neuf) ~4 800 €")
         val bullets = blocks.single() as MdBlock.Bullets

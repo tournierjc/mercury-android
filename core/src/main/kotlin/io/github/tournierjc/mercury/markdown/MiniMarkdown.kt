@@ -13,6 +13,15 @@ sealed interface MdBlock {
     data class Heading(val level: Int, val spans: List<MdSpan>) : MdBlock
     data class Bullets(val items: List<List<MdSpan>>) : MdBlock
     data class Code(val language: String, val content: String) : MdBlock
+
+    /**
+     * A pipe table, the shape a model writes when it compares things — and the shape the phone
+     * used to print as raw `| a | b |` rows.
+     *
+     * [header] is the first row and is drawn as a label; [rows] are the body. Cells keep their
+     * inline spans, so a link or a code fragment inside a cell still renders as one.
+     */
+    data class Table(val header: List<List<MdSpan>>, val rows: List<List<List<MdSpan>>>) : MdBlock
 }
 
 data class MdSpan(
@@ -45,6 +54,15 @@ object MiniMarkdown {
     /** Trailing punctuation belongs to the sentence, not to the URL it follows. */
     private const val URL_TAIL = ".,;:!?»\"'"
 
+    /** A separator row: `| --- | :---: |` and the like. It is what makes a pipe line a table. */
+    private val tableSeparator = Regex("^\\|?\\s*:?-{2,}:?\\s*(\\|\\s*:?-{2,}:?\\s*)*\\|?$")
+
+    private fun isTableSeparator(line: String): Boolean =
+        line.contains('|') && tableSeparator.matches(line.trim())
+
+    private fun cells(line: String): List<String> =
+        line.trim().removePrefix("|").removeSuffix("|").split('|').map { it.trim() }
+
     fun parse(text: String): List<MdBlock> {
         val blocks = ArrayList<MdBlock>()
         val lines = text.replace("\r\n", "\n").split('\n')
@@ -68,6 +86,22 @@ object MiniMarkdown {
             val line = lines[index]
             val trimmed = line.trimStart()
             when {
+                // A pipe table, recognised by its separator row: a lone `|` in prose stays prose,
+                // because nothing follows it that looks like `|---|---|`.
+                trimmed.startsWith("|") && index + 1 < lines.size && isTableSeparator(lines[index + 1]) -> {
+                    flushParagraph()
+                    flushBullets()
+                    val header = cells(trimmed).map { inline(it) }
+                    val rows = ArrayList<List<List<MdSpan>>>()
+                    index += 2
+                    while (index < lines.size && lines[index].trimStart().startsWith("|")) {
+                        rows += cells(lines[index]).map { inline(it) }
+                        index++
+                    }
+                    index-- // the outer loop steps past the line that ended the table
+                    blocks += MdBlock.Table(header = header, rows = rows)
+                }
+
                 trimmed.startsWith("```") -> {
                     flushParagraph()
                     flushBullets()
