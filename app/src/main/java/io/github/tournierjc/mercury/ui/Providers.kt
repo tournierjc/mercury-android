@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.data.dto.ProviderDto
+import io.github.tournierjc.mercury.data.dto.ProviderRoutingDto
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.R
@@ -87,7 +88,13 @@ internal fun ProviderRow(
                     !provider.hasKey -> stringResource(R.string.prov_no_key)
                     provider.model.isNotBlank() -> provider.model
                     else -> stringResource(R.string.prov_ready)
-                } + provider.baseUrl.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(),
+                } + provider.baseUrl.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty() +
+                    provider.routing?.let { pin ->
+                        // The pin is the answer to "why this host": worth a glance, not a screen.
+                        val where = pin.order.joinToString(",").ifBlank { null }
+                        val how = pin.quantizations.joinToString(",").ifBlank { null }
+                        listOfNotNull(where, how).joinToString("/").let { if (it.isBlank()) "" else " · $it" }
+                    }.orEmpty(),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textSecondary,
                 maxLines = 1,
@@ -144,14 +151,33 @@ internal fun ProviderTestLine(result: ProviderTestResult) {
  * `POST /api/providers/:id` takes `apiKey`, `baseUrl`, `model` and `enabled`, each optional: an
  * empty field is not sent, so the stored value survives.
  */
+/**
+ * OpenRouter alone reads an endpoint pin: it fronts many hosts for the same weights, and the pin
+ * says which one answers. Anywhere else the daemon refuses it, so the fields only appear here.
+ */
+private const val OPENROUTER_ID = "openrouter"
+
+/** "inference-net, deepinfra" → ["inference-net", "deepinfra"], blanks dropped. */
+private fun csvList(value: String): List<String> =
+    value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
 @Composable
 internal fun ProviderEditDialog(
     id: String,
+    existing: ProviderRoutingDto? = null,
     onDismiss: () -> Unit,
-    onConfirm: (apiKey: String?, baseUrl: String?, model: String?, enabled: Boolean?) -> Unit,
+    onConfirm: (
+        apiKey: String?,
+        baseUrl: String?,
+        model: String?,
+        enabled: Boolean?,
+        routing: ProviderRoutingDto?,
+    ) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
     var apiKey by remember { mutableStateOf("") }
+    var endpointOrder by remember { mutableStateOf(existing?.order?.joinToString(", ").orEmpty()) }
+    var quantizations by remember { mutableStateOf(existing?.quantizations?.joinToString(", ").orEmpty()) }
     var baseUrl by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var enabled by remember { mutableStateOf(true) }
@@ -187,6 +213,27 @@ internal fun ProviderEditDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (id == OPENROUTER_ID) {
+                    OutlinedTextField(
+                        value = endpointOrder,
+                        onValueChange = { endpointOrder = it },
+                        label = { Text(stringResource(R.string.prov_routing_order)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = quantizations,
+                        onValueChange = { quantizations = it },
+                        label = { Text(stringResource(R.string.prov_routing_quant)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = stringResource(R.string.prov_routing_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.prov_enabled),
@@ -206,6 +253,14 @@ internal fun ProviderEditDialog(
                         baseUrl.ifBlank { null },
                         model.ifBlank { null },
                         enabled,
+                        if (id == OPENROUTER_ID) {
+                            ProviderRoutingDto(
+                                order = csvList(endpointOrder),
+                                quantizations = csvList(quantizations),
+                            )
+                        } else {
+                            null
+                        },
                     )
                 },
             ) { Text(stringResource(R.string.prov_save)) }

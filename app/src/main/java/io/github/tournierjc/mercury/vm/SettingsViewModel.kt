@@ -16,6 +16,7 @@ import io.github.tournierjc.mercury.data.dto.InstanceConfig
 import io.github.tournierjc.mercury.data.dto.ModelsResponse
 import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
+import io.github.tournierjc.mercury.data.dto.ProviderRoutingDto
 import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -116,6 +117,7 @@ class SettingsViewModel(
         baseUrl: String? = null,
         model: String? = null,
         enabled: Boolean? = null,
+        routing: ProviderRoutingDto? = null,
     ) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null, message = null) }
@@ -127,6 +129,7 @@ class SettingsViewModel(
                         baseUrl = baseUrl?.trim()?.ifBlank { null },
                         model = model?.trim()?.ifBlank { null },
                         enabled = enabled,
+                        routing = routing,
                     ),
                 )
             }

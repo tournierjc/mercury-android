@@ -55,6 +55,8 @@ data class ProviderUpdateRequest(
     val baseUrl: String? = null,
     val model: String? = null,
     val enabled: Boolean? = null,
+    /** OpenRouter only. Empty lists clear the pin; null leaves it untouched. */
+    val routing: ProviderRoutingDto? = null,
 )
 
 /** Keys and models are read at boot, so a save always answers `restartRequired: true`. */

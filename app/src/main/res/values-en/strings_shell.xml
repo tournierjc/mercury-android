@@ -111,6 +111,9 @@
     <string name="prov_disabled">disabled</string>
     <string name="prov_no_key">no key</string>
     <string name="prov_ready">ready</string>
+    <string name="prov_routing_order">Endpoint order (comma-separated)</string>
+    <string name="prov_routing_quant">Quantization (fp8, fp4…)</string>
+    <string name="prov_routing_hint">Pins one endpoint of the model. Empty, the gateway picks.</string>
     <string name="prov_edit">Edit %1$s</string>
     <string name="prov_test">Test %1$s</string>
     <string name="prov_connected">Connected · %1$d model(s)</string>

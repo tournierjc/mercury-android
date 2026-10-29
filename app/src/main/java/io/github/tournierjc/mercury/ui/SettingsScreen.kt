@@ -63,6 +63,7 @@ import io.github.tournierjc.mercury.bots.AttentionPrefs
 import io.github.tournierjc.mercury.bots.AttentionSchedule
 import io.github.tournierjc.mercury.bots.WatchService
 import io.github.tournierjc.mercury.data.dto.InstanceConfig
+import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.vm.SettingsViewModel
@@ -85,7 +86,8 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
 
     var showModelPicker by remember { mutableStateOf(false) }
     var showLanguagePicker by remember { mutableStateOf(false) }
-    var editingProvider by remember { mutableStateOf<String?>(null) }
+    // The provider itself, not its name: the pin dialog opens on the pin already stored.
+    var editingProvider by remember { mutableStateOf<ProviderDto?>(null) }
     // The host address used to be asked once, at first launch, and never again: following the
     // server to another machine meant wiping the app. It now lives with the account rows.
     var showServerDialog by remember { mutableStateOf(false) }
@@ -390,7 +392,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                     ProviderRow(
                         provider = provider,
                         busy = state.busy,
-                        onEdit = { editingProvider = name },
+                        onEdit = { editingProvider = provider },
                         onTest = { viewModel.testProvider(name) },
                     )
                     if (state.providerTestFor == name) {
@@ -453,13 +455,15 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
         }
     }
 
-    editingProvider?.let { id ->
+    editingProvider?.let { provider ->
+        val id = provider.name.ifBlank { "—" }
         ProviderEditDialog(
             id = id,
+            existing = provider.routing,
             onDismiss = { editingProvider = null },
-            onConfirm = { apiKey, baseUrl, model, enabled ->
+            onConfirm = { apiKey, baseUrl, model, enabled, routing ->
                 editingProvider = null
-                viewModel.saveProvider(id, apiKey, baseUrl, model, enabled)
+                viewModel.saveProvider(id, apiKey, baseUrl, model, enabled, routing)
             },
         )
     }
