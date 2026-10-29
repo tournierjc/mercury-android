@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -499,7 +500,12 @@ private fun FilterChip(
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) tint else colors.textSecondary,
             maxLines = 1,
-            modifier = Modifier.weight(1f, fill = false),
+            overflow = TextOverflow.Ellipsis,
+            // No `weight` here: this chip lives in a row that scrolls horizontally, so the row's
+            // width is unbounded and a weighted child is measured against infinity — it collapses
+            // to zero, which is how every filter chip on this screen lost its label. A ceiling
+            // does the truncating a long bot name needs.
+            modifier = Modifier.widthIn(max = 170.dp),
         )
         if (onClear != null) {
             Box(
