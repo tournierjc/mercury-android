@@ -86,6 +86,35 @@ class InstancePatchTest {
     }
 
     @Test
+    fun `an emptied field lifts the ceiling too, because zero and empty mean the same thing`() {
+        assertEquals("0", InstancePatch.config(current, draft(budget = "")).getValue("tokenBudget").jsonPrimitive.content)
+        assertEquals("0", InstancePatch.config(current, draft(budget = "   ")).getValue("tokenBudget").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `an instance already without a ceiling has nothing to lift`() {
+        // Writing 0 over 0 would be a config rewrite that changes nothing — the same rule that
+        // keeps an untouched form from patching at all.
+        val unlimited = InstanceConfig(identity = IdentityDto("Mercury", "JC"), defaultProvider = "deepseek", tokenBudget = 0)
+
+        assertEquals(JsonObject(emptyMap()), InstancePatch.config(unlimited, draft(budget = "")))
+        assertEquals(JsonObject(emptyMap()), InstancePatch.config(unlimited, draft(budget = "0")))
+    }
+
+    @Test
+    fun `no ceiling reads as an empty field, and zero typed into it empties it`() {
+        // A `0` in a field labelled "budget" reads as a limit of none; the absence of a ceiling is
+        // the absence of a number.
+        assertEquals("200000", InstancePatch.budgetField(200_000))
+        assertEquals("", InstancePatch.budgetField(0))
+
+        assertEquals("", InstancePatch.budgetText("0"))
+        assertEquals("", InstancePatch.budgetText(" 0 "))
+        assertEquals("50000", InstancePatch.budgetText("50000"))
+        assertEquals("", InstancePatch.budgetText(""))
+    }
+
+    @Test
     fun `a field that is not a number keeps the form, not the daemon`() {
         // The screen refuses to submit it; the builder must not invent a token count either.
         assertEquals(JsonObject(emptyMap()), InstancePatch.config(current, draft(budget = "douze mille")))

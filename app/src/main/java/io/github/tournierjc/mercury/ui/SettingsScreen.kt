@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.data.InstancePatch
 import io.github.tournierjc.mercury.data.ServerAddress
 import io.github.tournierjc.mercury.device.AppLanguage
 import io.github.tournierjc.mercury.device.Languages
@@ -359,18 +360,27 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                         color = colors.textSecondary,
                     )
                 } else {
+                    // A zero budget is no ceiling: "9.9M / 0 tokens" would read as the opposite, and a
+                    // progress bar against no ceiling measures nothing.
+                    val unlimited = usage.dailyBudget <= 0L
                     Text(
-                        text = stringResource(R.string.settings_usage, formatTokens(usage.dailyUsed), formatTokens(usage.dailyBudget)),
+                        text = if (unlimited) {
+                            stringResource(R.string.settings_usage_unlimited, formatTokens(usage.dailyUsed))
+                        } else {
+                            stringResource(R.string.settings_usage, formatTokens(usage.dailyUsed), formatTokens(usage.dailyBudget))
+                        },
                         style = MaterialTheme.typography.bodyLarge,
                         color = colors.textPrimary,
                     )
-                    ProgressLine(usage.ratio)
-                    Text(
-                        text = stringResource(R.string.settings_usage_remaining, formatTokens(usage.remaining), usage.lastResetDate.ifBlank { "quotidien" }),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
+                    if (!unlimited) {
+                        ProgressLine(usage.ratio)
+                        Text(
+                            text = stringResource(R.string.settings_usage_remaining, formatTokens(usage.remaining), usage.lastResetDate.ifBlank { "quotidien" }),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                     usage.byChannel.forEach { (channel, tokens) ->
                         KeyValueRow(label = channel, value = formatTokens(tokens))
                     }
@@ -721,7 +731,9 @@ private fun InstanceSection(
     var provider by remember(instance) { mutableStateOf(instance.defaultProvider) }
     // `0` est une valeur (pas de plafond), pas une absence : le champ montre le nombre tel quel et
     // seul un champ vidé veut dire « inchangé ».
-    var budget by remember(instance) { mutableStateOf(instance.tokenBudget.toString()) }
+    // Zero is "no ceiling" and reads better as an empty field than as a number that looks like a
+    // limit of none; typing 0 lands on the same empty field (see budgetText below).
+    var budget by remember(instance) { mutableStateOf(InstancePatch.budgetField(instance.tokenBudget)) }
     var folder by remember(workspace) { mutableStateOf(workspace) }
     var showProviders by remember { mutableStateOf(false) }
 
@@ -798,7 +810,7 @@ private fun InstanceSection(
 
     OutlinedTextField(
         value = budget,
-        onValueChange = { budget = it },
+        onValueChange = { budget = InstancePatch.budgetText(it) },
         label = { Text(stringResource(R.string.instance_budget_title)) },
         singleLine = true,
         isError = invalidBudget,
