@@ -8,7 +8,7 @@
     <string name="instance_provider_hint">Used when a request names no model.</string>
     <string name="instance_provider_none">No provider exposed by the runtime.</string>
     <string name="instance_budget_title">Global budget per day</string>
-    <string name="instance_budget_hint">In tokens. 0 = unlimited, blank = unchanged.</string>
+    <string name="instance_budget_hint">In tokens. 0 or blank = unlimited.</string>
     <string name="instance_budget_invalid">Invalid token count.</string>
     <string name="instance_workspace_title">Working folder</string>
     <string name="instance_workspace_hint">The folder the agent reads and writes in. It must exist on the daemon\'s machine.</string>

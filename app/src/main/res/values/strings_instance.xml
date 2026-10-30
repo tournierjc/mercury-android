@@ -8,7 +8,7 @@
     <string name="instance_provider_hint">Utilisé quand une demande ne nomme pas de modèle.</string>
     <string name="instance_provider_none">Aucun fournisseur exposé par le runtime.</string>
     <string name="instance_budget_title">Budget global par jour</string>
-    <string name="instance_budget_hint">En jetons. 0 = illimité, vide = inchangé.</string>
+    <string name="instance_budget_hint">En jetons. 0 ou vide = illimité.</string>
     <string name="instance_budget_invalid">Nombre de jetons invalide.</string>
     <string name="instance_workspace_title">Dossier de travail</string>
     <string name="instance_workspace_hint">Le dossier où l\'agent lit et écrit. Il doit exister sur la machine du démon.</string>

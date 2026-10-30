@@ -27,6 +27,7 @@
     <string name="settings_budget_title">Today\'s budget</string>
     <string name="settings_usage_unavailable">Counter unavailable.</string>
     <string name="settings_usage">%1$s / %2$s tokens</string>
+    <string name="settings_usage_unlimited">%1$s tokens · no ceiling</string>
     <string name="settings_usage_remaining">%1$s left · reset %2$s</string>
     <string name="settings_providers_title">Providers</string>
     <string name="settings_providers_none">No provider configured.</string>

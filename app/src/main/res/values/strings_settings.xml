@@ -27,6 +27,7 @@
     <string name="settings_budget_title">Budget du jour</string>
     <string name="settings_usage_unavailable">Compteur indisponible.</string>
     <string name="settings_usage">%1$s / %2$s tokens</string>
+    <string name="settings_usage_unlimited">%1$s jetons · sans plafond</string>
     <string name="settings_usage_remaining">Reste %1$s · reset %2$s</string>
     <string name="settings_providers_title">Fournisseurs</string>
     <string name="settings_providers_none">Aucun fournisseur configuré.</string>

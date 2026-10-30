@@ -29,6 +29,16 @@ data class InstanceDraft(
  */
 object InstancePatch {
 
+    /**
+     * The budget field's opening text: the ceiling as typed, and nothing at all when there is none,
+     * because a `0` sitting in a field labelled "budget" reads as a limit of zero rather than as
+     * the absence of a limit.
+     */
+    fun budgetField(current: Long): String = if (current > 0) current.toString() else ""
+
+    /** While typing: `0` is the absence of a ceiling, so it empties the field instead of showing 0. */
+    fun budgetText(typed: String): String = if (typed.trim() == "0") "" else typed
+
     /** Body for `PUT /api/config`: only the keys that differ, nested under `identity` as the route expects. */
     fun config(current: InstanceConfig, draft: InstanceDraft): JsonObject {
         val identity = buildJsonObject {
@@ -54,11 +64,19 @@ object InstancePatch {
         typed.trim().takeIf { it.isNotEmpty() && it != current.trim() }
 
     /**
-     * Tokens per day. `0` is a value — the daemon reads it as "no ceiling" — so a blank field is the
-     * only thing that means "unchanged"; anything that is not a number never leaves the form.
+     * Tokens per day, where zero and an empty field both mean "no ceiling".
+     *
+     * The daemon reads `0` as unlimited, and an owner who clears the field means the same thing:
+     * both write `0`, and both are a no-op when the daemon already has none. Sending nothing is
+     * reserved for a value that did not move — a field the owner never touched comes back from the
+     * daemon with its current number, so an untouched form still patches nothing.
+     *
+     * Anything that is not a number never leaves the form.
      */
     private fun budget(typed: String, current: Long): Long? {
-        val tokens = typed.trim().toLongOrNull() ?: return null
-        return tokens.takeIf { it >= 0 && it != current }
+        val text = typed.trim()
+        val tokens = if (text.isEmpty()) 0L else text.toLongOrNull() ?: return null
+        if (tokens < 0) return null
+        return tokens.takeIf { it != current }
     }
 }
