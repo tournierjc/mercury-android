@@ -539,13 +539,29 @@ fun ChatScreen(
                 }
             }
             var showBotDeliverables by remember { mutableStateOf(false) }
+            // A turn that just ended has its answer in the journal, not in the 600-character tail
+            // the feed carried while it ran. Without this reload the full reply only appeared after
+            // leaving the screen and coming back — the owner watched an answer being written and
+            // then never saw the rest of it. Only on the running → over transition: reloading on
+            // every recomposition would double the load `select()` has just done.
+            // The journal is the proof a turn is over, and the feed can miss its `turn-end` (a
+            // dropped stream, a process the system killed): the header claimed a teammate was still
+            // writing a turn whose record had already been written.
+            val journalSaysOver = botLive?.jobId?.let { id -> botsState.records.any { it.runId == id } } == true
+            var wasWriting by remember(botId) { mutableStateOf(false) }
+            val writing = botLive?.running == true && !journalSaysOver
+            LaunchedEffect(botId, writing) {
+                val id = botId ?: return@LaunchedEffect
+                if (wasWriting && !writing) botsVm.reloadConversation(id)
+                wasWriting = writing
+            }
 
             if (botId != null) {
                 TopBar(
                     title = botName,
                     subtitle = listOfNotNull(
                         bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) },
-                        botLive?.takeIf { it.running }?.let { stringResource(R.string.chat_bot_writing) } ?: botWatch.activity[botId],
+                        if (writing) stringResource(R.string.chat_bot_writing) else botWatch.activity[botId],
                     ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
                     onMenu = { scope.launch { drawerState.open() } },
                     onNewChat = null,

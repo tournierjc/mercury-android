@@ -64,14 +64,19 @@ class BotThreadTest {
     }
 
     @Test
-    fun `the streaming turn shows the live tail, not the stale summary`() {
-        val records = listOf(run("live", 1_000, summary = "vieux résumé"))
+    fun `a record for the live job means the turn is over, so the tail loses`() {
+        // This test used to say the opposite — « the streaming turn shows the live tail, not the
+        // stale summary » — because the journal was assumed to hold a stale snapshot while a turn
+        // ran. It does not: the daemon appends the record once, when the turn is over. A record for
+        // the live job is therefore the end, and the 600-character tail shown over it was a finished
+        // answer displayed as if it were still being written.
+        val records = listOf(run("live", 1_000, summary = "la réponse du journal"))
         val messages = BotThread.build(records, mapOf("live" to "question"), liveJobId = "live", liveTail = "en train d'écr")
 
         assertEquals(2, messages.size)
-        assertEquals("en train d'écr", messages[1].text)
-        assertTrue(messages[1].streaming)
-        assertTrue(BotThread.isStreaming(messages))
+        assertEquals("la réponse du journal", messages[1].text)
+        assertFalse(messages[1].streaming)
+        assertFalse(BotThread.isStreaming(messages))
     }
 
     @Test
@@ -119,5 +124,56 @@ class BotThreadTest {
         assertEquals(2, messages.size)
         assertTrue(messages[1].fromBot)
         assertEquals("", messages[1].text)
+    }
+
+    @Test
+    fun `a turn the journal has written is never shown as still streaming`() {
+        // The daemon appends a run's record when the turn ends. A missed `turn-end` used to leave
+        // the 600-character tail on screen with a cursor, over a finished turn whose full answer
+        // was already in the transcript.
+        val records = listOf(run("a", at = 1_000, summary = "Résumé court", state = "completed"))
+
+        val messages = BotThread.build(
+            records,
+            mapOf("a" to "La question"),
+            mapOf("a" to "La réponse complète, en entier."),
+            liveJobId = "a",
+            liveTail = "…fin de la réponse",
+            liveRunning = true,
+        )
+
+        val answer = messages.last()
+        assertTrue(answer.fromBot)
+        assertEquals("La réponse complète, en entier.", answer.text)
+        assertFalse(answer.streaming)
+    }
+
+    @Test
+    fun `a job the journal has not written yet still streams its tail`() {
+        val messages = BotThread.build(
+            emptyList(),
+            emptyMap(),
+            liveJobId = "z",
+            liveTail = "Je commence par lire le dépôt",
+            liveRunning = true,
+        )
+
+        assertEquals(1, messages.size)
+        assertEquals("Je commence par lire le dépôt", messages[0].text)
+        assertTrue(messages[0].streaming)
+    }
+
+    @Test
+    fun `a tail left over after the turn ends is a memory, not a stream`() {
+        val messages = BotThread.build(
+            emptyList(),
+            emptyMap(),
+            liveJobId = "z",
+            liveTail = "Je commence par lire le dépôt",
+            liveRunning = false,
+        )
+
+        assertEquals(1, messages.size)
+        assertFalse(messages[0].streaming)
     }
 }
