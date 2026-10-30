@@ -54,7 +54,11 @@ class BotThreadTruncationTest {
     }
 
     @Test
-    fun `a streaming turn is the tail by design, not a truncated answer`() {
+    fun `a turn with a record is over, so its summary is shown as a summary`() {
+        // The premise of this test changed: it used to treat a live tail as the answer while the
+        // journal already had the run, and the run is only written when the turn is over. With a
+        // record there is no stream left, so the bubble carries the journal's text and says it is a
+        // summary rather than a whole answer.
         val messages = BotThread.build(
             records = listOf(record("r1", summary = "coupé")),
             prompts = mapOf("r1" to "go"),
@@ -64,8 +68,8 @@ class BotThreadTruncationTest {
         )
 
         val answer = messages.last()
-        assertEquals("en train d'écrire…", answer.text)
-        assertTrue(answer.streaming)
-        assertFalse("a live tail is not offered as a repair", answer.truncated)
+        assertEquals("coupé", answer.text)
+        assertFalse(answer.streaming)
+        assertTrue("a summary is not the whole answer", answer.truncated)
     }
 }

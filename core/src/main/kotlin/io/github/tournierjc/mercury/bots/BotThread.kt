@@ -42,8 +42,9 @@ object BotThread {
      * @param outputs `runId` → the full answer, when the transcript is at hand.
      * @param liveJobId the last turn the daemon reported, if any.
      * @param liveTail the tail of the text the bot wrote, if any.
-     * @param liveRunning false once that turn has ended: the tail is then a memory of the
-     *   answer to show until the journal catches up, not something still being written.
+     * @param liveRunning whether the daemon still calls that turn running. Only consulted for a
+     *   job the journal has no record of yet: the journal writes a run's record **once, when the
+     *   turn is over**, so the presence of a record is itself the proof that the answer is final.
      */
     fun build(
         records: List<BotRunDto>,
@@ -68,9 +69,12 @@ object BotThread {
                         at = record.startedAt,
                     )
                 }
-                // A streaming turn has an answer in progress: the journal summary is either
-                // absent or stale, so the live tail is what the owner should be reading.
-                val streaming = liveRunning && liveJobId != null && record.runId == liveJobId && liveTail.isNotBlank()
+                // A record here means the turn is over — the daemon appends it after the turn,
+                // never during it. Streaming its 600-character tail on that record used to keep a
+                // finished turn marked as still writing, and hid the full reply sitting right
+                // there in the transcript: a missed `turn-end` (a dropped stream, a process the
+                // system killed) left the tail on screen as if it were the message.
+                val streaming = false
                 val full = outputs[record.runId]?.takeIf { it.isNotBlank() }
                 val reply = when {
                     streaming -> liveTail
