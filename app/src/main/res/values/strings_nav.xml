@@ -2,6 +2,16 @@
 <resources>
     <string name="nav_status">État</string>
     <string name="nav_chat">Conversation</string>
+    <string name="nav_sessions">Sessions</string>
+    <string name="drawer_all_sessions">Toutes les sessions (%1$d)</string>
+    <string name="sessions_title">Sessions</string>
+    <string name="sessions_count">%1$d au total</string>
+    <string name="sessions_filter">Filtrer par titre, alias ou identifiant</string>
+    <string name="sessions_empty">Aucune session pour l\'instant — la première arrive avec ton premier message.</string>
+    <string name="sessions_no_match">Aucune session ne correspond à ce filtre.</string>
+    <string name="sessions_delete_title">Supprimer cette session ?</string>
+    <string name="sessions_delete_confirm">Supprimer</string>
+    <string name="common_cancel">Annuler</string>
     <string name="nav_bots">Équipiers</string>
     <string name="nav_tasks">Tâches</string>
     <string name="nav_boards">Plateaux</string>

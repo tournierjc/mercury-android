@@ -13,6 +13,11 @@ enum class AppScreen {
     // The work, top of the sidebar.
     Status,
     Chat,
+    /**
+     * Every session, with a filter — reached from the drawer's last session row, not from the
+     * menu: a drawer that lists everything is the drawer nobody scrolls.
+     */
+    Sessions,
     Bots,
     Tasks,
     Boards,

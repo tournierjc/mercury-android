@@ -163,7 +163,12 @@ class DrawerItemsTest {
 
     @Test
     fun `every destination of the app is reachable from the drawer`() {
-        val missing = AppScreen.entries.filterNot { it in screens() }
+        // Sessions is the exception, and on purpose: it is the screen the session list hands over
+        // to (the `AllSessions` row), not a menu entry — the webapp's sidebar has no such screen,
+        // and the drawer mirrors that sidebar.
+        val missing = AppScreen.entries
+            .filterNot { it == AppScreen.Sessions }
+            .filterNot { it in screens() }
 
         assertEquals("destinations without a row: $missing", emptyList<AppScreen>(), missing)
     }
@@ -184,5 +189,23 @@ class DrawerItemsTest {
         assertTrue(all.indexOf(AppScreen.Settings) > all.indexOf(AppScreen.Usage))
         assertTrue(all.indexOf(AppScreen.Deliverables) > all.indexOf(AppScreen.Usage))
         assertEquals(DrawerRow.SignOut, rows.last())
+    }
+
+    @Test
+    fun `the drawer lists five sessions and hands the rest over`() {
+        val ids = (1..8).map { "s$it" }
+
+        val rows = drawerRows(solo("a"), ids)
+
+        assertEquals(ids.take(SESSION_LIMIT), rows.filterIsInstance<DrawerRow.Thread>().map { it.id })
+        assertEquals(DrawerRow.AllSessions(hidden = 3), rows.filterIsInstance<DrawerRow.AllSessions>().single())
+    }
+
+    @Test
+    fun `a short list gets no hand-over row`() {
+        val rows = drawerRows(solo("a"), listOf("s1", "s2"))
+
+        assertEquals(2, rows.filterIsInstance<DrawerRow.Thread>().size)
+        assertTrue(rows.filterIsInstance<DrawerRow.AllSessions>().isEmpty())
     }
 }

@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.rounded.Chat
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Cable
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Extension
@@ -90,6 +91,8 @@ fun ThreadDrawer(
     onNewChat: () -> Unit,
     onOpenThread: (ThreadDto) -> Unit,
     onDeleteThread: (ThreadDto) -> Unit,
+    /** Everything the drawer does not list: the sessions screen, with its filter. */
+    onShowAllSessions: () -> Unit = {},
     onOpenBot: (String) -> Unit = {},
     /** A long press on a teammate opens its settings page, where the tap opens the conversation. */
     onOpenBotConfig: (String) -> Unit = {},
@@ -282,6 +285,27 @@ fun ThreadDrawer(
                         }
                     }
 
+                    is DrawerRow.AllSessions -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .clickable { onShowAllSessions() }
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.drawer_all_sessions, row.hidden),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.accent,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            tint = colors.accent,
+                        )
+                    }
+
                     // The webapp's three groups, named: a flat list of nineteen entries would be
                     // a phone book, and the groups are what makes the order learnable.
                     // A group outranks the sections inside it: capitals over a rule, no indent, and
@@ -397,6 +421,7 @@ private fun DrawerEntry(
 private fun screenLabel(screen: AppScreen): Int = when (screen) {
     AppScreen.Status -> R.string.nav_status
     AppScreen.Chat -> R.string.nav_chat
+    AppScreen.Sessions -> R.string.nav_sessions
     AppScreen.Bots -> R.string.nav_bots
     AppScreen.Tasks -> R.string.nav_tasks
     AppScreen.Boards -> R.string.nav_boards
@@ -421,6 +446,7 @@ private fun screenLabel(screen: AppScreen): Int = when (screen) {
 private fun screenIcon(screen: AppScreen): ImageVector = when (screen) {
     AppScreen.Status -> Icons.Rounded.SpaceDashboard
     AppScreen.Chat -> Icons.AutoMirrored.Rounded.Chat
+    AppScreen.Sessions -> Icons.Rounded.Schedule
     AppScreen.Bots -> Icons.Rounded.SmartToy
     AppScreen.Tasks -> Icons.Rounded.Checklist
     AppScreen.Boards -> Icons.Rounded.ViewKanban

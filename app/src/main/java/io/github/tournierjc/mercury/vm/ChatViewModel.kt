@@ -9,6 +9,7 @@ import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
 import io.github.tournierjc.mercury.data.ChatMessage
+import io.github.tournierjc.mercury.data.ChatEvent
 import io.github.tournierjc.mercury.data.ChatReducer
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.epochMillis
@@ -25,6 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import io.github.tournierjc.mercury.ui.attachmentNotice
 
@@ -177,7 +181,13 @@ class ChatViewModel(
         _state.update { ChatReducer.addUserMessage(it, shown, now) }
         viewModelScope.launch {
             try {
-                val sessionId = api.send(trimmed, _state.value.sessionId, files.map { it.toUpload() })
+                // A fresh conversation has no session yet, and a send without one binds to
+                // whatever session the daemon used last — which is how a new chat kept landing in
+                // the previous thread and the drawer never grew. Ask for the thread first; if the
+                // route is absent (an older daemon answers 404), send as before and let the
+                // daemon choose.
+                val fresh = _state.value.sessionId ?: runCatching { api.newThread() }.getOrNull()?.id
+                val sessionId = api.send(trimmed, fresh, files.map { it.toUpload() })
                 if (sessionId != null) {
                     _attachments.value = emptyList()
                     _state.update { it.copy(sessionId = sessionId) }
@@ -297,17 +307,63 @@ class ChatViewModel(
         _state.update { ChatReducer.setError(it, null) }
     }
 
+    /**
+     * The live feed of one session, with reconnection.
+     *
+     * The flow reports its own read errors as a [ChatEvent.Failure] and then completes: a phone
+     * that lost its network for a second — a cell handing over to Wi-Fi, a tunnel reconnecting —
+     * used to be told « la réponse s'est interrompue » and kept that line until the next turn,
+     * even though the answer had arrived. The stream is reopened first, with a short backoff; the
+     * failure is only shown once the retries are spent.
+     */
     private fun ensureEvents(sessionId: String?) {
         if (eventsJob != null && streamSession == sessionId) return
         eventsJob?.cancel()
         streamSession = sessionId
         eventsJob = viewModelScope.launch {
-            api.events(sessionId).collect { event ->
-                val now = System.currentTimeMillis()
-                _state.update { ChatReducer.onEvent(it, event, now) }
+            var attempt = 0
+            while (isActive) {
+                var failure: String? = null
+                try {
+                    api.events(sessionId).collect { event ->
+                        if (event is ChatEvent.Failure && attempt < STREAM_RETRIES) {
+                            // Held back: the retry may show that nothing was lost.
+                            failure = event.message
+                            throw StreamInterrupted(event.message)
+                        }
+                        attempt = 0
+                        val now = System.currentTimeMillis()
+                        _state.update { state -> ChatReducer.onEvent(state, event, now) }
+                    }
+                    return@launch
+                } catch (interrupted: StreamInterrupted) {
+                    failure = interrupted.reason
+                } catch (e: AuthException) {
+                    _signedIn.value = false
+                    return@launch
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    failure = e.message
+                }
+                if (!isActive) return@launch
+                attempt++
+                if (attempt > STREAM_RETRIES) {
+                    failure?.takeIf { it.isNotBlank() }?.let { reason ->
+                        val now = System.currentTimeMillis()
+                        _state.update { state ->
+                            ChatReducer.onEvent(state, ChatEvent.Failure(reason), now)
+                        }
+                    }
+                    return@launch
+                }
+                delay(1_000L * attempt)
             }
         }
     }
+
+    /** The stream ended on us; it carries its reason out of `collect`. */
+    private class StreamInterrupted(val reason: String) : Exception(reason)
 
     override fun onCleared() {
         eventsJob?.cancel()
@@ -315,6 +371,9 @@ class ChatViewModel(
     }
 
     companion object {
+        /** Two reconnections: a handover or a tunnel blip, not a daemon that has gone away. */
+        private const val STREAM_RETRIES = 2
+
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer { ChatViewModel(container.api, container) }
         }
