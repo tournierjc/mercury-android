@@ -423,6 +423,7 @@ private fun screenLabel(screen: AppScreen): Int = when (screen) {
     AppScreen.Chat -> R.string.nav_chat
     AppScreen.Sessions -> R.string.nav_sessions
     AppScreen.Bots -> R.string.nav_bots
+    AppScreen.SandboxTools -> R.string.nav_sandbox_tools
     AppScreen.Tasks -> R.string.nav_tasks
     AppScreen.Boards -> R.string.nav_boards
     AppScreen.Workspace -> R.string.nav_workspace
@@ -448,6 +449,7 @@ private fun screenIcon(screen: AppScreen): ImageVector = when (screen) {
     AppScreen.Chat -> Icons.AutoMirrored.Rounded.Chat
     AppScreen.Sessions -> Icons.Rounded.Schedule
     AppScreen.Bots -> Icons.Rounded.SmartToy
+    AppScreen.SandboxTools -> Icons.Rounded.Terminal
     AppScreen.Tasks -> Icons.Rounded.Checklist
     AppScreen.Boards -> Icons.Rounded.ViewKanban
     AppScreen.Workspace -> Icons.Rounded.Code

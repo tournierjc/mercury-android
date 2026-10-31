@@ -120,6 +120,7 @@ fun drawerRows(
         AppScreen.Skills,
         AppScreen.Mcp,
         AppScreen.Plugins,
+        AppScreen.SandboxTools,
         AppScreen.Permissions,
         AppScreen.Schedules,
         AppScreen.Usage,

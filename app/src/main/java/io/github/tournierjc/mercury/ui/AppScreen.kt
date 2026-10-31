@@ -19,6 +19,12 @@ enum class AppScreen {
      */
     Sessions,
     Bots,
+    /**
+     * What the bots can run, and whether it is signed in. A bot's tools are installed for the whole
+     * fleet (the sandbox confines paths, not processes), so this belongs beside the fleet, not inside
+     * one bot's sheet.
+     */
+    SandboxTools,
     Tasks,
     Boards,
     Workspace,
