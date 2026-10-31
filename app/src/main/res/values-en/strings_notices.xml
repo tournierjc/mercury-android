@@ -8,7 +8,7 @@
     <string name="notice_history_unavailable">History unavailable</string>
     <string name="notice_delete_failed">Could not delete</string>
     <string name="notice_attachments_limit">4 attachments at most</string>
-    <string name="notice_dispatch_queued">Queued (job %1$s) — the main thread carries on.</string>
+    <string name="notice_dispatch_queued">Sent · queued</string>
     <string name="notice_dispatch_refused">Refused</string>
     <string name="notice_name_required">A name is required</string>
     <string name="notice_restart_refused">Restart refused</string>

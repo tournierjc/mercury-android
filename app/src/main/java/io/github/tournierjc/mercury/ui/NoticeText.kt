@@ -12,6 +12,24 @@ import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.NoticeSeverity
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /**
  * The only place a [Notice] becomes words. A key with no string here is a compile error; a key whose
@@ -319,5 +337,46 @@ fun noticeTint(severity: NoticeSeverity): Color {
         NoticeSeverity.Error -> colors.danger
         NoticeSeverity.Warning -> colors.accent
         NoticeSeverity.Info -> colors.textSecondary
+    }
+}
+
+/**
+ * The acknowledgement of a dispatch, and nothing more.
+ *
+ * It used to be a bare sentence in the accent colour carrying an internal job id — "Mis en file
+ * (job 01e1077e) — le fil principal continue" — which is a log line shown to the person who just
+ * typed, above his own keyboard. The thread already answers: the message appears at once, its state
+ * says "en file…", and the phase line follows. What is left to acknowledge is that the send *left*,
+ * so: one quiet chip, no identifiers, gone in four seconds.
+ *
+ * A refusal is not this: it keeps the explicit coloured line, because an owner must read it.
+ */
+@Composable
+fun DispatchAck(notice: Notice, onDone: () -> Unit, modifier: Modifier = Modifier) {
+    LaunchedEffect(notice) {
+        delay(4_000)
+        onDone()
+    }
+    val colors = LocalMercuryColors.current
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.surfaceMuted)
+            .border(1.dp, colors.hairline, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.CheckCircle,
+            contentDescription = null,
+            tint = colors.accent,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text = noticeText(notice),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.textSecondary,
+        )
     }
 }

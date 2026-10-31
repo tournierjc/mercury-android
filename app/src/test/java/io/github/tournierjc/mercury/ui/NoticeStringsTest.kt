@@ -106,4 +106,22 @@ class NoticeStringsTest {
         assertTrue("the watch title lost its French", "notification_watch_title" in fr)
         assertTrue("the crew channel lost its English name", "notification_channel_crew" in en)
     }
+
+    /**
+     * The queued acknowledgement must not carry an internal identifier.
+     *
+     * It read "Mis en file (job 01e1077e) — le fil principal continue" above the composer: a log
+     * line, in the place a person looks right after typing. The thread already shows the message,
+     * its "en file…" state and the phase; what is left to say is that the send left. No job id, no
+     * format argument, in either language.
+     */
+    @Test
+    fun `the queued acknowledgement carries no internal identifier`() {
+        for (locale in listOf("values", "values-en")) {
+            val sentence = notices(locale)["notice_dispatch_queued"]
+            assertTrue("missing in $locale", sentence != null)
+            assertTrue("$locale names a job id: $sentence", !sentence!!.contains("job", ignoreCase = true))
+            assertTrue("$locale still takes an argument: $sentence", !sentence.contains("%1\$s"))
+        }
+    }
 }

@@ -866,13 +866,18 @@ private fun BotDetail(
             Text(message, color = colors.danger, style = MaterialTheme.typography.labelSmall)
         }
         state.dispatchFeedback?.let { notice ->
-            Text(
-                text = noticeText(notice),
-                style = MaterialTheme.typography.labelSmall,
-                // Queued or refused: the severity says which, the wording no longer has to.
-                color = noticeTint(notice.severity),
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            // Same rule as the conversation: an acknowledgement fades, a refusal is read.
+            if (notice.severity == NoticeSeverity.Info) {
+                DispatchAck(notice = notice, onDone = { viewModel.clearDispatchFeedback() }, modifier = Modifier.padding(top = 4.dp))
+            } else {
+                Text(
+                    text = noticeText(notice),
+                    style = MaterialTheme.typography.labelSmall,
+                    // Queued or refused: the severity says which, the wording no longer has to.
+                    color = noticeTint(notice.severity),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
     }
 
