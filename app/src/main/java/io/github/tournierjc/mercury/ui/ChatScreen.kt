@@ -303,6 +303,11 @@ fun ChatScreen(
             return
         }
 
+        AppScreen.SandboxTools -> {
+            SandboxToolsScreen(onBack = ::goBack)
+            return
+        }
+
         AppScreen.Bots -> {
             BotsScreen(
                 onBack = ::goBack,

@@ -134,6 +134,9 @@ class DrawerItemsTest {
                 AppScreen.Skills,
                 AppScreen.Mcp,
                 AppScreen.Plugins,
+                // Installing what the bots can run is configuration, beside the other capability
+                // screens — not a work surface, and not inside one bot's sheet.
+                AppScreen.SandboxTools,
                 AppScreen.Permissions,
                 AppScreen.Schedules,
                 AppScreen.Usage,

@@ -41,6 +41,10 @@ import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
 import io.github.tournierjc.mercury.data.dto.DeleteThreadRequest
 import io.github.tournierjc.mercury.data.dto.HealthDto
+import io.github.tournierjc.mercury.data.dto.ConnectFlowDto
+import io.github.tournierjc.mercury.data.dto.InstallRecordDto
+import io.github.tournierjc.mercury.data.dto.SandboxToolDto
+import io.github.tournierjc.mercury.data.dto.SandboxToolsPage
 import io.github.tournierjc.mercury.data.dto.MemoriesPage
 import io.github.tournierjc.mercury.data.dto.MemoriesResponse
 import io.github.tournierjc.mercury.data.dto.McpServersResponse
@@ -1118,6 +1122,35 @@ class MercuryApi(
      */
     suspend fun botRun(id: String, runId: String): RunTranscriptDto =
         getDecoded("/api/bots/${encode(id)}/runs/${encode(runId)}", RunTranscriptDto.serializer())
+
+    /** `GET /api/sandbox/tools` — what the bots can run, and whether it is signed in. */
+    suspend fun sandboxTools(): List<SandboxToolDto> =
+        getDecoded("/api/sandbox/tools", SandboxToolsPage.serializer()).tools
+
+    /**
+     * `POST /api/sandbox/tools/:id/install` — starts the job and answers with its record.
+     *
+     * An install is minutes long (a release tarball, a Python venv), so the daemon answers with the
+     * job and the screen polls; treating it as one request would time out and lie.
+     */
+    suspend fun installSandboxTool(id: String): InstallRecordDto = postJson(
+        "/api/sandbox/tools/${encode(id)}/install",
+        JsonObject(emptyMap()),
+        InstallRecordDto.serializer(),
+    )
+
+    suspend fun sandboxToolInstall(id: String): InstallRecordDto =
+        getDecoded("/api/sandbox/tools/${encode(id)}/install", InstallRecordDto.serializer())
+
+    /** `POST /api/sandbox/tools/:id/connect` — starts the device flow, returns the code to type. */
+    suspend fun connectSandboxTool(id: String): ConnectFlowDto = postJson(
+        "/api/sandbox/tools/${encode(id)}/connect",
+        JsonObject(emptyMap()),
+        ConnectFlowDto.serializer(),
+    )
+
+    suspend fun sandboxToolConnect(id: String): ConnectFlowDto =
+        getDecoded("/api/sandbox/tools/${encode(id)}/connect", ConnectFlowDto.serializer())
 
     /** `GET /api/bots/:id/journal` — the run records, newest last. */
     suspend fun botRunJournal(id: String, limit: Int = 50): List<BotRunDto> = getDecoded(
