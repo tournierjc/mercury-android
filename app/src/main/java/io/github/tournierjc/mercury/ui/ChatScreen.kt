@@ -95,6 +95,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.MercuryApp
@@ -1239,17 +1240,17 @@ private fun JumpToBottom(onClick: () -> Unit) {
 private const val MAX_BOT_FILES = 5
 
 /**
- * A message, in the shape every phone chat has taught its owner to read: the answer on the left in
- * a bubble, the message on the right in another, the tail corner pointing at whoever spoke, and
- * nothing stretched to the full width of the screen.
+ * A message, drawn the way a team feed draws one: an avatar, who spoke and when, then the words at
+ * the full width of the column.
  *
- * The two bubbles used to be different objects — the owner's was a rounded box, the agent's was bare
- * text laid on the canvas with its tool activity as a strip of pills above it. Bare text has no
- * edge, so a long answer read as part of the screen, and the strip scrolled sideways past its own
- * content. Now: one bubble per turn, one framed block for the calls, the same margins on both sides.
+ * It used to be bubbles — the answer on the left in one, the owner's message on the right in another,
+ * each wrapped in its own rounded box. Bubbles suit a two-person phone chat; they waste a fifth of the
+ * screen on the side that is not speaking, and they push long answers into a narrow ribbon. A
+ * conversation with an agent is a feed: what matters is who said what, in what order, at what time.
  *
- * Long press still opens the menu, and [selecting] still swaps the body for a [SelectionContainer]
- * instead of fighting it for the gesture.
+ * So: no bubble background, no side column, no tail corner. The tools and the thinking stay above the
+ * words, because they are what produced them, and the body keeps the streaming cursor and native
+ * selection it already had.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1257,7 +1258,7 @@ internal fun MessageItem(
     message: ChatMessage,
     selecting: Boolean = false,
     onLongPress: (() -> Unit)? = null,
-    /** Offered under a bubble whose text is a cut summary; null when there is nothing to load. */
+    /** Offered under a message whose text is a cut summary; null when there is nothing to load. */
     onLoadFull: (() -> Unit)? = null,
 ) {
     val colors = LocalMercuryColors.current
@@ -1269,50 +1270,65 @@ internal fun MessageItem(
         Modifier.combinedClickable(onClick = {}, onLongClick = onLongPress)
     }
 
-    // A turn that has written nothing yet is a *state*, not a message: no bubble, a quiet line.
+    // A turn that has written nothing yet is a *state*, not a message: no body, a quiet line.
     val activityOnly = !user && message.text.isBlank() && message.activity.isNotBlank()
-    // A stored tool summary IS the message: with no body there is no bubble, only the block.
+    // A stored tool summary IS the message: with no body there is no avatar-only row.
     val bodyVisible = !activityOnly && (parsed.body.isNotBlank() || parsed.isQuote || message.streaming)
 
+    // The name is what a feed puts first; "Vous" for the owner, the agent's own name otherwise. Both
+    // come from resources so the screen can be read in either language.
+    val who = if (user) stringResource(R.string.chat_sender_you) else stringResource(R.string.chat_sender_mercury)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(press)
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(
-            // Not the full width either side: a bubble that touches both margins stops reading as
-            // a bubble, and on a phone the wasted column is what keeps the two voices apart.
-            modifier = Modifier.fillMaxWidth(if (user) 0.82f else 0.9f),
-            horizontalAlignment = if (user) Alignment.End else Alignment.Start,
-        ) {
+        SenderAvatar(name = who, bot = !user)
+        Column(modifier = Modifier.weight(1f)) {
+            // Who and when, on one line: the age sits where a feed puts it, not under the words.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = who,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    // The agent keeps the accent: it is the voice the owner is talking to, and the
+                    // only colour that separates the two speakers now that the bubbles are gone.
+                    color = if (user) colors.textPrimary else colors.accent,
+                )
+                if (!message.streaming && message.sentAt > 0) {
+                    Text(
+                        text = ageOf(message.sentAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
             if (!user && message.reasoning.isNotEmpty()) {
                 // Above the calls, because thinking precedes acting, and folded: a reply must not be
                 // pushed off screen by the paragraph that produced it.
                 ReasoningSection(
                     blocks = message.reasoning,
                     truncated = message.reasoningTruncated,
-                    modifier = Modifier.padding(bottom = 6.dp),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 )
             }
             if (!user && message.steps.isNotEmpty()) {
-                // The calls sit above the answer and outside its bubble: they are what produced it,
-                // not what it says. Open while streaming, folded once it is history.
+                // The calls sit above the answer: they are what produced it, not what it says.
                 ToolTraceBlock(
                     steps = message.steps,
                     folded = message.toolTrace,
-                    modifier = Modifier.padding(bottom = 6.dp),
+                    modifier = Modifier.padding(vertical = 4.dp),
                 )
             }
             if (activityOnly) {
-                LiveActivityRow(activity = message.activity, modifier = Modifier.padding(vertical = 4.dp))
+                LiveActivityRow(activity = message.activity, modifier = Modifier.padding(vertical = 2.dp))
             }
             if (bodyVisible) {
-                Column(
-                    modifier = Modifier
-                        .clip(if (user) UserBubble else BotBubble)
-                        .background(if (user) colors.userBubble else colors.surface)
-                        .then(press)
-                        .padding(horizontal = 13.dp, vertical = 8.dp),
-                ) {
+                Column(modifier = Modifier.padding(top = 2.dp)) {
                     if (parsed.isQuote) QuoteBlock(parsed.quote)
                     if (parsed.body.isNotEmpty()) {
                         if (selecting) {
@@ -1332,25 +1348,13 @@ internal fun MessageItem(
                     }
                 }
             }
-            // The age, under the bubble, on the bubble's own side — the way the webapp says it.
-            // Nothing while the answer is still arriving: "à l'instant" under a cursor is noise,
-            // and the timestamp is only true once the turn is over.
-            val age = if (!message.streaming) remember(message.sentAt) { relativeAge(System.currentTimeMillis(), message.sentAt) } else null
-            if (age != null) {
-                Text(
-                    text = ageLabel(age),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
-                    modifier = Modifier.padding(top = 3.dp, start = 4.dp, end = 4.dp),
-                )
-            }
-            // The journal cuts an answer at 300 characters, which is inside a fenced block as
-            // often as not: the bubble says its text is a summary, and offers the rest.
+            // The journal cuts an answer at 300 characters, which is inside a fenced block as often
+            // as not: the row says its text is a summary, and offers the rest.
             if (message.truncated && onLoadFull != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .padding(top = 4.dp, start = 4.dp)
+                        .padding(top = 4.dp)
                         .clip(RoundedCornerShape(50))
                         .clickable { onLoadFull() }
                         .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1372,6 +1376,37 @@ internal fun MessageItem(
         }
     }
 }
+
+/**
+ * The 36 dp disc a feed puts beside a message.
+ *
+ * An initial on a tinted disc, not a photo: the app has no picture of the owner, and inventing one per
+ * conversation would put a different face on the same voice. The agent's disc carries the accent so
+ * the two speakers stay distinguishable without the bubbles that used to do that job.
+ */
+@Composable
+private fun SenderAvatar(name: String, bot: Boolean) {
+    val colors = LocalMercuryColors.current
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(50))
+            .background(if (bot) colors.surfaceMuted else colors.userBubble),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = name.firstOrNull()?.uppercase() ?: "?",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = if (bot) colors.accent else colors.textPrimary,
+        )
+    }
+}
+
+/** The age of a message, resolved here so the row needs no clock of its own; blank when unknown. */
+@Composable
+private fun ageOf(sentAt: Long): String =
+    relativeAge(System.currentTimeMillis(), sentAt)?.let { ageLabel(it) }.orEmpty()
 
 /**
  * « à l'instant », « il y a 3 min » — the words, in the app's language. Core hands back the unit
@@ -1439,24 +1474,6 @@ private fun MessageBody(message: ChatMessage, body: String, user: Boolean) {
         MarkdownText(text = body, streaming = message.streaming)
     }
 }
-
-/**
- * The bubbles' geometry, WhatsApp's own: an 18 dp radius on three corners and a 4 dp corner where
- * the tail would be — bottom-right for the owner, bottom-left for the agent.
- */
-private val BubbleRadius = 18.dp
-private val UserBubble = RoundedCornerShape(
-    topStart = BubbleRadius,
-    topEnd = BubbleRadius,
-    bottomStart = BubbleRadius,
-    bottomEnd = 4.dp,
-)
-private val BotBubble = RoundedCornerShape(
-    topStart = BubbleRadius,
-    topEnd = BubbleRadius,
-    bottomStart = 4.dp,
-    bottomEnd = BubbleRadius,
-)
 
 /** The quote the next message will answer, above the composer, dismissible. */
 @Composable

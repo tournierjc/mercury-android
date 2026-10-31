@@ -49,6 +49,8 @@
     <string name="chat_bot_activity_reading">Reading files…</string>
     <string name="chat_bot_activity_generic">%1$s…</string>
     <string name="chat_bot_busy">working…</string>
+    <string name="chat_sender_you">You</string>
+    <string name="chat_sender_mercury">Mercury</string>
     <string name="chat_bot_queued">queued…</string>
     <string name="chat_bot_failed">run failed</string>
     <string name="chat_bot_no_answer">no answer</string>
