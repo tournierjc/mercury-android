@@ -33,6 +33,13 @@ data class ChatMessage(
      * before the app had a clock). The bubble shows an age only when it knows one.
      */
     val sentAt: Long = 0,
+    /**
+     * The phase a turn is in while it has written nothing yet, in the daemon's words.
+     *
+     * Drawn as a quiet line under the owner's message rather than as a bubble: it is a state, and a
+     * turn that shows "Réflexion" the way it shows an answer would be a lie the moment it lands.
+     */
+    val activity: String = "",
 ) {
     enum class Role { User, Assistant }
 }

@@ -44,6 +44,10 @@
     <string name="chat_cancel_reply">Cancel reply</string>
 
     <!-- A teammate's conversation -->
+    <string name="chat_bot_activity_thinking">Thinking…</string>
+    <string name="chat_bot_activity_command">Running a command…</string>
+    <string name="chat_bot_activity_reading">Reading files…</string>
+    <string name="chat_bot_activity_generic">%1$s…</string>
     <string name="chat_bot_queued">queued…</string>
     <string name="chat_bot_failed">run failed</string>
     <string name="chat_bot_no_answer">no answer</string>

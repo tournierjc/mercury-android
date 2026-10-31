@@ -531,7 +531,7 @@ fun ChatScreen(
             val queuedLabel = stringResource(R.string.chat_bot_queued)
             val failedLabel = stringResource(R.string.chat_bot_failed)
             val noAnswerLabel = stringResource(R.string.chat_bot_no_answer)
-            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botId, queuedLabel, failedLabel, noAnswerLabel) {
+            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botWatch.activity[botId], botId, queuedLabel, failedLabel, noAnswerLabel) {
                 if (botId == null) {
                     emptyList()
                 } else {
@@ -542,9 +542,13 @@ fun ChatScreen(
                         botLive?.jobId,
                         botLive?.text.orEmpty(),
                         botLive?.running == true,
+                        botWatch.activity[botId].orEmpty(),
                     )
                     val known = built.filter { !it.fromBot }.map { it.text }.toSet()
-                    (built + botsState.pending.filter { it.text !in known }).map { message ->
+                    // Only this bot's echo: pendings now outlive a refresh, and one addressed to another
+                    // teammate must not appear here.
+                    val mine = botsState.pending.filter { it.botId.isBlank() || it.botId == botId }
+                    (built + mine.filter { it.text !in known }).map { message ->
                         ChatMessage(
                             id = message.key,
                             role = if (message.fromBot) ChatMessage.Role.Assistant else ChatMessage.Role.User,
@@ -568,6 +572,7 @@ fun ChatScreen(
                             truncated = message.truncated,
                             reasoning = message.reasoning,
                             reasoningTruncated = message.reasoningTruncated,
+                            activity = message.activity,
                         )
                     }
                 }
@@ -1250,8 +1255,10 @@ internal fun MessageItem(
         Modifier.combinedClickable(onClick = {}, onLongClick = onLongPress)
     }
 
+    // A turn that has written nothing yet is a *state*, not a message: no bubble, a quiet line.
+    val activityOnly = !user && message.text.isBlank() && message.activity.isNotBlank()
     // A stored tool summary IS the message: with no body there is no bubble, only the block.
-    val bodyVisible = parsed.body.isNotBlank() || parsed.isQuote || message.streaming
+    val bodyVisible = !activityOnly && (parsed.body.isNotBlank() || parsed.isQuote || message.streaming)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1280,6 +1287,9 @@ internal fun MessageItem(
                     folded = message.toolTrace,
                     modifier = Modifier.padding(bottom = 6.dp),
                 )
+            }
+            if (activityOnly) {
+                LiveActivityRow(activity = message.activity, modifier = Modifier.padding(vertical = 4.dp))
             }
             if (bodyVisible) {
                 Column(
@@ -1362,6 +1372,43 @@ private fun ageLabel(age: RelativeAge): String = when (age) {
 }
 
 /** The body of a bubble: plain words for the owner, rendered markdown for the agent. */
+/**
+ * What a bot is doing right now, when it has not written a word yet.
+ *
+ * The phase used to live only in the title bar: the conversation stayed empty while "thinking" and
+ * "running command" scrolled above it, so a turn in progress was indistinguishable from a message
+ * that never left. A quiet line under the owner's message answers "it is working" without dressing a
+ * transient state as an answer.
+ */
+@Composable
+private fun LiveActivityRow(activity: String, modifier: Modifier = Modifier) {
+    val colors = LocalMercuryColors.current
+    val label = when {
+        activity.contains("think", ignoreCase = true) -> stringResource(R.string.chat_bot_activity_thinking)
+        activity.contains("command", ignoreCase = true) || activity.contains("shell", ignoreCase = true) ->
+            stringResource(R.string.chat_bot_activity_command)
+        activity.contains("read", ignoreCase = true) || activity.contains("file", ignoreCase = true) ->
+            stringResource(R.string.chat_bot_activity_reading)
+        else -> stringResource(R.string.chat_bot_activity_generic, activity)
+    }
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(12.dp),
+            strokeWidth = 1.5.dp,
+            color = colors.accent,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.textSecondary,
+        )
+    }
+}
+
 @Composable
 private fun MessageBody(message: ChatMessage, body: String, user: Boolean) {
     if (user) {
