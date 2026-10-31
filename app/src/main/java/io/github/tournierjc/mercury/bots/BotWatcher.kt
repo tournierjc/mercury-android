@@ -59,6 +59,8 @@ class BotWatcher(
     private val api: MercuryApi,
     private val notifier: BotNotifier,
     private val scope: CoroutineScope,
+    /** Qui a le droit de sonner : le leader d'une flotte, ou un bot auquel on a parlé. */
+    private val memory: BotNotifyMemory? = null,
 ) {
 
     private val _state = MutableStateFlow(BotWatchState())
@@ -110,20 +112,22 @@ class BotWatcher(
                                 // is a message that arrived; the tail is the last 600 characters the
                                 // daemon sends, enough to know what it says.
                                 val finished = event.kind == "turn-end" || event.kind == "turn-end-error"
-                                if (
-                                    finished &&
-                                    event.textTail.isNotBlank() &&
-                                    BotNotifier.shouldNotify(
+                                if (finished && event.textTail.isNotBlank()) {
+                                    val bot = _state.value.bots.firstOrNull { BotJson.id(it) == event.botId }
+                                    // A fleet job runs one turn per teammate; ringing for each of
+                                    // them is the same news six times, and the owner ends up
+                                    // muting the app. The lead speaks for its crew.
+                                    val rings = BotNotifyPolicy.shouldPost(
+                                        isLead = BotJson.isLead(bot),
+                                        spokenTo = memory?.spokenTo(event.botId) ?: false,
                                         foreground = AppVisibility.foreground,
                                         openBotId = AppVisibility.openBotId,
                                         botId = event.botId,
                                     )
-                                ) {
-                                    val name = _state.value.bots
-                                        .firstOrNull { BotJson.id(it) == event.botId }
-                                        ?.let { BotJson.name(it) }
-                                        ?.ifBlank { null }
-                                    notifier.message(event.botId, name ?: event.botId, event.textTail)
+                                    if (rings) {
+                                        val name = bot?.let { BotJson.name(it) }?.ifBlank { null }
+                                        notifier.message(event.botId, name ?: event.botId, event.textTail)
+                                    }
                                 }
                             }
                             is BotEvent.Notice -> if (event.message.isNotBlank()) notifier.notice(event.message)
