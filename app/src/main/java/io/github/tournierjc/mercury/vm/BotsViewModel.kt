@@ -405,6 +405,9 @@ class BotsViewModel(
                 }
             }
                 .onSuccess { result ->
+                    // Écrire à un bot, c'est s'abonner à ses nouvelles : un équipier qui n'est
+                    // pas leader sonne désormais sur le téléphone.
+                    if (result.accepted) container.botNotifyMemory.mark(id)
                     _state.update {
                         it.copy(
                             busy = false,

@@ -42,7 +42,14 @@ class AttentionWorker(
             return Result.success()
         }
 
-        val alerts = BotJson.currentAttention(roster.bots)
+        val memory = container.botNotifyMemory
+        // Un « il a besoin de vous » d'un équipier qui n'est pas leader n'est pas une nouvelle
+        // pour le propriétaire : son leader est là pour ça. La même règle que pour les messages,
+        // sinon le silence des messages serait rompu par les alertes.
+        val alerts = BotJson.currentAttention(roster.bots).filter { attention ->
+            val bot = roster.bots.firstOrNull { BotJson.id(it) == attention.botId }
+            BotNotifyPolicy.rings(isLead = BotJson.isLead(bot), spokenTo = memory.spokenTo(attention.botId))
+        }
         val keys = alerts.associate { BotJson.attentionKey(it) to it }
         val seen = prefs.seenKeys
 

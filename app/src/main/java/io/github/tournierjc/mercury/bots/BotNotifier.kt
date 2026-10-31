@@ -152,14 +152,6 @@ class BotNotifier(private val context: Context) {
         private const val MESSAGE_NOTIFICATION_ID = 4400
         private const val MESSAGE_CHARS = 220
 
-        /**
-         * Faut-il prévenir ? Pas quand l'écran de cet équipier est celui qu'on regarde : une
-         * notification pour un message déjà sous les yeux est du bruit, et c'est la seule
-         * exception — sur un autre écran, ou app fermée, le message se signale.
-         */
-        fun shouldNotify(foreground: Boolean, openBotId: String?, botId: String): Boolean =
-            !(foreground && openBotId == botId)
-
         fun titleNotice(attention: BotAttention): Notice = when (attention.kind) {
             BotAttention.Kind.NeedsYou -> Notice(NoticeKey.ATTENTION_NEEDS_YOU, args = listOf(attention.botName))
             BotAttention.Kind.RunFinished -> Notice(NoticeKey.ATTENTION_FINISHED, args = listOf(attention.botName))
