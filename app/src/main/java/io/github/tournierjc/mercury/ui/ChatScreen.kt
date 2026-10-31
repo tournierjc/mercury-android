@@ -548,7 +548,10 @@ fun ChatScreen(
                 if (botId == null) {
                     emptyList()
                 } else {
-                    val built = BotThread.build(
+                    // One list, built in :core: the journal's turns, the owner's echo of the turn
+                    // just sent, and the live one in the order they were said. Appending the echoes
+                    // here is what put an in-progress answer above the message it answers.
+                    BotThread.build(
                         botsState.records,
                         botsState.prompts,
                         botsState.answers,
@@ -556,12 +559,11 @@ fun ChatScreen(
                         botLive?.text.orEmpty(),
                         botLive?.running == true,
                         botWatch.activity[botId].orEmpty(),
-                    )
-                    val known = built.filter { !it.fromBot }.map { it.text }.toSet()
-                    // Only this bot's echo: pendings now outlive a refresh, and one addressed to another
-                    // teammate must not appear here.
-                    val mine = botsState.pending.filter { it.botId.isBlank() || it.botId == botId }
-                    (built + mine.filter { it.text !in known }).map { message ->
+                        // Only this bot's echo: pendings now outlive a refresh, and one addressed to
+                        // another teammate must not appear here.
+                        pending = botsState.pending.filter { it.botId.isBlank() || it.botId == botId },
+                        liveReasoning = botLive?.reasoning.orEmpty(),
+                    ).map { message ->
                         ChatMessage(
                             id = message.key,
                             role = if (message.fromBot) ChatMessage.Role.Assistant else ChatMessage.Role.User,
