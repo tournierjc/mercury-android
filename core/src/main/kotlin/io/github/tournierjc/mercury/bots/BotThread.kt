@@ -136,6 +136,21 @@ object BotThread {
         reasoning: Map<String, List<ReasoningBlockDto>> = emptyMap(),
         /** `runIds` whose thinking the daemon bounded. */
         reasoningTruncated: Set<String> = emptySet(),
+        /**
+         * The owner's turns the daemon accepted but the journal has not written yet, oldest first.
+         *
+         * They belong to the same list as the journal's turns, not beside it: a conversation drawn
+         * as `journal + pending` puts every in-progress answer above the question it answers.
+         */
+        pending: List<BotMessage> = emptyList(),
+        /**
+         * The thinking tail of the live turn, when the daemon streamed one.
+         *
+         * A reasoning model writes nothing visible for a long time, and the screen used to show that
+         * silence as a bubble containing a single ellipsis. The feed carries this tail already; it
+         * was collected and thrown away.
+         */
+        liveReasoning: String = "",
     ): List<BotMessage> {
         val messages = mutableListOf<BotMessage>()
         records
@@ -183,22 +198,46 @@ object BotThread {
                     reasoningTruncated = record.runId in reasoningTruncated,
                 )
             }
-        // A job that has not reached the journal yet: the optimistic turn, streaming or not — and
-        // when the bot has not written a word yet, the phase it is in, so the conversation answers
-        // "it is working" instead of showing nothing at all.
-        if (liveJobId != null && records.none { it.runId == liveJobId } && (liveTail.isNotBlank() || liveActivity.isNotBlank())) {
-            val waiting = liveTail.isBlank()
-            messages += BotMessage(
-                key = "$liveJobId-live",
-                fromBot = true,
-                text = liveTail,
-                at = System.currentTimeMillis(),
-                // "activity": the turn exists but has produced no text; the screen draws the phase.
-                state = if (waiting) "activity" else "",
-                streaming = liveRunning,
-                activity = if (waiting) liveActivity else "",
-            )
+        // The owner's own turns: accepted by the daemon, not yet in the journal. They close the
+        // conversation — but the answer to one of them can never be drawn above it, which is what
+        // `journal + pending` did the moment a turn was already running when the owner typed.
+        val shown = messages.filter { !it.fromBot }.map { it.text }.toSet()
+        val echoes = pending.filter { echo ->
+            echo.text.isNotBlank() && echo.text !in shown && messages.none { it.key == echo.key }
         }
+        val liveThinking = liveReasoning.trim()
+
+        // A job that has not reached the journal yet: the optimistic turn, streaming or not — and
+        // when the bot has not written a word yet, the thinking it is streaming or the phase it is
+        // in, so the conversation answers "it is working" instead of showing an empty bubble.
+        if (liveJobId != null && records.none { it.runId == liveJobId }) {
+            // The question, then the answer: the echo is part of this turn, so it is emitted here
+            // rather than left to the caller to append after everything.
+            echoes.firstOrNull { it.key.removeSuffix("-me") == liveJobId }?.let { messages += it }
+            val waiting = liveTail.isBlank()
+            if (liveTail.isNotBlank() || liveThinking.isNotEmpty() || liveActivity.isNotBlank()) {
+                messages += BotMessage(
+                    key = "$liveJobId-live",
+                    fromBot = true,
+                    text = liveTail,
+                    at = System.currentTimeMillis(),
+                    // "activity": the turn exists but has produced no text; the screen draws the phase.
+                    state = if (waiting) "activity" else "",
+                    streaming = liveRunning,
+                    // A phase and thinking are different things: the phase is a state the screen
+                    // draws as a quiet line, the thinking is content it draws as a block. Thinking
+                    // wins when both are here.
+                    activity = if (waiting && liveThinking.isEmpty()) liveActivity else "",
+                    reasoning = if (waiting && liveThinking.isNotEmpty()) {
+                        listOf(ReasoningBlockDto(step = 0, text = liveThinking))
+                    } else {
+                        emptyList()
+                    },
+                )
+            }
+        }
+        // Queued behind the live one: accepted, with no turn of their own to sit under yet.
+        echoes.filter { echo -> messages.none { it.key == echo.key } }.forEach { messages += it }
         return messages
     }
 

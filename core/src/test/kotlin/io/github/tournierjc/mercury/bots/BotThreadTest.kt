@@ -296,6 +296,95 @@ class BotThreadTest {
     }
 
     @Test
+    fun `the answer being written is drawn under the question it answers`() {
+        val echo = BotMessage(key = "job-9-me", fromBot = false, text = "ok mets en place les pipelines", at = 1_000)
+
+        val built = BotThread.build(
+            records = emptyList(),
+            prompts = emptyMap(),
+            liveJobId = "job-9",
+            liveTail = "je commence par le workflow",
+            liveRunning = true,
+            pending = listOf(echo),
+        )
+
+        assertEquals(2, built.size)
+        assertEquals("ok mets en place les pipelines", built[0].text)
+        assertFalse(built[0].fromBot)
+        assertTrue(built[1].fromBot)
+        assertEquals("je commence par le workflow", built[1].text)
+    }
+
+    @Test
+    fun `a live turn shows the thinking it streams instead of an empty bubble`() {
+        val built = BotThread.build(
+            records = emptyList(),
+            prompts = emptyMap(),
+            liveJobId = "job-9",
+            liveTail = "",
+            liveRunning = true,
+            liveActivity = "",
+            liveReasoning = " je relis le workflow avant de le réécrire ",
+        )
+
+        val live = built.single()
+        assertTrue(live.fromBot)
+        assertEquals("", live.text)
+        assertEquals("activity", live.state)
+        assertTrue(live.streaming)
+        // The ellipsis was the whole bubble; the thinking is what the owner expected to read there.
+        assertEquals("je relis le workflow avant de le réécrire", live.reasoning.single().text)
+        // A phase would be drawn as a quiet line *instead of* a bubble: thinking wins.
+        assertEquals("", live.activity)
+    }
+
+    @Test
+    fun `the thinking gives way to the answer as soon as one is written`() {
+        val built = BotThread.build(
+            records = emptyList(),
+            prompts = emptyMap(),
+            liveJobId = "job-9",
+            liveTail = "voilà les deux workflows",
+            liveRunning = true,
+            liveReasoning = "je relis le workflow",
+        )
+
+        val live = built.single()
+        assertEquals("voilà les deux workflows", live.text)
+        assertTrue(live.reasoning.isEmpty())
+    }
+
+    @Test
+    fun `a queued echo waits after the turn being written`() {
+        val first = BotMessage(key = "job-9-me", fromBot = false, text = "premier", at = 1_000)
+        val second = BotMessage(key = "job-10-me", fromBot = false, text = "second", at = 2_000)
+
+        val built = BotThread.build(
+            records = emptyList(),
+            prompts = emptyMap(),
+            liveJobId = "job-9",
+            liveTail = "en cours",
+            liveRunning = true,
+            pending = listOf(first, second),
+        )
+
+        assertEquals(listOf("premier", "en cours", "second"), built.map { it.text })
+        assertEquals(listOf(false, true, false), built.map { it.fromBot })
+    }
+
+    @Test
+    fun `an echo the journal already holds is not drawn twice`() {
+        val records = listOf(run("job-9", at = 1_000, summary = "fait"))
+        val prompts = mapOf("job-9" to "mets en place les pipelines")
+        val echo = BotMessage(key = "job-9-me", fromBot = false, text = "mets en place les pipelines", at = 1_000)
+
+        val built = BotThread.build(records, prompts, pending = listOf(echo))
+
+        assertEquals(2, built.size)
+        assertEquals(listOf("mets en place les pipelines", "fait"), built.map { it.text })
+    }
+
+    @Test
     fun `an echo whose turn never lands is given up on rather than kept forever`() {
         val mine = BotMessage(key = "job-99-me", fromBot = false, text = "tu es là ?", at = 1_000)
 
