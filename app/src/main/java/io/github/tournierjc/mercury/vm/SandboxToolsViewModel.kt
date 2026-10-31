@@ -117,6 +117,29 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
         }
     }
 
+    /**
+     * Removes a tool this screen installed.
+     *
+     * The daemon deletes synchronously and refuses what it does not own, so a failure here is a
+     * sentence to show — not something to retry blindly. The catalogue is re-read either way: the
+     * row has to say "installable" again the moment the binary is gone.
+     */
+    fun remove(id: String) {
+        if (id.isBlank() || _state.value.busy.isNotBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = id, error = "") }
+            runCatching { api.removeSandboxTool(id) }
+                .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
+                .onSuccess {
+                    // A removed tool's install history is stale by definition; drop it so the row
+                    // cannot show a "done" job for something that is no longer there.
+                    _state.update { it.copy(installs = it.installs - id, busy = "") }
+                }
+            _state.update { it.copy(busy = "") }
+            refresh()
+        }
+    }
+
     fun clearError() = _state.update { it.copy(error = "") }
 
     private fun Throwable.readable(): String = toNotice().toString()

@@ -79,6 +79,9 @@
     <string name="sandbox_disconnect_question">Sign out of %1$s?</string>
     <string name="sandbox_disconnect_warning">The session is shared: every bot loses access immediately.</string>
     <string name="sandbox_connect_failed">Sign-in failed — start it again.</string>
+    <string name="sandbox_remove">Uninstall</string>
+    <string name="sandbox_remove_question">Uninstall %1$s?</string>
+    <string name="sandbox_remove_warning">The tool is shared: every bot loses it immediately. Any signed-in account is left alone.</string>
     <string name="run_reasoning">Thinking</string>
     <string name="run_reasoning_step">step %1$d</string>
     <string name="run_reasoning_more">Expand</string>

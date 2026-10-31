@@ -79,6 +79,9 @@
     <string name="sandbox_disconnect_question">Déconnecter %1$s ?</string>
     <string name="sandbox_disconnect_warning">La session est partagée : tous les bots perdront l\'accès immédiatement.</string>
     <string name="sandbox_connect_failed">La connexion a échoué — relance-la.</string>
+    <string name="sandbox_remove">Désinstaller</string>
+    <string name="sandbox_remove_question">Désinstaller %1$s ?</string>
+    <string name="sandbox_remove_warning">L\'outil est partagé : tous les bots le perdent immédiatement. Le compte éventuellement connecté n\'est pas touché.</string>
     <string name="run_reasoning">Réflexion</string>
     <string name="run_reasoning_step">étape %1$d</string>
     <string name="run_reasoning_more">Déplier</string>
