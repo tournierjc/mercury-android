@@ -30,6 +30,7 @@ import io.github.tournierjc.mercury.bots.BotThread
 import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.DlqJobDto
+import io.github.tournierjc.mercury.data.dto.ReasoningBlockDto
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import io.github.tournierjc.mercury.data.dto.TraceStepDto
 import io.github.tournierjc.mercury.util.OutputActions
@@ -79,6 +80,16 @@ data class BotsUiState(
     val traces: Map<String, List<TraceStepDto>> = emptyMap(),
     /** `runId` → the full answer: the journal truncates its summary at 300 characters. */
     val answers: Map<String, String> = emptyMap(),
+    /**
+     * `runId` → the thinking the transcript recorded, step by step.
+     *
+     * Kept in the state, not only folded into [messages]: the chat screen rebuilds the conversation
+     * on every live tick, and a screen that rebuilds from some of the state drops the rest — which
+     * is exactly how the tool calls and the thinking were fetched, stored, and never drawn.
+     */
+    val reasoning: Map<String, List<ReasoningBlockDto>> = emptyMap(),
+    /** `runIds` whose thinking the daemon bounded. */
+    val reasoningTruncated: Set<String> = emptySet(),
     /** The conversation as the chat screen draws it, oldest first. */
     val messages: List<BotMessage> = emptyList(),
     /** Turns sent from this screen that the journal does not know about yet. */
@@ -282,6 +293,8 @@ class BotsViewModel(
                     prompts = prompts,
                     answers = answers,
                     traces = traces,
+                    reasoning = thoughts,
+                    reasoningTruncated = thoughtsCut,
                     messages = BotThread.build(last, prompts, answers, traces = traces, reasoning = thoughts, reasoningTruncated = thoughtsCut),
                     // Kept until the journal holds its record: a refresh must not erase a message
                     // the owner already sent.
@@ -339,12 +352,18 @@ class BotsViewModel(
             _state.update { state ->
                 val answers = state.answers + (runId to transcript.output)
                 val traces = state.traces + (runId to transcript.trace)
+                val reasoning = if (transcript.reasoning.isNotEmpty()) {
+                    state.reasoning + (runId to transcript.reasoning)
+                } else {
+                    state.reasoning
+                }
                 val prompts = if (transcript.prompt.isNotBlank()) state.prompts + (runId to transcript.prompt) else state.prompts
                 state.copy(
                     answers = answers,
                     prompts = prompts,
                     traces = traces,
-                    messages = BotThread.build(state.records, prompts, answers, traces = traces),
+                    reasoning = reasoning,
+                    messages = BotThread.build(state.records, prompts, answers, traces = traces, reasoning = reasoning),
                 )
             }
         }
