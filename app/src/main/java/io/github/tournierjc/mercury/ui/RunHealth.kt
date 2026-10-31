@@ -161,31 +161,11 @@ fun RunDetailDialog(
                             )
                         }
                     }
-                    BotOps.reasoningBlocks(loaded.reasoning, expanded).forEach { block ->
-                        Text(
-                            text = stringResource(R.string.run_reasoning_step, block.step),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                        Text(
-                            text = block.text,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            color = colors.textPrimary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
-                                .padding(10.dp),
-                        )
-                    }
-                    if (loaded.reasoningTruncated) {
-                        Text(
-                            text = stringResource(R.string.run_reasoning_truncated),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
+                    ReasoningSection(
+                        blocks = loaded.reasoning,
+                        truncated = loaded.reasoningTruncated,
+                        initiallyExpanded = expanded,
+                    )
                 }
                 if (loaded.trace.isNotEmpty()) {
                     Text(

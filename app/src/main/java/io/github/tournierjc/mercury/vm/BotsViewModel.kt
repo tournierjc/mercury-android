@@ -260,6 +260,9 @@ class BotsViewModel(
             val prompts = turns.mapValues { (_, transcript) -> transcript?.prompt.orEmpty() }
             val answers = turns.mapValues { (_, transcript) -> transcript?.output.orEmpty() }
             val traces = turns.mapValues { (_, transcript) -> transcript?.trace.orEmpty() }
+            // The transcript already had it: reading the thinking costs no extra request.
+            val thoughts = turns.mapValues { (_, transcript) -> transcript?.reasoning.orEmpty() }
+            val thoughtsCut = turns.filterValues { it?.reasoningTruncated == true }.keys
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -277,7 +280,7 @@ class BotsViewModel(
                     prompts = prompts,
                     answers = answers,
                     traces = traces,
-                    messages = BotThread.build(last, prompts, answers, traces = traces),
+                    messages = BotThread.build(last, prompts, answers, traces = traces, reasoning = thoughts, reasoningTruncated = thoughtsCut),
                     pending = emptyList(),
                     dlq = dlq?.dlq.orEmpty(),
                     roster = roster,

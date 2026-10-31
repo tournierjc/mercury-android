@@ -1149,6 +1149,18 @@ class MercuryApi(
         ConnectFlowDto.serializer(),
     )
 
+    /**
+     * `POST /api/sandbox/tools/:id/disconnect` — ends the session.
+     *
+     * The sandbox is shared, so this revokes the identity for every bot at once; the answer is the
+     * tool's status re-read by the daemon, which is what the row then draws.
+     */
+    suspend fun disconnectSandboxTool(id: String): SandboxToolDto = postJson(
+        "/api/sandbox/tools/${encode(id)}/disconnect",
+        JsonObject(emptyMap()),
+        SandboxToolDto.serializer(),
+    )
+
     suspend fun sandboxToolConnect(id: String): ConnectFlowDto =
         getDecoded("/api/sandbox/tools/${encode(id)}/connect", ConnectFlowDto.serializer())
 

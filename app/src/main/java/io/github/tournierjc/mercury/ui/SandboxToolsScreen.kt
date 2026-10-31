@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +23,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -105,6 +108,7 @@ fun SandboxToolsScreen(onBack: () -> Unit) {
                         busy = state.busy == tool.id,
                         onInstall = { vm.install(tool.id) },
                         onConnect = { vm.connect(tool.id) },
+                        onDisconnect = { vm.disconnect(tool.id) },
                     )
                 }
                 if (state.error.isNotBlank()) {
@@ -127,10 +131,12 @@ private fun ToolRow(
     busy: Boolean,
     onInstall: () -> Unit,
     onConnect: () -> Unit,
+    onDisconnect: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    var confirming by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,6 +189,14 @@ private fun ToolRow(
                 )
                 tool.present && tool.auth == "no" -> OutlinedButton(onClick = onConnect, enabled = flow?.state != "pending") {
                     Text(stringResource(R.string.sandbox_connect))
+                }
+                // Signing out affects every bot at once, so it asks once instead of sitting one tap
+                // away from an accidental revocation.
+                tool.present && tool.auth == "connected" -> OutlinedButton(
+                    onClick = { confirming = true },
+                    enabled = !busy,
+                ) {
+                    Text(stringResource(R.string.sandbox_disconnect))
                 }
             }
             if (running) CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
@@ -253,5 +267,23 @@ private fun ToolRow(
                 color = colors.danger,
             )
         }
+    }
+
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(stringResource(R.string.sandbox_disconnect_question, tool.label)) },
+            text = { Text(stringResource(R.string.sandbox_disconnect_warning)) },
+            confirmButton = {
+                TextButton(onClick = { confirming = false; onDisconnect() }) {
+                    Text(stringResource(R.string.sandbox_disconnect), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirming = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
     }
 }

@@ -1,6 +1,7 @@
 package io.github.tournierjc.mercury.bots
 
 import io.github.tournierjc.mercury.data.dto.BotRunDto
+import io.github.tournierjc.mercury.data.dto.ReasoningBlockDto
 import io.github.tournierjc.mercury.data.dto.TraceStepDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -211,5 +212,40 @@ class BotThreadTest {
         assertFalse(BotThread.isStale(knownRunId = "run-1", newestRunId = "run-1"))
         assertFalse(BotThread.isStale(knownRunId = "run-1", newestRunId = null))
         assertFalse(BotThread.isStale(knownRunId = "run-1", newestRunId = "  "))
+    }
+
+    // The conversation showed the calls and the reply — the *what*. A turn that read six files and
+    // answered "rien à signaler" left no way to tell a check from a guess.
+    @Test
+    fun `the thinking lands on its own turn, never the next one`() {
+        val records = listOf(
+            BotRunDto(runId = "r1", startedAt = 1_000, durationMs = 10, state = "completed", summary = "premier"),
+            BotRunDto(runId = "r2", startedAt = 2_000, durationMs = 10, state = "completed", summary = "second"),
+        )
+
+        val messages = BotThread.build(
+            records,
+            prompts = emptyMap(),
+            outputs = mapOf("r1" to "premier", "r2" to "second"),
+            reasoning = mapOf("r1" to listOf(ReasoningBlockDto(step = 1, text = "je vérifie X"))),
+            reasoningTruncated = setOf("r1"),
+        )
+
+        val bots = messages.filter { it.fromBot }
+        assertEquals(listOf("je vérifie X"), bots[0].reasoning.map { it.text })
+        assertTrue(bots[0].reasoningTruncated)
+        assertTrue(bots[1].reasoning.isEmpty())
+        assertFalse(bots[1].reasoningTruncated)
+    }
+
+    @Test
+    fun `a daemon that sends no thinking leaves the message unchanged`() {
+        val records = listOf(BotRunDto(runId = "r1", startedAt = 1_000, durationMs = 10, state = "completed", summary = "ok"))
+
+        val messages = BotThread.build(records, prompts = emptyMap())
+        val bot = messages.single { it.fromBot }
+
+        assertTrue(bot.reasoning.isEmpty())
+        assertFalse(bot.reasoningTruncated)
     }
 }

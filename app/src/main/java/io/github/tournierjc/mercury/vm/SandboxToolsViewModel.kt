@@ -106,6 +106,17 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
         }
     }
 
+    /** Signs a tool out; the row's state comes back from the daemon, never assumed. */
+    fun disconnect(id: String) {
+        if (_state.value.busy.isNotBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = id, error = "") }
+            runCatching { api.disconnectSandboxTool(id) }
+                .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
+            refresh()
+        }
+    }
+
     fun clearError() = _state.update { it.copy(error = "") }
 
     private fun Throwable.readable(): String = toNotice().toString()

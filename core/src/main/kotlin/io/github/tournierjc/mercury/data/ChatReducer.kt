@@ -1,5 +1,7 @@
 package io.github.tournierjc.mercury.data
 
+import io.github.tournierjc.mercury.data.dto.ReasoningBlockDto
+
 /** Pure chat state reduced from [ChatEvent]s; kept Android-free so it is unit tested. */
 data class ChatMessage(
     val id: String,
@@ -18,6 +20,14 @@ data class ChatMessage(
      * to load the rest instead of pretending this is all there was.
      */
     val truncated: Boolean = false,
+    /**
+     * The bot's thinking for this turn, when the transcript carried it.
+     *
+     * Part of the message rather than a side lookup so a reused bubble cannot show one turn's
+     * thinking under another's answer — the failure that makes a screen worse than silence.
+     */
+    val reasoning: List<ReasoningBlockDto> = emptyList(),
+    val reasoningTruncated: Boolean = false,
     /**
      * When the turn happened, epoch ms — 0 when nothing said (an older daemon, or a message built
      * before the app had a clock). The bubble shows an age only when it knows one.

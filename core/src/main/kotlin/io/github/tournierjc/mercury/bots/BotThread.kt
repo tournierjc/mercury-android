@@ -2,6 +2,7 @@ package io.github.tournierjc.mercury.bots
 
 import io.github.tournierjc.mercury.data.ToolStep
 import io.github.tournierjc.mercury.data.dto.BotRunDto
+import io.github.tournierjc.mercury.data.dto.ReasoningBlockDto
 import io.github.tournierjc.mercury.data.dto.TraceStepDto
 
 /**
@@ -24,6 +25,16 @@ data class BotMessage(
      * forty commands reads as one paragraph that came from nowhere.
      */
     val steps: List<ToolStep> = emptyList(),
+    /**
+     * What the bot thought on its way to that answer, step by step, from the transcript.
+     *
+     * The conversation showed the calls and the reply, which is the *what*: a turn that read six
+     * files and answered "rien à signaler" left the owner unable to tell a check from a guess. Only
+     * the transcript's own reasoning is here — never invented, never the daemon's live tail.
+     */
+    val reasoning: List<ReasoningBlockDto> = emptyList(),
+    /** The daemon kept only the newest of the thinking: say so rather than let it read complete. */
+    val reasoningTruncated: Boolean = false,
     /**
      * The text is the journal's summary, not the transcript: the daemon cuts it at 300
      * characters, which lands in the middle of a fenced block — an `openui` answer comes back
@@ -75,6 +86,10 @@ object BotThread {
         liveRunning: Boolean = true,
         /** `runId` → the transcript's `trace`: what the turn actually did, tool by tool. */
         traces: Map<String, List<TraceStepDto>> = emptyMap(),
+        /** `runId` → the transcript's per-step `reasoning`. */
+        reasoning: Map<String, List<ReasoningBlockDto>> = emptyMap(),
+        /** `runIds` whose thinking the daemon bounded. */
+        reasoningTruncated: Set<String> = emptySet(),
     ): List<BotMessage> {
         val messages = mutableListOf<BotMessage>()
         records
@@ -118,6 +133,8 @@ object BotThread {
                     // Only a summary can be cut: an error line and an empty turn are what they are.
                     truncated = !streaming && full == null && record.summary.isNotBlank(),
                     steps = stepsOf(traces[record.runId]),
+                    reasoning = reasoning[record.runId].orEmpty(),
+                    reasoningTruncated = record.runId in reasoningTruncated,
                 )
             }
         // A job that has not reached the journal yet: the optimistic turn, streaming or not.
