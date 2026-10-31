@@ -11,6 +11,7 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -96,6 +97,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.MercuryApp
@@ -668,6 +671,9 @@ fun ChatScreen(
                             // A bot conversation is its own list: switching to it from the
                             // roster must not animate through Mercury's messages.
                             conversationKey = "bot:$botId",
+                            // The row names whoever answered: "Mercury" over a bot's words was
+                            // simply the wrong bot.
+                            senderName = botName,
                             onLoadFull = { key -> botsVm.loadAnswer(key.substringBeforeLast("-bot")) },
                         )
                     }
@@ -1024,6 +1030,9 @@ internal fun MessageList(
      * history on the way.
      */
     conversationKey: String = "mercury",
+    /** Who the agent is, in this conversation: the bot's own name, or Mercury. */
+    senderName: String = "",
+
     /**
      * Called with the message id when the owner asks for the rest of a truncated answer. Null
      * hides the affordance: Mercury's own thread always has its text in full.
@@ -1111,6 +1120,7 @@ internal fun MessageList(
                     Box(modifier = Modifier.fillMaxWidth()) {
                         MessageItem(
                             message = message,
+                            senderName = senderName.ifBlank { stringResource(R.string.chat_sender_mercury) },
                             selecting = selecting == message.id,
                             onLongPress = {
                                 if (selecting == null) menuFor = message.id
@@ -1260,6 +1270,8 @@ internal fun MessageItem(
     onLongPress: (() -> Unit)? = null,
     /** Offered under a message whose text is a cut summary; null when there is nothing to load. */
     onLoadFull: (() -> Unit)? = null,
+    /** Who answered: the bot's own name in a bot conversation, Mercury in the main thread. */
+    senderName: String = "",
 ) {
     val colors = LocalMercuryColors.current
     val parsed = remember(message.text) { QuoteReply.parse(message.text) }
@@ -1270,32 +1282,41 @@ internal fun MessageItem(
         Modifier.combinedClickable(onClick = {}, onLongClick = onLongPress)
     }
 
-    // A turn that has written nothing yet is a *state*, not a message: no body, a quiet line.
+    // A turn that has written nothing yet is a *state*, not a message.
     val activityOnly = !user && message.text.isBlank() && message.activity.isNotBlank()
-    // A stored tool summary IS the message: with no body there is no avatar-only row.
     val bodyVisible = !activityOnly && (parsed.body.isNotBlank() || parsed.isQuote || message.streaming)
 
-    // The name is what a feed puts first; "Vous" for the owner, the agent's own name otherwise. Both
-    // come from resources so the screen can be read in either language.
-    val who = if (user) stringResource(R.string.chat_sender_you) else stringResource(R.string.chat_sender_mercury)
+    val who = if (user) stringResource(R.string.chat_sender_you) else senderName.ifBlank { stringResource(R.string.chat_sender_mercury) }
+    // A row shows a column of text, not a sentence in a bubble: 15 sp holds a long answer without
+    // making the list feel like a document.
+    val bodyStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 21.sp)
+    val card = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 6.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(press)
-            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SenderAvatar(name = who, bot = !user)
-        Column(modifier = Modifier.weight(1f)) {
-            // Who and when, on one line: the age sits where a feed puts it, not under the words.
+        // The words sit in a soft card that hugs them: a bubble, but one that follows a feed's
+        // rules — the name inside it, no tail corner pointing at nothing, no wasted column.
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clip(card)
+                .background(if (user) colors.surfaceMuted else colors.surface)
+                .border(1.dp, colors.hairline, card)
+                .then(press)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = who,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    // The agent keeps the accent: it is the voice the owner is talking to, and the
-                    // only colour that separates the two speakers now that the bubbles are gone.
+                    // The agent keeps the accent: with the bubbles gone it is the only colour that
+                    // tells the two voices apart.
                     color = if (user) colors.textPrimary else colors.accent,
                 )
                 if (!message.streaming && message.sentAt > 0) {
@@ -1313,7 +1334,7 @@ internal fun MessageItem(
                 ReasoningSection(
                     blocks = message.reasoning,
                     truncated = message.reasoningTruncated,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
                 )
             }
             if (!user && message.steps.isNotEmpty()) {
@@ -1321,35 +1342,31 @@ internal fun MessageItem(
                 ToolTraceBlock(
                     steps = message.steps,
                     folded = message.toolTrace,
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier.padding(vertical = 3.dp),
                 )
             }
             if (activityOnly) {
                 LiveActivityRow(activity = message.activity, modifier = Modifier.padding(vertical = 2.dp))
             }
             if (bodyVisible) {
-                Column(modifier = Modifier.padding(top = 2.dp)) {
+                Column(modifier = Modifier.padding(top = 1.dp)) {
                     if (parsed.isQuote) QuoteBlock(parsed.quote)
                     if (parsed.body.isNotEmpty()) {
                         if (selecting) {
                             SelectionContainer {
-                                MessageBody(message = message, body = parsed.body, user = user)
+                                MessageBody(message = message, body = parsed.body, user = user, bodyStyle = bodyStyle)
                             }
                         } else {
-                            MessageBody(message = message, body = parsed.body, user = user)
+                            MessageBody(message = message, body = parsed.body, user = user, bodyStyle = bodyStyle)
                         }
                     }
                     if (message.streaming) {
-                        Text(
-                            text = "▍",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.accent,
-                        )
+                        Text(text = "▍", style = bodyStyle, color = colors.accent)
                     }
                 }
             }
             // The journal cuts an answer at 300 characters, which is inside a fenced block as often
-            // as not: the row says its text is a summary, and offers the rest.
+            // as not: the card says its text is a summary, and offers the rest.
             if (message.truncated && onLoadFull != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1357,7 +1374,7 @@ internal fun MessageItem(
                         .padding(top = 4.dp)
                         .clip(RoundedCornerShape(50))
                         .clickable { onLoadFull() }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
                 ) {
                     Icon(
                         Icons.Rounded.ExpandMore,
@@ -1463,15 +1480,20 @@ private fun LiveActivityRow(activity: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MessageBody(message: ChatMessage, body: String, user: Boolean) {
+private fun MessageBody(
+    message: ChatMessage,
+    body: String,
+    user: Boolean,
+    bodyStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+) {
     if (user) {
         Text(
             text = body,
-            style = MaterialTheme.typography.bodyLarge,
+            style = bodyStyle,
             color = LocalMercuryColors.current.textPrimary,
         )
     } else {
-        MarkdownText(text = body, streaming = message.streaming)
+        MarkdownText(text = body, streaming = message.streaming, paragraphStyle = bodyStyle)
     }
 }
 

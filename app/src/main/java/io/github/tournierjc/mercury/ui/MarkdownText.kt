@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLinkStyles
@@ -44,6 +45,13 @@ fun MarkdownText(
     color: Color = LocalMercuryColors.current.textPrimary,
     /** The answer is still arriving: an openui block draws what is complete instead of waiting. */
     streaming: Boolean = false,
+    /**
+     * The size of a paragraph.
+     *
+     * A feed row is read at a glance, in longer stretches than a bubble ever showed: 16 sp there
+     * measured a column, not a sentence. The chat asks for 15; every other reader keeps the default.
+     */
+    paragraphStyle: TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     val colors = LocalMercuryColors.current
     val blocks = remember(text) { MiniMarkdown.parse(text) }
@@ -53,7 +61,7 @@ fun MarkdownText(
             when (block) {
                 is MdBlock.Paragraph -> Text(
                     text = annotated(block.spans, color, colors.accent, colors.surfaceMuted),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = paragraphStyle,
                     modifier = Modifier.padding(top = spacing),
                 )
 
