@@ -23,6 +23,13 @@ data class SandboxToolDto(
     val installable: Boolean = false,
     /** Why it cannot be installed here — an apt tool on a uid-1000 container, for instance. */
     val installBlocked: String = "",
+    /**
+     * True when the binary was put there by an install from this screen, not by the image.
+     *
+     * The uninstall is offered on this flag and nowhere else: `git` and `python3` come from the
+     * image, are owned by root, and deleting them is not a feature.
+     */
+    val removable: Boolean = false,
 )
 
 @Serializable

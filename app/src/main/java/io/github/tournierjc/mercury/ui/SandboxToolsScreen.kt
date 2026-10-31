@@ -41,6 +41,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.dto.ConnectFlowDto
+import io.github.tournierjc.mercury.data.SandboxToolAction
+import io.github.tournierjc.mercury.data.SandboxToolActions
 import io.github.tournierjc.mercury.data.dto.SandboxToolDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.vm.SandboxToolsViewModel
@@ -109,6 +111,7 @@ fun SandboxToolsScreen(onBack: () -> Unit) {
                         onInstall = { vm.install(tool.id) },
                         onConnect = { vm.connect(tool.id) },
                         onDisconnect = { vm.disconnect(tool.id) },
+                        onRemove = { vm.remove(tool.id) },
                     )
                 }
                 if (state.error.isNotBlank()) {
@@ -132,11 +135,15 @@ private fun ToolRow(
     onInstall: () -> Unit,
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
+    onRemove: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     var confirming by remember { mutableStateOf(false) }
+    // Removing is destructive and shared, so it asks once — like signing out, and for the same
+    // reason: every bot loses the tool at the same instant.
+    var confirmingRemove by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -178,26 +185,46 @@ private fun ToolRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            when {
-                !tool.present && tool.installable -> Button(onClick = onInstall, enabled = !running) {
-                    Text(stringResource(if (running) R.string.sandbox_installing else R.string.sandbox_install))
+            // One rule for the whole row, in :core and tested: which buttons a tool offers is
+            // independent of how they are drawn.
+            SandboxToolActions.of(tool).forEach { action ->
+                when (action) {
+                    SandboxToolAction.Install -> Button(onClick = onInstall, enabled = !running) {
+                        Text(stringResource(if (running) R.string.sandbox_installing else R.string.sandbox_install))
+                    }
+
+                    SandboxToolAction.Connect -> OutlinedButton(
+                        onClick = onConnect,
+                        enabled = flow?.state != "pending",
+                    ) {
+                        Text(stringResource(R.string.sandbox_connect))
+                    }
+
+                    // Signing out affects every bot at once, so it asks once instead of sitting one
+                    // tap away from an accidental revocation.
+                    SandboxToolAction.Disconnect -> OutlinedButton(
+                        onClick = { confirming = true },
+                        enabled = !busy,
+                    ) {
+                        Text(stringResource(R.string.sandbox_disconnect))
+                    }
+
+                    // Deleting what we installed: the second question the owner asked on this
+                    // screen, and the one that had no answer at all.
+                    SandboxToolAction.Remove -> OutlinedButton(
+                        onClick = { confirmingRemove = true },
+                        enabled = !busy,
+                    ) {
+                        Text(stringResource(R.string.sandbox_remove), color = colors.danger)
+                    }
                 }
-                !tool.present && tool.installBlocked.isNotBlank() -> Text(
+            }
+            if (!tool.present && tool.installBlocked.isNotBlank()) {
+                Text(
                     text = tool.installBlocked,
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.textSecondary,
                 )
-                tool.present && tool.auth == "no" -> OutlinedButton(onClick = onConnect, enabled = flow?.state != "pending") {
-                    Text(stringResource(R.string.sandbox_connect))
-                }
-                // Signing out affects every bot at once, so it asks once instead of sitting one tap
-                // away from an accidental revocation.
-                tool.present && tool.auth == "connected" -> OutlinedButton(
-                    onClick = { confirming = true },
-                    enabled = !busy,
-                ) {
-                    Text(stringResource(R.string.sandbox_disconnect))
-                }
             }
             if (running) CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
         }
@@ -267,6 +294,24 @@ private fun ToolRow(
                 color = colors.danger,
             )
         }
+    }
+
+    if (confirmingRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmingRemove = false },
+            title = { Text(stringResource(R.string.sandbox_remove_question, tool.label)) },
+            text = { Text(stringResource(R.string.sandbox_remove_warning)) },
+            confirmButton = {
+                TextButton(onClick = { confirmingRemove = false; onRemove() }) {
+                    Text(stringResource(R.string.sandbox_remove), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingRemove = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
     }
 
     if (confirming) {

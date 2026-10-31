@@ -1139,6 +1139,15 @@ class MercuryApi(
         InstallRecordDto.serializer(),
     )
 
+    /**
+     * `DELETE /api/sandbox/tools/:id` — removes a tool this screen installed.
+     *
+     * Synchronous on the daemon (it is a filesystem call, not a job), so the answer is the result:
+     * the row is re-read afterwards rather than trusted.
+     */
+    suspend fun removeSandboxTool(id: String): SimpleResponse =
+        deleteJson("/api/sandbox/tools/${encode(id)}", SimpleResponse.serializer())
+
     suspend fun sandboxToolInstall(id: String): InstallRecordDto =
         getDecoded("/api/sandbox/tools/${encode(id)}/install", InstallRecordDto.serializer())
 
