@@ -56,7 +56,6 @@
     <string name="run_details">details</string>
     <string name="run_older">… %1$d older run(s)</string>
     <string name="run_detail_title">Run detail</string>
-    <string name="nav_sandbox_tools">Bot tools</string>
     <string name="sandbox_title">Bot tools</string>
     <string name="sandbox_shared_note">Shared by every bot — the sandbox confines paths, not processes</string>
     <string name="sandbox_empty">No tool to show.</string>

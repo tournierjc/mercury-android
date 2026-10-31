@@ -26,6 +26,7 @@
     <string name="nav_skills">Skills</string>
     <string name="nav_mcp">MCP</string>
     <string name="nav_plugins">Plugins</string>
+    <string name="nav_sandbox_tools">Bot tools</string>
     <string name="nav_permissions">Permissions</string>
     <string name="nav_schedules">Schedules</string>
     <string name="nav_usage">Usage</string>
