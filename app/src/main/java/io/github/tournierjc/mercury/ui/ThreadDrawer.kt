@@ -201,7 +201,6 @@ fun ThreadDrawer(
                 items(items = arrangeRows, key = { "arrange:${it.first}" }) { entry ->
                     val (id, under) = entry
                     val bot = botsById[id] ?: return@items
-                    val index = flatIds.indexOf(id)
                     DrawerBotRow(
                         needsYou = needsYou,
                         bot = bot,
@@ -214,11 +213,13 @@ fun ThreadDrawer(
                         onLongClick = {},
                         onToggleCrew = null,
                         trailing = {
+                            // Un leader se déplace avec son équipage, un équipier dans son équipage :
+                            // déplacer la ligne suivante, sous un leader, c'était son propre membre.
                             MoveArrows(
-                                canUp = index > 0,
-                                canDown = index in 0 until flatIds.lastIndex,
-                                onUp = { onSaveOrder(BotOrder.move(flatIds, index, index - 1)) },
-                                onDown = { onSaveOrder(BotOrder.move(flatIds, index, index + 1)) },
+                                canUp = BotOrder.canMove(fleet, id, -1),
+                                canDown = BotOrder.canMove(fleet, id, 1),
+                                onUp = { onSaveOrder(BotOrder.moveRow(fleet, id, -1)) },
+                                onDown = { onSaveOrder(BotOrder.moveRow(fleet, id, 1)) },
                             )
                         },
                     )
@@ -615,13 +616,15 @@ private fun DrawerBotRow(
                 onLongClick = onLongClick,
             )
             .heightIn(min = 48.dp)
-            // The indent carries the tree, so a crew member never reads as the lead's sibling.
-            .padding(start = if (under) 26.dp else 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            // The indent carries the tree, so a crew member never reads as the lead's sibling: it
+            // adds to the reserved slot, which is what puts the crew to the right of the lead's face.
+            .padding(start = if (under) 24.dp else 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
     ) {
         // The arrow is left of the face — the tree's own edge, and the same place it sits in the
-        // Équipiers screen. A row with nothing to fold keeps the slot so the faces line up.
-        when {
-            onToggleCrew != null -> IconButton(onClick = onToggleCrew, modifier = Modifier.size(36.dp)) {
+        // Équipiers screen. Every row reserves it, crew members included: without that, a crew
+        // member's indent started left of its lead's face, and the tree read upside down.
+        if (onToggleCrew != null) {
+            IconButton(onClick = onToggleCrew, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = if (open == true) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = if (open == true) {
@@ -633,7 +636,8 @@ private fun DrawerBotRow(
                     modifier = Modifier.size(20.dp),
                 )
             }
-            crew != null -> Spacer(Modifier.width(36.dp))
+        } else {
+            Spacer(Modifier.width(36.dp))
         }
         BotFace(bot, face, small = true)
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
