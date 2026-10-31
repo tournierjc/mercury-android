@@ -544,53 +544,31 @@ fun ChatScreen(
             val queuedLabel = stringResource(R.string.chat_bot_queued)
             val failedLabel = stringResource(R.string.chat_bot_failed)
             val noAnswerLabel = stringResource(R.string.chat_bot_no_answer)
-            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botWatch.activity[botId], botId, queuedLabel, failedLabel, noAnswerLabel) {
-                if (botId == null) {
-                    emptyList()
-                } else {
-                    // One list, built in :core: the journal's turns, the owner's echo of the turn
-                    // just sent, and the live one in the order they were said. Appending the echoes
-                    // here is what put an in-progress answer above the message it answers.
-                    BotThread.build(
-                        botsState.records,
-                        botsState.prompts,
-                        botsState.answers,
-                        botLive?.jobId,
-                        botLive?.text.orEmpty(),
-                        botLive?.running == true,
-                        botWatch.activity[botId].orEmpty(),
-                        // Only this bot's echo: pendings now outlive a refresh, and one addressed to
-                        // another teammate must not appear here.
-                        pending = botsState.pending.filter { it.botId.isBlank() || it.botId == botId },
-                        liveReasoning = botLive?.reasoning.orEmpty(),
-                    ).map { message ->
-                        ChatMessage(
-                            id = message.key,
-                            role = if (message.fromBot) ChatMessage.Role.Assistant else ChatMessage.Role.User,
-                            text = message.text.ifBlank {
-                                when {
-                                    message.streaming -> "…"
-                                    message.state == "queued" -> queuedLabel
-                                    message.state == "failed" -> failedLabel
-                                    else -> noAnswerLabel
-                                }
-                            },
-                            streaming = message.streaming,
-                            // The bubble dates itself from the turn's own clock (the journal's
-                            // `startedAt` + `durationMs`): without this line a bot's answer drew
-                            // no hour at all, while the main thread drew one.
-                            sentAt = message.at ?: 0,
-                            steps = message.steps,
-                            // Stored steps are history and are drawn as a block, not as the row of
-                            // chips a turn in progress shows.
-                            toolTrace = message.steps.isNotEmpty(),
-                            truncated = message.truncated,
-                            reasoning = message.reasoning,
-                            reasoningTruncated = message.reasoningTruncated,
-                            activity = message.activity,
-                        )
-                    }
-                }
+            // The list is assembled by a pure function in `ui`, not here: it is rebuilt on every
+            // live tick inside a `remember` whose body nothing can test, and it used to be built
+            // from part of the state only — the tool calls and the thinking were fetched, stored,
+            // and passed to nothing.
+            val botMessages = remember(
+                botsState.records,
+                botsState.prompts,
+                botsState.answers,
+                botsState.traces,
+                botsState.reasoning,
+                botsState.reasoningTruncated,
+                botsState.pending,
+                botLive,
+                botWatch.activity[botId],
+                botId,
+            ) {
+                BotConversation.messages(
+                    state = botsState,
+                    botId = botId,
+                    live = botLive,
+                    activity = botWatch.activity[botId].orEmpty(),
+                    queued = queuedLabel,
+                    failed = failedLabel,
+                    noAnswer = noAnswerLabel,
+                )
             }
             var showBotDeliverables by remember { mutableStateOf(false) }
             // A turn that just ended has its answer in the journal, not in the 600-character tail
