@@ -5,6 +5,10 @@
     <string name="out_preview_raw">Show raw text</string>
     <string name="out_preview_rendered">Show formatted text</string>
     <!-- Drawer -->
+    <string name="drawer_reorder">Arrange</string>
+    <string name="drawer_reorder_done">Done</string>
+    <string name="drawer_move_up">Move up</string>
+    <string name="drawer_move_down">Move down</string>
     <string name="drawer_section_crew">Teammates</string>
     <!-- One teammate's row: two gestures, two destinations. -->
     <string name="drawer_bot_open_chat">Open the conversation</string>

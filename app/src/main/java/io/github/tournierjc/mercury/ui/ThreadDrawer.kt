@@ -83,6 +83,10 @@ import io.github.tournierjc.mercury.ui.icons.GraphGlyph
 import io.github.tournierjc.mercury.ui.icons.ProviderGlyph
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import kotlinx.serialization.json.JsonObject
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.ui.text.font.FontWeight
+import io.github.tournierjc.mercury.data.BotOrder
 
 @Composable
 fun ThreadDrawer(
@@ -105,6 +109,14 @@ fun ThreadDrawer(
     bots: List<JsonObject> = emptyList(),
     avatars: Map<String, ByteArray> = emptyMap(),
     activeBotId: String? = null,
+    /**
+     * L'ordre où le propriétaire a rangé son équipage, retenu sur le téléphone.
+     *
+     * Le daemon renvoie ses bots dans l'ordre de ses manifests — l'ordre de création, pas de lecture.
+     * Le bot qu'on ouvre tous les jours restait donc sous trois autres qu'on n'ouvre jamais.
+     */
+    botOrder: List<String> = emptyList(),
+    onSaveOrder: (List<String>) -> Unit = {},
 ) {
     val colors = LocalMercuryColors.current
     val needsYou = stringResource(R.string.drawer_needs_you)
@@ -113,7 +125,10 @@ fun ThreadDrawer(
     // Which leads the owner unfolded. Folded is the default: the drawer arrives as a tree, not as
     // ten rows that happen to mention a fleet in a subtitle.
     var openLeads by rememberSaveable { mutableStateOf(listOf<String>()) }
-    val fleet = remember(bots) { fleetRows(bots) }
+    // Arranging hides the navigation for a moment: a row that both moves and opens would do neither.
+    var arranging by rememberSaveable { mutableStateOf(false) }
+    val ordered = remember(bots, botOrder) { BotOrder.apply(bots, botOrder) }
+    val fleet = remember(ordered) { fleetRows(ordered) }
     val rows = remember(fleet, threads, current, openLeads) {
         drawerRows(
             fleet = fleet,
@@ -122,7 +137,9 @@ fun ThreadDrawer(
             openLeads = openLeads.toSet(),
         )
     }
-    val botsById = remember(bots) { bots.associateBy { BotJson.id(it) } }
+    val botsById = remember(ordered) { ordered.associateBy { BotJson.id(it) } }
+    // What the arrows move: the rows, flattened in the order the eye sees them.
+    val flatIds = remember(fleet) { BotOrder.flatten(fleet) }
     val threadsById = remember(threads) { threads.associateBy { it.id } }
 
     ModalDrawerSheet(
@@ -137,8 +154,24 @@ fun ThreadDrawer(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         ) {
+            if (arranging) {
+                // The list becomes the arrangement: every bot on one line, its rank held by two
+                // arrows, and a tap anywhere else does nothing until « Terminé ».
+                items(items = flatIds, key = { it }) { id ->
+                    val bot = botsById[id]
+                    val index = flatIds.indexOf(id)
+                    ArrangeRow(
+                        name = bot?.let { BotJson.name(it) }?.ifBlank { id } ?: id,
+                        lead = bot?.let { BotJson.isLead(it) } == true,
+                        canUp = index > 0,
+                        canDown = index in 0 until flatIds.lastIndex,
+                        onUp = { onSaveOrder(BotOrder.move(flatIds, index, index - 1)) },
+                        onDown = { onSaveOrder(BotOrder.move(flatIds, index, index + 1)) },
+                    )
+                }
+            }
             items(
-                items = rows,
+                items = if (arranging) emptyList() else rows,
                 key = { row ->
                     when (row) {
                         is DrawerRow.Lead -> "lead:${row.id}"
@@ -149,12 +182,28 @@ fun ThreadDrawer(
                 },
             ) { row ->
                 when (row) {
-                    is DrawerRow.CrewHeader -> Text(
-                        text = stringResource(R.string.drawer_section_crew),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = colors.textPrimary,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
+                    is DrawerRow.CrewHeader -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.drawer_section_crew),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // « Réorganiser » plutôt qu'un glisser-déposer : deux flèches se visent au
+                        // pouce, se testent, et ne dépendent pas d'un geste que rien n'annonce.
+                        TextButton(onClick = { arranging = !arranging }) {
+                            Text(
+                                text = stringResource(
+                                    if (arranging) R.string.drawer_reorder_done else R.string.drawer_reorder,
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colors.accent,
+                            )
+                        }
+                    }
 
                     is DrawerRow.Lead -> {
                         val bot = botsById[row.id] ?: return@items
@@ -558,6 +607,52 @@ private fun DrawerBotRow(
                     .clip(CircleShape)
                     .background(colors.danger)
                     .semantics { contentDescription = needsYou },
+            )
+        }
+    }
+}
+
+/**
+ * Une ligne du mode rangement : le nom, et deux flèches.
+ *
+ * Pas de glisser-déposer : sur une liste qui défile, un glisser se déclenche aussi quand on voulait
+ * défiler, et rien à l'écran n'annonce qu'une rangée se déplace. Deux flèches disent ce qu'elles font.
+ */
+@Composable
+private fun ArrangeRow(
+    name: String,
+    lead: Boolean,
+    canUp: Boolean,
+    canDown: Boolean,
+    onUp: () -> Unit,
+    onDown: () -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (lead) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (lead) colors.accent else colors.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onUp, enabled = canUp) {
+            Icon(
+                Icons.Rounded.KeyboardArrowUp,
+                contentDescription = stringResource(R.string.drawer_move_up),
+                tint = if (canUp) colors.textPrimary else colors.hairlineStrong,
+            )
+        }
+        IconButton(onClick = onDown, enabled = canDown) {
+            Icon(
+                Icons.Rounded.KeyboardArrowDown,
+                contentDescription = stringResource(R.string.drawer_move_down),
+                tint = if (canDown) colors.textPrimary else colors.hairlineStrong,
             )
         }
     }

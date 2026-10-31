@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import io.github.tournierjc.mercury.bots.BotOrderMemory
 import io.github.tournierjc.mercury.bots.BotNotifyMemory
 import io.github.tournierjc.mercury.bots.BotNotifier
 import io.github.tournierjc.mercury.bots.BotWatcher
@@ -68,6 +69,9 @@ class AppContainer(context: Context) {
 
     /** Who the owner has spoken to — a conversation is a notification subscription. */
     val botNotifyMemory = BotNotifyMemory(context.applicationContext)
+
+    /** The order the owner arranged the crew in; empty until he does. */
+    val botOrderMemory = BotOrderMemory(context.applicationContext)
 
     val botWatcher = BotWatcher(api, botNotifier, appScope, botNotifyMemory)
 
