@@ -81,4 +81,55 @@ class BotOrderTest {
         assertEquals(ids, BotOrder.move(ids, 2, 3))
         assertEquals(ids, BotOrder.move(ids, 7, 0))
     }
+
+    // --- Déplacement par blocs : un leader part avec son équipage, un équipier reste chez lui. ---
+
+    private val rows = listOf(
+        FleetRow.Lead("lead1", listOf("m1", "m2")),
+        FleetRow.Solo("alone"),
+        FleetRow.Lead("lead2", listOf("m3")),
+    )
+
+    @Test
+    fun `moving a lead swaps its whole block with the neighbour`() {
+        assertEquals(
+            listOf("alone", "lead1", "m1", "m2", "lead2", "m3"),
+            BotOrder.moveRow(rows, "lead1", 1),
+        )
+    }
+
+    @Test
+    fun `moving a lead up past a solo keeps the crew behind it`() {
+        assertEquals(
+            listOf("lead1", "m1", "m2", "lead2", "m3", "alone"),
+            BotOrder.moveRow(rows, "lead2", -1),
+        )
+    }
+
+    @Test
+    fun `a lead at the edge has nowhere to go`() {
+        assertEquals(BotOrder.flatten(rows), BotOrder.moveRow(rows, "lead1", -1))
+        assertEquals(BotOrder.flatten(rows), BotOrder.moveRow(rows, "lead2", 1))
+        assertEquals(false, BotOrder.canMove(rows, "lead1", -1))
+    }
+
+    @Test
+    fun `a crew member moves among its peers, never above its lead`() {
+        assertEquals(listOf("lead1", "m2", "m1", "alone", "lead2", "m3"), BotOrder.moveRow(rows, "m1", 1))
+        // m2 is last in its crew: moving it up swaps with m1, moving it down does nothing.
+        assertEquals(listOf("lead1", "m2", "m1", "alone", "lead2", "m3"), BotOrder.moveRow(rows, "m2", -1))
+        assertEquals(BotOrder.flatten(rows), BotOrder.moveRow(rows, "m2", 1))
+        assertEquals(BotOrder.flatten(rows), BotOrder.moveRow(rows, "m1", -1))
+    }
+
+    @Test
+    fun `a crew member never jumps into another fleet`() {
+        val once = BotOrder.moveRow(rows, "m1", 5)
+        assertEquals(BotOrder.flatten(rows), once)
+    }
+
+    @Test
+    fun `an unknown identifier changes nothing`() {
+        assertEquals(BotOrder.flatten(rows), BotOrder.moveRow(rows, "ghost", 1))
+    }
 }

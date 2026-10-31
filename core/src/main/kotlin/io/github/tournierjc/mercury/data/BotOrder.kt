@@ -39,6 +39,53 @@ object BotOrder {
     }
 
     /**
+     * Les blocs du roster : un leader avec son équipage, ou un bot seul.
+     *
+     * C'est l'unité que déplacent les flèches. Déplacer une *ligne* dans la liste aplatie ne marchait
+     * pas : sous un leader, la ligne suivante est son propre équipier — l'appui faisait donc
+     * s'échanger le leader et son premier membre, et le regroupement annulait le déplacement. Un
+     * leader se déplace maintenant avec son équipage, un équipier dans son équipage, jamais ailleurs.
+     */
+    fun blocks(rows: List<FleetRow>): List<List<String>> = rows.map { row ->
+        when (row) {
+            is FleetRow.Lead -> listOf(row.id) + row.crewIds
+            is FleetRow.Solo -> listOf(row.id)
+        }
+    }
+
+    /** Si la flèche a quelque chose à déplacer dans cette direction. */
+    fun canMove(rows: List<FleetRow>, id: String, delta: Int): Boolean = moveRow(rows, id, delta) !=
+        flatten(rows)
+
+    /**
+     * Déplace [id] d'un cran : son bloc si c'est un leader ou un bot seul, sa place dans l'équipage
+     * si c'est un équipier. Rend la liste aplatie à retenir — un cran hors bornes ne change rien.
+     */
+    fun moveRow(rows: List<FleetRow>, id: String, delta: Int): List<String> {
+        val blocks = blocks(rows).map { it.toMutableList() }.toMutableList()
+        val top = blocks.indexOfFirst { it.firstOrNull() == id }
+        if (top >= 0) {
+            val target = top + delta
+            if (target !in blocks.indices) return flatten(rows)
+            val moved = blocks.removeAt(top)
+            blocks.add(target, moved)
+            return blocks.flatten()
+        }
+        // Un équipier ne sort pas de son bloc : il passe devant ou derrière ses pairs, et la première
+        // place du bloc reste celle du leader (l'index 0).
+        for (block in blocks) {
+            val at = block.indexOf(id)
+            if (at <= 0) continue
+            val target = at + delta
+            if (target !in 1..block.lastIndex) return flatten(rows)
+            val moved = block.removeAt(at)
+            block.add(target, moved)
+            return blocks.flatten()
+        }
+        return flatten(rows)
+    }
+
+    /**
      * Déplace une entrée. `to` est ramené dans les bornes : un appui sur la flèche du haut de la
      * première rangée ne doit pas la renvoyer en bas de la liste.
      */
