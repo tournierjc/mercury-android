@@ -195,8 +195,13 @@ class BotThreadTest {
         val answer = messages.last { it.fromBot }
         assertEquals(3, answer.steps.size)
         assertEquals(listOf("read_file", "run_command", "bot_deliver"), answer.steps.map { it.tool })
-        assertEquals("\u2717 run_command", answer.steps[1].label)
-        assertEquals("gradlew :core:test", answer.steps[1].summary)
+        // The argument, not the tool's name again: the trace prints the name from `tool`, so a
+        // label holding it too read as "run_command run_command" on screen.
+        assertEquals("gradlew :core:test", answer.steps[1].label)
+        assertEquals(null, answer.steps[1].summary)
+        // A failed call keeps its place and says so with a flag, not with a `✗` glued to the label.
+        assertTrue(answer.steps[1].failed)
+        assertFalse(answer.steps[0].failed)
     }
 
     @Test

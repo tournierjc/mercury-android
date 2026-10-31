@@ -203,8 +203,12 @@ object BotThread {
     }
 
     /**
-     * The transcript's `trace` as the chat's step pills. A failed call keeps its place — a turn
-     * that stumbled is not a turn that did less — so its pill carries the cross the owner reads.
+     * The transcript's `trace` as the chat's steps.
+     *
+     * The transcript gives the argument (`ls /work`, a path) and whether the call worked — never a
+     * summary of the result. The step therefore carries the argument as its label and the failure
+     * as a flag: the row then reads "💻 run_command" over its command, which is the shape the owner
+     * knows from a terminal, instead of the tool's name printed twice.
      */
     private fun stepsOf(trace: List<TraceStepDto>?): List<ToolStep> =
         trace.orEmpty()
@@ -212,8 +216,8 @@ object BotThread {
             .map { step ->
                 ToolStep(
                     tool = step.name,
-                    label = if (step.ok) step.name else "\u2717 ${step.name}",
-                    summary = step.arg.takeIf { it.isNotBlank() },
+                    label = step.arg,
+                    failed = !step.ok,
                 )
             }
 
