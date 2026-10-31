@@ -26,6 +26,7 @@
     <string name="nav_skills">Compétences</string>
     <string name="nav_mcp">MCP</string>
     <string name="nav_plugins">Plugins</string>
+    <string name="nav_sandbox_tools">Outils des bots</string>
     <string name="nav_permissions">Permissions</string>
     <string name="nav_schedules">Planifications</string>
     <string name="nav_usage">Consommation</string>
