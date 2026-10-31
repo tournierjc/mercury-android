@@ -67,6 +67,7 @@
     <string name="sandbox_connected">connected</string>
     <string name="sandbox_not_connected">not connected</string>
     <string name="sandbox_code_hint">Code to enter on the sign-in page:</string>
+    <string name="sandbox_open_browser">Tap the link to open the sign-in page.</string>
     <string name="sandbox_copy_code">Copy</string>
     <string name="sandbox_waiting">Waiting for the authorisation…</string>
     <string name="sandbox_connect_failed">Sign-in failed — start it again.</string>

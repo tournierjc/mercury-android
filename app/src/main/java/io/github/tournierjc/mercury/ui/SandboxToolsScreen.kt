@@ -1,6 +1,9 @@
 package io.github.tournierjc.mercury.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -126,6 +130,7 @@ private fun ToolRow(
 ) {
     val colors = LocalMercuryColors.current
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -212,12 +217,27 @@ private fun ToolRow(
                 }
             }
             if (live.url.isNotBlank()) {
+                // The code alone is useless without the page it is typed on: a URL printed in accent
+                // colour that ignores a tap reads as a broken screen, so the tap opens the browser.
                 Text(
                     text = live.url,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.Underline),
                     color = colors.accent,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            runCatching {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(live.url)))
+                            }
+                        }
+                        .padding(vertical = 4.dp),
+                )
+                Text(
+                    text = stringResource(R.string.sandbox_open_browser),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
                 )
             }
             Text(

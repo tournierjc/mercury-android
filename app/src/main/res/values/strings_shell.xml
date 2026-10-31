@@ -67,6 +67,7 @@
     <string name="sandbox_connected">connecté</string>
     <string name="sandbox_not_connected">non connecté</string>
     <string name="sandbox_code_hint">Code à saisir sur la page de connexion :</string>
+    <string name="sandbox_open_browser">Toucher le lien pour ouvrir la page de connexion.</string>
     <string name="sandbox_copy_code">Copier</string>
     <string name="sandbox_waiting">En attente de l\'autorisation…</string>
     <string name="sandbox_connect_failed">La connexion a échoué — relance-la.</string>
