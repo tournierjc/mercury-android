@@ -533,6 +533,14 @@ fun ChatScreen(
                                 }
                             },
                             streaming = message.streaming,
+                            // The bubble dates itself from the turn's own clock (the journal's
+                            // `startedAt` + `durationMs`): without this line a bot's answer drew
+                            // no hour at all, while the main thread drew one.
+                            sentAt = message.at ?: 0,
+                            steps = message.steps,
+                            // Stored steps are history and are drawn as a block, not as the row of
+                            // chips a turn in progress shows.
+                            toolTrace = message.steps.isNotEmpty(),
                             truncated = message.truncated,
                         )
                     }
@@ -561,7 +569,14 @@ fun ChatScreen(
                     title = botName,
                     subtitle = listOfNotNull(
                         bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) },
-                        if (writing) stringResource(R.string.chat_bot_writing) else botWatch.activity[botId],
+                        // Only claim a teammate is writing when there is something to show: the
+                        // feed can call a turn running with an empty tail, and "writing…" over an
+                        // empty screen is a header that lies about the one thing it reports.
+                        if (writing && botLive?.text?.isNotBlank() == true) {
+                            stringResource(R.string.chat_bot_writing)
+                        } else {
+                            botWatch.activity[botId]
+                        },
                     ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
                     onMenu = { scope.launch { drawerState.open() } },
                     onNewChat = null,

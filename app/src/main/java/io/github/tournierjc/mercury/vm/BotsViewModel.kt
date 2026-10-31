@@ -30,6 +30,7 @@ import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.DlqJobDto
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
+import io.github.tournierjc.mercury.data.dto.TraceStepDto
 import io.github.tournierjc.mercury.util.OutputActions
 import io.github.tournierjc.mercury.util.OutputPreviewState
 import io.github.tournierjc.mercury.util.SharedFile
@@ -73,6 +74,8 @@ data class BotsUiState(
     val records: List<BotRunDto> = emptyList(),
     /** `runId` → the task the owner dispatched, from the run transcripts. */
     val prompts: Map<String, String> = emptyMap(),
+    /** `runId` → the tool calls the turn made: the bubbles' step pills. */
+    val traces: Map<String, List<TraceStepDto>> = emptyMap(),
     /** `runId` → the full answer: the journal truncates its summary at 300 characters. */
     val answers: Map<String, String> = emptyMap(),
     /** The conversation as the chat screen draws it, oldest first. */
@@ -256,6 +259,7 @@ class BotsViewModel(
             }.awaitAll().toMap()
             val prompts = turns.mapValues { (_, transcript) -> transcript?.prompt.orEmpty() }
             val answers = turns.mapValues { (_, transcript) -> transcript?.output.orEmpty() }
+            val traces = turns.mapValues { (_, transcript) -> transcript?.trace.orEmpty() }
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -272,7 +276,8 @@ class BotsViewModel(
                     records = last,
                     prompts = prompts,
                     answers = answers,
-                    messages = BotThread.build(last, prompts, answers),
+                    traces = traces,
+                    messages = BotThread.build(last, prompts, answers, traces = traces),
                     pending = emptyList(),
                     dlq = dlq?.dlq.orEmpty(),
                     roster = roster,
@@ -326,11 +331,13 @@ class BotsViewModel(
             if (_state.value.selectedId != id) return@launch
             _state.update { state ->
                 val answers = state.answers + (runId to transcript.output)
+                val traces = state.traces + (runId to transcript.trace)
                 val prompts = if (transcript.prompt.isNotBlank()) state.prompts + (runId to transcript.prompt) else state.prompts
                 state.copy(
                     answers = answers,
                     prompts = prompts,
-                    messages = BotThread.build(state.records, prompts, answers),
+                    traces = traces,
+                    messages = BotThread.build(state.records, prompts, answers, traces = traces),
                 )
             }
         }

@@ -1,6 +1,8 @@
 package io.github.tournierjc.mercury.bots
 
+import io.github.tournierjc.mercury.data.ToolStep
 import io.github.tournierjc.mercury.data.dto.BotRunDto
+import io.github.tournierjc.mercury.data.dto.TraceStepDto
 
 /**
  * One bubble of a bot's conversation.
@@ -16,6 +18,12 @@ data class BotMessage(
     val at: Long,
     val state: String = "",
     val streaming: Boolean = false,
+    /**
+     * The tool calls this turn made, in order — the transcript's `trace`. The main conversation
+     * draws them above the bubble; a bot's turn is no different, and without them a turn that ran
+     * forty commands reads as one paragraph that came from nowhere.
+     */
+    val steps: List<ToolStep> = emptyList(),
     /**
      * The text is the journal's summary, not the transcript: the daemon cuts it at 300
      * characters, which lands in the middle of a fenced block — an `openui` answer comes back
@@ -54,6 +62,8 @@ object BotThread {
         liveJobId: String? = null,
         liveTail: String = "",
         liveRunning: Boolean = true,
+        /** `runId` → the transcript's `trace`: what the turn actually did, tool by tool. */
+        traces: Map<String, List<TraceStepDto>> = emptyMap(),
     ): List<BotMessage> {
         val messages = mutableListOf<BotMessage>()
         records
@@ -96,6 +106,7 @@ object BotThread {
                     streaming = streaming,
                     // Only a summary can be cut: an error line and an empty turn are what they are.
                     truncated = !streaming && full == null && record.summary.isNotBlank(),
+                    steps = stepsOf(traces[record.runId]),
                 )
             }
         // A job that has not reached the journal yet: the optimistic turn, streaming or not.
@@ -110,6 +121,21 @@ object BotThread {
         }
         return messages
     }
+
+    /**
+     * The transcript's `trace` as the chat's step pills. A failed call keeps its place — a turn
+     * that stumbled is not a turn that did less — so its pill carries the cross the owner reads.
+     */
+    private fun stepsOf(trace: List<TraceStepDto>?): List<ToolStep> =
+        trace.orEmpty()
+            .filter { it.name.isNotBlank() }
+            .map { step ->
+                ToolStep(
+                    tool = step.name,
+                    label = if (step.ok) step.name else "\u2717 ${step.name}",
+                    summary = step.arg.takeIf { it.isNotBlank() },
+                )
+            }
 
     /** The last turn still writing, if the daemon says one is. */
     fun isStreaming(messages: List<BotMessage>): Boolean = messages.lastOrNull()?.streaming == true
