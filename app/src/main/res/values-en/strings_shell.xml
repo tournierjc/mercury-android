@@ -70,6 +70,9 @@
     <string name="sandbox_open_browser">Tap the link to open the sign-in page.</string>
     <string name="sandbox_copy_code">Copy</string>
     <string name="sandbox_waiting">Waiting for the authorisation…</string>
+    <string name="sandbox_disconnect">Sign out</string>
+    <string name="sandbox_disconnect_question">Sign out of %1$s?</string>
+    <string name="sandbox_disconnect_warning">The session is shared: every bot loses access immediately.</string>
     <string name="sandbox_connect_failed">Sign-in failed — start it again.</string>
     <string name="run_reasoning">Thinking</string>
     <string name="run_reasoning_step">step %1$d</string>

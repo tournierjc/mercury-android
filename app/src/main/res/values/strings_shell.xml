@@ -70,6 +70,9 @@
     <string name="sandbox_open_browser">Toucher le lien pour ouvrir la page de connexion.</string>
     <string name="sandbox_copy_code">Copier</string>
     <string name="sandbox_waiting">En attente de l\'autorisation…</string>
+    <string name="sandbox_disconnect">Déconnecter</string>
+    <string name="sandbox_disconnect_question">Déconnecter %1$s ?</string>
+    <string name="sandbox_disconnect_warning">La session est partagée : tous les bots perdront l\'accès immédiatement.</string>
     <string name="sandbox_connect_failed">La connexion a échoué — relance-la.</string>
     <string name="run_reasoning">Réflexion</string>
     <string name="run_reasoning_step">étape %1$d</string>
