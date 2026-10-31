@@ -6,6 +6,7 @@ import io.github.tournierjc.mercury.data.dto.BotRunsPage
 import io.github.tournierjc.mercury.data.dto.DlqPage
 import io.github.tournierjc.mercury.data.dto.DlqReplay
 import io.github.tournierjc.mercury.data.dto.OutputPreviewDto
+import io.github.tournierjc.mercury.data.dto.ReasoningBlockDto
 import io.github.tournierjc.mercury.data.dto.RunRecordPage
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import kotlinx.serialization.json.Json
@@ -319,5 +320,76 @@ class BotOpsJsonTest {
         // A missing name falls back on the id rather than an empty prefix.
         // The bot id stands in when the name is unknown.
         assertEquals("veille", BotOps.originName(page.outputs[0], ""))
+    }
+
+    // GET /api/bots/:id/runs/:runId — the daemon writes reasoning per step beside the trace.
+    @Test
+    fun `a run transcript carries the thinking per step`() {
+        val payload = """
+            {"record":{"runId":"r1","botId":"veille","state":"completed"},"prompt":"go","output":"done",
+             "trace":[{"name":"read_file","ok":true,"arg":"/work/a.md"}],
+             "reasoning":[{"step":1,"text":"Check the price table."},{"step":2,"text":"Then write the fix."}],
+             "reasoningTruncated":false}
+        """
+
+        val transcript = json.decodeFromString(RunTranscriptDto.serializer(), payload)
+
+        assertEquals(listOf("Check the price table.", "Then write the fix."), transcript.reasoning.map { it.text })
+        assertEquals(listOf(1, 2), transcript.reasoning.map { it.step })
+        assertFalse(transcript.reasoningTruncated)
+    }
+
+    @Test
+    fun `an older daemon without reasoning still parses`() {
+        // Deployments lag: a transcript written before this field existed must not fail to open.
+        val payload = """{"record":{"runId":"r0","state":"completed"},"prompt":"go","output":"done","trace":[]}"""
+
+        val transcript = json.decodeFromString(RunTranscriptDto.serializer(), payload)
+
+        assertTrue(transcript.reasoning.isEmpty())
+        assertFalse(transcript.reasoningTruncated)
+    }
+
+    @Test
+    fun `collapsed thinking shows the last steps, short, and says where it cut`() {
+        val blocks = listOf(
+            ReasoningBlockDto(step = 1, text = "one ".repeat(300)),
+            ReasoningBlockDto(step = 2, text = "two"),
+            ReasoningBlockDto(step = 3, text = "three"),
+        )
+
+        val collapsed = BotOps.reasoningBlocks(blocks, expanded = false)
+
+        // The newest thinking is what explains the outcome, and two steps is what fits unasked.
+        assertEquals(listOf(2, 3), collapsed.map { it.step })
+        assertEquals(listOf("two", "three"), collapsed.map { it.text })
+    }
+
+    @Test
+    fun `expanded thinking keeps every step and still caps each one`() {
+        val long = "x".repeat(9_000)
+        val blocks = listOf(
+            ReasoningBlockDto(step = 1, text = "short"),
+            ReasoningBlockDto(step = 2, text = long),
+        )
+
+        val expanded = BotOps.reasoningBlocks(blocks, expanded = true)
+
+        assertEquals(listOf(1, 2), expanded.map { it.step })
+        assertEquals("short", expanded[0].text)
+        assertEquals(4_001, expanded[1].text.length) // 4,000 characters + the ellipsis
+        assertTrue(expanded[1].text.endsWith("…"))
+    }
+
+    @Test
+    fun `a collapsed step that overflows is marked as cut`() {
+        val blocks = listOf(ReasoningBlockDto(step = 7, text = "y".repeat(1_000)))
+
+        val shown = BotOps.reasoningBlocks(blocks, expanded = false)
+
+        assertEquals(1, shown.size)
+        assertEquals(7, shown[0].step)
+        assertTrue(shown[0].text.endsWith("…"))
+        assertTrue(shown[0].text.length <= 401)
     }
 }

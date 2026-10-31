@@ -89,7 +89,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -577,6 +581,21 @@ fun ChatScreen(
                 val id = botId ?: return@LaunchedEffect
                 if (wasWriting && !writing) botsVm.reloadConversation(id)
                 wasWriting = writing
+            }
+            // The feed is the fast path, not the only one: a turn's record lands in the journal even
+            // when the live stream dropped, ended while the app was in the background, or the
+            // process was killed — and then the answer was invisible until the app was relaunched.
+            // One cheap request while the screen is in front; the reload only when it says something
+            // is new, and nothing at all while the app is behind another app.
+            val lifecycleOwner = LocalLifecycleOwner.current
+            LaunchedEffect(botId, lifecycleOwner) {
+                val id = botId ?: return@LaunchedEffect
+                lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    while (true) {
+                        botsVm.pollConversation(id)
+                        delay(5_000)
+                    }
+                }
             }
 
             if (botId != null) {

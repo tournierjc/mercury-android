@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -138,6 +140,53 @@ fun RunDetailDialog(
                 }
                 loaded.prompt.takeIf { it.isNotBlank() }?.let { Block(stringResource(R.string.run_prompt), it) }
                 loaded.output.takeIf { it.isNotBlank() }?.let { Block(stringResource(R.string.run_answer), it) }
+                // What the bot weighed before it acted. Collapsed by default: the trace and the
+                // answer are what an owner opens a run for, the thinking is what explains it.
+                if (loaded.reasoning.isNotEmpty()) {
+                    var expanded by remember(loaded.record.runId) { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.run_reasoning).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(
+                                text = stringResource(if (expanded) R.string.run_reasoning_less else R.string.run_reasoning_more),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                    BotOps.reasoningBlocks(loaded.reasoning, expanded).forEach { block ->
+                        Text(
+                            text = stringResource(R.string.run_reasoning_step, block.step),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Text(
+                            text = block.text,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = colors.textPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
+                                .padding(10.dp),
+                        )
+                    }
+                    if (loaded.reasoningTruncated) {
+                        Text(
+                            text = stringResource(R.string.run_reasoning_truncated),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
                 if (loaded.trace.isNotEmpty()) {
                     Text(
                         text = "TRACE",
