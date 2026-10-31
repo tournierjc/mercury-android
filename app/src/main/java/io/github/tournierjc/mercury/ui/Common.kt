@@ -202,6 +202,8 @@ fun CollapsibleSection(
     defaultOpen: Boolean = false,
     /** Stable save key for a heading whose text carries a count; the title is the key otherwise. */
     stateKey: String? = null,
+    /** Un bouton à droite du titre, avant la flèche — « Réorganiser » sur la section Équipiers. */
+    titleAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = LocalMercuryColors.current
@@ -222,6 +224,9 @@ fun CollapsibleSection(
             color = colors.textSecondary,
             modifier = Modifier.weight(1f),
         )
+        // L'action se décline elle-même (un TextButton « Réorganiser », pas un Icon sans légende) ;
+        // le pouce vise un mot, et le tap sur le titre replie la section sans l'atteindre.
+        titleAction?.invoke()
         Icon(
             imageVector = if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
             contentDescription = if (open) stringResource(R.string.common_collapse_section, title) else stringResource(R.string.common_expand_section, title),

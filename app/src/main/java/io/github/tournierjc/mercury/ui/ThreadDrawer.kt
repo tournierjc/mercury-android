@@ -673,35 +673,5 @@ private fun DrawerBotRow(
     }
 }
 
-/**
- * Les deux flèches du rangement.
- *
- * Pas de glisser-déposer : sur une liste qui défile, un glisser se déclenche aussi quand on voulait
- * faire défiler, et rien à l'écran n'annonce qu'une rangée se déplace. Deux flèches disent ce
- * qu'elles font — et elles restent visibles sur la rangée qu'on déplace.
- */
-@Composable
-private fun MoveArrows(
-    canUp: Boolean,
-    canDown: Boolean,
-    onUp: () -> Unit,
-    onDown: () -> Unit,
-) {
-    val colors = LocalMercuryColors.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onUp, enabled = canUp, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Rounded.KeyboardArrowUp,
-                contentDescription = stringResource(R.string.drawer_move_up),
-                tint = if (canUp) colors.textPrimary else colors.hairlineStrong,
-            )
-        }
-        IconButton(onClick = onDown, enabled = canDown, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Rounded.KeyboardArrowDown,
-                contentDescription = stringResource(R.string.drawer_move_down),
-                tint = if (canDown) colors.textPrimary else colors.hairlineStrong,
-            )
-        }
-    }
-}
+// MoveArrows vit désormais dans ArrangeShared.kt : le rangement est le même geste dans le menu
+// (cette file) et dans l'écran Équipiers (BotsScreen) — deux flèches, une seule implémentation.
