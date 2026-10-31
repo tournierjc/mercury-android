@@ -566,6 +566,8 @@ fun ChatScreen(
                             // chips a turn in progress shows.
                             toolTrace = message.steps.isNotEmpty(),
                             truncated = message.truncated,
+                            reasoning = message.reasoning,
+                            reasoningTruncated = message.reasoningTruncated,
                         )
                     }
                 }
@@ -1261,6 +1263,15 @@ internal fun MessageItem(
             modifier = Modifier.fillMaxWidth(if (user) 0.82f else 0.9f),
             horizontalAlignment = if (user) Alignment.End else Alignment.Start,
         ) {
+            if (!user && message.reasoning.isNotEmpty()) {
+                // Above the calls, because thinking precedes acting, and folded: a reply must not be
+                // pushed off screen by the paragraph that produced it.
+                ReasoningSection(
+                    blocks = message.reasoning,
+                    truncated = message.reasoningTruncated,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
             if (!user && message.steps.isNotEmpty()) {
                 // The calls sit above the answer and outside its bubble: they are what produced it,
                 // not what it says. Open while streaming, folded once it is history.
