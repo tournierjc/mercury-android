@@ -36,6 +36,21 @@ data class BotMessage(
     /** The daemon kept only the newest of the thinking: say so rather than let it read complete. */
     val reasoningTruncated: Boolean = false,
     /**
+     * What the turn is doing while it has not written anything yet, in the daemon's words.
+     *
+     * Only ever set on a live turn with `state == "activity"`: it is a phase, not a message, and it
+     * must never be mistaken for one after the turn lands.
+     */
+    val activity: String = "",
+    /**
+     * Which bot this message belongs to — set on the optimistic echo only.
+     *
+     * The echo now outlives a refresh, so it must say who it was addressed to: without this, a
+     * message queued for one teammate would resurface in another's conversation the moment the
+     * owner switched screens.
+     */
+    val botId: String = "",
+    /**
      * The text is the journal's summary, not the transcript: the daemon cuts it at 300
      * characters, which lands in the middle of a fenced block — an `openui` answer comes back
      * as half a spec, and half a spec is not a layout. The screen says so instead of showing it.
@@ -67,6 +82,32 @@ object BotThread {
         !newestRunId.isNullOrBlank() && newestRunId != knownRunId
 
     /**
+     * Which optimistic turns to keep showing.
+     *
+     * The owner's message is drawn the moment the daemon accepts it, before the journal knows that
+     * run exists — and every refresh used to wipe that echo, so switching windows mid-turn made the
+     * message vanish until the answer came. A pending turn is dropped only when the journal holds a
+     * record for its job: that is the one fact proving the real message has taken its place.
+     */
+    fun keepPending(
+        pending: List<BotMessage>,
+        records: List<BotRunDto>,
+        now: Long = System.currentTimeMillis(),
+    ): List<BotMessage> {
+        if (pending.isEmpty()) return pending
+        val landed = records.mapNotNull { it.runId.takeIf { id -> id.isNotBlank() } }.toSet()
+        return pending.filter { echo ->
+            echo.key.removeSuffix("-me") !in landed &&
+                // A turn that never lands (killed before the journal, dropped from the queue) would
+                // otherwise sit there forever as a message the owner thinks is still on its way.
+                now - echo.at < ECHO_MAX_AGE_MS
+        }
+    }
+
+    /** How long an optimistic turn may wait for its journal record before it is given up on. */
+    private const val ECHO_MAX_AGE_MS = 2 * 60 * 60 * 1000L
+
+    /**
      * @param records journal lines for one bot, any order.
      * @param prompts `runId` → the task the owner dispatched for that run.
      * @param outputs `runId` → the full answer, when the transcript is at hand.
@@ -75,6 +116,9 @@ object BotThread {
      * @param liveRunning whether the daemon still calls that turn running. Only consulted for a
      *   job the journal has no record of yet: the journal writes a run's record **once, when the
      *   turn is over**, so the presence of a record is itself the proof that the answer is final.
+     * @param liveActivity what the daemon says the turn is doing right now ("thinking", "running a
+     *   command"). A bot that has not written a word yet is still a bot at work, and the owner used
+     *   to see the phase scroll in the title bar while the conversation stayed empty.
      */
     fun build(
         records: List<BotRunDto>,
@@ -84,6 +128,8 @@ object BotThread {
         liveJobId: String? = null,
         liveTail: String = "",
         liveRunning: Boolean = true,
+        /** The phase the daemon reports for that turn, in its own words. */
+        liveActivity: String = "",
         /** `runId` → the transcript's `trace`: what the turn actually did, tool by tool. */
         traces: Map<String, List<TraceStepDto>> = emptyMap(),
         /** `runId` → the transcript's per-step `reasoning`. */
@@ -137,14 +183,20 @@ object BotThread {
                     reasoningTruncated = record.runId in reasoningTruncated,
                 )
             }
-        // A job that has not reached the journal yet: the optimistic turn, streaming or not.
-        if (liveJobId != null && records.none { it.runId == liveJobId } && liveTail.isNotBlank()) {
+        // A job that has not reached the journal yet: the optimistic turn, streaming or not — and
+        // when the bot has not written a word yet, the phase it is in, so the conversation answers
+        // "it is working" instead of showing nothing at all.
+        if (liveJobId != null && records.none { it.runId == liveJobId } && (liveTail.isNotBlank() || liveActivity.isNotBlank())) {
+            val waiting = liveTail.isBlank()
             messages += BotMessage(
                 key = "$liveJobId-live",
                 fromBot = true,
                 text = liveTail,
                 at = System.currentTimeMillis(),
+                // "activity": the turn exists but has produced no text; the screen draws the phase.
+                state = if (waiting) "activity" else "",
                 streaming = liveRunning,
+                activity = if (waiting) liveActivity else "",
             )
         }
         return messages

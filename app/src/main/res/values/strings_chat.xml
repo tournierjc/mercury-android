@@ -44,6 +44,10 @@
     <string name="chat_cancel_reply">Annuler la réponse</string>
 
     <!-- Conversation d'un équipier -->
+    <string name="chat_bot_activity_thinking">Réflexion…</string>
+    <string name="chat_bot_activity_command">Commande en cours…</string>
+    <string name="chat_bot_activity_reading">Lecture des fichiers…</string>
+    <string name="chat_bot_activity_generic">%1$s…</string>
     <string name="chat_bot_queued">en file…</string>
     <string name="chat_bot_failed">échec du run</string>
     <string name="chat_bot_no_answer">sans réponse</string>

@@ -230,7 +230,8 @@ class BotsViewModel(
                 prompts = emptyMap(),
                 answers = emptyMap(),
                 messages = emptyList(),
-                pending = emptyList(),
+                // Not cleared: coming back to the screen mid-turn must show the message again.
+                pending = BotThread.keepPending(it.pending, emptyList()),
                 detailLoading = true,
                 dispatchFeedback = null,
             )
@@ -281,7 +282,9 @@ class BotsViewModel(
                     answers = answers,
                     traces = traces,
                     messages = BotThread.build(last, prompts, answers, traces = traces, reasoning = thoughts, reasoningTruncated = thoughtsCut),
-                    pending = emptyList(),
+                    // Kept until the journal holds its record: a refresh must not erase a message
+                    // the owner already sent.
+                    pending = BotThread.keepPending(it.pending, last),
                     dlq = dlq?.dlq.orEmpty(),
                     roster = roster,
                     detailLoading = false,
@@ -386,7 +389,7 @@ class BotsViewModel(
                         prompts = prompts,
                         answers = answers,
                         messages = BotThread.build(records, prompts, answers),
-                        pending = emptyList(),
+                        pending = BotThread.keepPending(it.pending, records),
                     )
                 }
             }
@@ -442,6 +445,7 @@ class BotsViewModel(
                                     text = message.trim().ifBlank { files.joinToString(" · ") { it.name } },
                                     at = System.currentTimeMillis(),
                                     state = "queued",
+                                    botId = id,
                                 )
                             } else {
                                 it.pending

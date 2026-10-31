@@ -248,4 +248,54 @@ class BotThreadTest {
         assertTrue(bot.reasoning.isEmpty())
         assertFalse(bot.reasoningTruncated)
     }
+
+    @Test
+    fun `the owner's message survives a refresh and leaves when the journal has its run`() {
+        val mine = BotMessage(key = "job-42-me", fromBot = false, text = "relance les tests", at = 1_000)
+
+        // No record yet: the daemon accepted the turn, the journal is silent — the echo stays.
+        assertEquals(listOf("job-42-me"), BotThread.keepPending(listOf(mine), emptyList(), now = 2_000).map { it.key })
+
+        // A record for another run says nothing about this one.
+        val other = run(id = "job-7", at = 1_500)
+        assertEquals(1, BotThread.keepPending(listOf(mine), listOf(other), now = 2_000).size)
+
+        // Its own record means the real message is in the thread now: the echo must go.
+        val landed = run(id = "job-42", at = 2_000)
+        assertTrue(BotThread.keepPending(listOf(mine), listOf(landed), now = 2_000).isEmpty())
+    }
+
+    @Test
+    fun `a turn that has written nothing shows the phase it is in`() {
+        val built = BotThread.build(
+            records = emptyList(),
+            prompts = emptyMap(),
+            liveJobId = "job-9",
+            liveTail = "",
+            liveRunning = true,
+            liveActivity = "running command",
+        )
+
+        assertEquals(1, built.size)
+        assertEquals("activity", built.single().state)
+        assertEquals("running command", built.single().activity)
+        assertTrue(built.single().streaming)
+        assertEquals("", built.single().text)
+    }
+
+    @Test
+    fun `no phase and no text leaves the thread empty rather than inventing a bubble`() {
+        val built = BotThread.build(emptyList(), emptyMap(), liveJobId = "job-9", liveTail = "", liveRunning = true, liveActivity = "")
+
+        assertTrue(built.isEmpty())
+    }
+
+    @Test
+    fun `an echo whose turn never lands is given up on rather than kept forever`() {
+        val mine = BotMessage(key = "job-99-me", fromBot = false, text = "tu es là ?", at = 1_000)
+
+        val threeHoursLater = BotThread.keepPending(listOf(mine), emptyList(), now = 1_000 + 3 * 60 * 60 * 1000L)
+
+        assertTrue(threeHoursLater.isEmpty())
+    }
 }
