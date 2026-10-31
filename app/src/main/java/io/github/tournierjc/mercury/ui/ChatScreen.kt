@@ -182,6 +182,10 @@ fun ChatScreen(
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    // Le rangement de l'équipage, retenu sur le téléphone : une seule mémoire (BotOrderMemory),
+    // lue ici et partagée entre le menu et l'écran Équipiers — ranger quelque part range partout.
+    val orderMemory = remember { (context.applicationContext as MercuryApp).container.botOrderMemory }
+    var botOrder by remember { mutableStateOf(orderMemory.order()) }
     // Leaving the app takes two presses; the first says so.
     val exitGate = remember { ExitGate() }
     val exitPrompt = stringResource(R.string.chat_exit_prompt)
@@ -322,6 +326,12 @@ fun ChatScreen(
                 // a single step each way, instead of landing in Mercury's screen and having to
                 // find the teammate again.
                 onOpenChat = { id -> openConversation(id) },
+                // Le même ordre que celui du menu, la même mémoire : ranger ici déplace le menu.
+                botOrder = botOrder,
+                onSaveOrder = { ids ->
+                    botOrder = ids
+                    orderMemory.save(ids)
+                },
             )
             return
         }
@@ -402,9 +412,7 @@ fun ChatScreen(
     // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
     val container = remember { (context.applicationContext as MercuryApp).container }
     val botsVm: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
-    // The drawer's arrangement, kept on the phone: the daemon has no field for it.
-    val orderMemory = container.botOrderMemory
-    var botOrder by remember { mutableStateOf(orderMemory.order()) }
+    // (L'ordre de l'équipage est lu plus haut, au-dessus du tiroir : une seule mémoire pour les deux écrans.)
     val botsState by botsVm.state.collectAsState()
     val botWatch by container.botWatcher.state.collectAsState()
     val botAvatars by botsVm.avatars.collectAsState()

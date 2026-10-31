@@ -67,6 +67,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.ui.res.pluralStringResource
 import io.github.tournierjc.mercury.data.FleetRow
+import io.github.tournierjc.mercury.data.BotOrder
 import io.github.tournierjc.mercury.data.fleetRows
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -137,6 +138,9 @@ fun BotsScreen(
     /** Opened straight onto this bot — used when the notification names one. */
     initialBotId: String? = null,
     onOpened: () -> Unit = {},
+    /** L'ordre de l'équipage, le même que celui du menu — une seule mémoire (BotOrderMemory). */
+    botOrder: List<String> = emptyList(),
+    onSaveOrder: (List<String>) -> Unit = {},
 ) {
     val context = LocalContext.current
     val container = remember { (context.applicationContext as MercuryApp).container }
@@ -273,7 +277,7 @@ fun BotsScreen(
         ) {
             if (state.selectedId == null) {
                 FleetBlock(viewModel, watch, avatars, onSelect = viewModel::select)
-                RosterList(watch, onSelect = viewModel::select, onOpenChat = onOpenChat, avatars = avatars)
+                RosterList(watch, onSelect = viewModel::select, onOpenChat = onOpenChat, avatars = avatars, botOrder = botOrder, onSaveOrder = onSaveOrder)
                 if (watch.recent.isNotEmpty()) {
                     CollapsibleSection(stringResource(R.string.bots_section_recent_activity)) {
                         watch.recent.take(12).forEach { line ->
@@ -429,6 +433,10 @@ private fun RosterList(
     onSelect: (String) -> Unit,
     onOpenChat: (String) -> Unit,
     avatars: Map<String, ByteArray>,
+    /** L'ordre où le propriétaire a rangé son équipage — le même que celui du menu (BotOrderMemory). */
+    botOrder: List<String>,
+    /** Ranger ici écrit dans la même mémoire que le menu : les deux écrans montrent le même ordre. */
+    onSaveOrder: (List<String>) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
     val needsYou = watch.needsYou()
@@ -449,7 +457,28 @@ private fun RosterList(
         }
     }
 
-    CollapsibleSection(stringResource(R.string.bots_section_teammates), defaultOpen = true) {
+    // Le titre de la section porte le bouton « Réorganiser », comme l'en-tête « Équipiers » du menu
+    // (PR #115) : le rangement est un geste sur la section, pas sur une rangée.
+    var arranging by rememberSaveable { mutableStateOf(false) }
+    CollapsibleSection(
+        stringResource(R.string.bots_section_teammates),
+        defaultOpen = true,
+        titleAction = {
+            // Le tap sur le titre replie la section ; le rangement est un geste qui se revendique :
+            // l'arrêt aussi (PR #116 dans le menu). Les deux modes portent un mot, pas une icône.
+            TextButton(
+                onClick = { arranging = !arranging },
+            ) {
+                Text(
+                    text = stringResource(
+                        if (arranging) R.string.drawer_reorder_done else R.string.drawer_reorder,
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.accent,
+                )
+            }
+        },
+    ) {
         if (watch.bots.isEmpty()) {
             Text(
                 text = stringResource(R.string.bots_empty_roster),
@@ -463,8 +492,45 @@ private fun RosterList(
         // be. Now the disclosure sits on the lead's own row (arrow on the left) and its crew folds
         // underneath, indented under the face.
         var openLeads by rememberSaveable { mutableStateOf(listOf<String>()) }
-        val byId = remember(watch.bots) { watch.bots.associateBy { BotJson.id(it) } }
-        remember(watch.bots) { fleetRows(watch.bots) }.forEach { row ->
+        // Le rangement est le même que celui du menu (PR #115/#116) : mêmes flèches, même mémoire
+        // d'ordre. Les deux écrans écrivent dans BotOrderMemory, donc ranger ici déplace le menu et
+        // réciproquement — un équipage, un ordre.
+        val ordered = remember(watch.bots, botOrder) { BotOrder.apply(watch.bots, botOrder) }
+        val fleet = remember(ordered) { fleetRows(ordered) }
+        val byId = remember(ordered) { ordered.associateBy { BotJson.id(it) } }
+        val arrangeRows = remember(fleet) {
+            fleet.flatMap { row ->
+                when (row) {
+                    is FleetRow.Lead -> listOf(row.id to false) + row.crewIds.map { it to true }
+                    is FleetRow.Solo -> listOf(row.id to false)
+                }
+            }
+        }
+        if (arranging) {
+            ArrangeBar(
+                title = stringResource(R.string.drawer_reorder_title),
+                doneLabel = stringResource(R.string.drawer_reorder_done),
+                onDone = { arranging = false },
+            )
+            arrangeRows.forEach { (id, under) ->
+                val bot = byId[id] ?: return@forEach
+                ArrangeRow(
+                    bot = bot,
+                    under = under,
+                    stateLine = noticeText(BotJson.stateNotice(BotJson.state(bot))),
+                    trailing = {
+                        MoveArrows(
+                            canUp = BotOrder.canMove(fleet, id, -1),
+                            canDown = BotOrder.canMove(fleet, id, 1),
+                            onUp = { onSaveOrder(BotOrder.moveRow(fleet, id, -1)) },
+                            onDown = { onSaveOrder(BotOrder.moveRow(fleet, id, 1)) },
+                        )
+                    },
+                )
+            }
+            return@CollapsibleSection
+        }
+        fleet.forEach { row ->
             when (row) {
                 is FleetRow.Solo -> byId[row.id]?.let { bot ->
                     BotRosterRow(bot, avatars[row.id], watch, onSelect, onOpenChat)
