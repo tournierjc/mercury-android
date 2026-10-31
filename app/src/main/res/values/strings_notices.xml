@@ -9,7 +9,7 @@
     <string name="notice_history_unavailable">Historique indisponible</string>
     <string name="notice_delete_failed">Suppression impossible</string>
     <string name="notice_attachments_limit">4 pièces jointes au maximum</string>
-    <string name="notice_dispatch_queued">Mis en file (job %1$s) — le fil principal continue.</string>
+    <string name="notice_dispatch_queued">Envoyé · en file d\'attente</string>
     <string name="notice_dispatch_refused">Refusé</string>
     <string name="notice_name_required">Un nom est nécessaire</string>
     <string name="notice_restart_refused">Relance refusée</string>

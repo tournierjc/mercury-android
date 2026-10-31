@@ -101,6 +101,7 @@ import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.AppVisibility
 import io.github.tournierjc.mercury.bots.BotThread
 import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeSeverity
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.vm.BotsViewModel
@@ -613,17 +614,21 @@ fun ChatScreen(
             if (botId != null) {
                 TopBar(
                     title = botName,
-                    subtitle = listOfNotNull(
-                        bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) },
-                        // Only claim a teammate is writing when there is something to show: the
-                        // feed can call a turn running with an empty tail, and "writing…" over an
-                        // empty screen is a header that lies about the one thing it reports.
-                        if (writing && botLive?.text?.isNotBlank() == true) {
-                            stringResource(R.string.chat_bot_writing)
-                        } else {
-                            botWatch.activity[botId]
-                        },
-                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
+                    // One fact at a time. "au repos · thinking" said both at once: the daemon's
+                    // static state and the live phase contradicted each other, and the phase was
+                    // the daemon's own English ("thinking", "running command") on a French screen.
+                    subtitle = run {
+                        val phase = activityLabel(botWatch.activity[botId].orEmpty())
+                        val state = bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) }.orEmpty()
+                        when {
+                            // Only claim a teammate is writing when there is something to show.
+                            writing && botLive?.text?.isNotBlank() == true -> stringResource(R.string.chat_bot_writing)
+                            // A running turn is described by what it is doing, not by a state
+                            // that says it is idle.
+                            botLive?.running == true -> phase.ifBlank { stringResource(R.string.chat_bot_busy) }
+                            else -> state.ifBlank { stringResource(R.string.chat_bot_idle) }
+                        }
+                    },
                     onMenu = { scope.launch { drawerState.open() } },
                     onNewChat = null,
                     syncing = syncing,
@@ -668,13 +673,22 @@ fun ChatScreen(
                 }
                 botsState.error?.let { notice -> ErrorBar(notice = notice, onDismiss = { botsVm.clearBanner() }) }
                 botsState.dispatchFeedback?.let { notice ->
-                    Text(
-                        text = noticeText(notice),
-                        style = MaterialTheme.typography.labelSmall,
-                        // The severity carries the colour: no more guessing from a leading word.
-                        color = noticeTint(notice.severity),
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                    )
+                    // A send that left is acknowledged quietly and fades; a refusal is read.
+                    if (notice.severity == NoticeSeverity.Info) {
+                        DispatchAck(
+                            notice = notice,
+                            onDone = { botsVm.clearDispatchFeedback() },
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                        )
+                    } else {
+                        Text(
+                            text = noticeText(notice),
+                            style = MaterialTheme.typography.labelSmall,
+                            // The severity carries the colour: no more guessing from a leading word.
+                            color = noticeTint(notice.severity),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                        )
+                    }
                 }
                 AttachmentStrip(attachments = botFiles, onRemove = { index -> botFiles = botFiles.filterIndexed { i, _ -> i != index } })
                 replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
@@ -1381,16 +1395,20 @@ private fun ageLabel(age: RelativeAge): String = when (age) {
  * transient state as an answer.
  */
 @Composable
+private fun activityLabel(activity: String): String = when {
+    activity.contains("think", ignoreCase = true) -> stringResource(R.string.chat_bot_activity_thinking)
+    activity.contains("command", ignoreCase = true) || activity.contains("shell", ignoreCase = true) ->
+        stringResource(R.string.chat_bot_activity_command)
+    activity.contains("read", ignoreCase = true) || activity.contains("file", ignoreCase = true) ->
+        stringResource(R.string.chat_bot_activity_reading)
+    activity.isBlank() -> ""
+    else -> stringResource(R.string.chat_bot_activity_generic, activity)
+}
+
+@Composable
 private fun LiveActivityRow(activity: String, modifier: Modifier = Modifier) {
     val colors = LocalMercuryColors.current
-    val label = when {
-        activity.contains("think", ignoreCase = true) -> stringResource(R.string.chat_bot_activity_thinking)
-        activity.contains("command", ignoreCase = true) || activity.contains("shell", ignoreCase = true) ->
-            stringResource(R.string.chat_bot_activity_command)
-        activity.contains("read", ignoreCase = true) || activity.contains("file", ignoreCase = true) ->
-            stringResource(R.string.chat_bot_activity_reading)
-        else -> stringResource(R.string.chat_bot_activity_generic, activity)
-    }
+    val label = activityLabel(activity)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,

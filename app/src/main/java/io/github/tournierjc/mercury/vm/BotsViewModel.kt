@@ -13,6 +13,7 @@ import kotlinx.serialization.json.put
 import io.github.tournierjc.mercury.data.BotConfigPatch
 import io.github.tournierjc.mercury.data.BotJson
 import io.github.tournierjc.mercury.data.BotOps
+import io.github.tournierjc.mercury.data.NoticeSeverity
 import io.github.tournierjc.mercury.data.BotPermissionsDoc
 import io.github.tournierjc.mercury.data.BotRoutines
 import io.github.tournierjc.mercury.data.MercuryApi
@@ -451,7 +452,9 @@ class BotsViewModel(
                                 it.pending
                             },
                             dispatchFeedback = if (result.accepted) {
-                                Notice(NoticeKey.DISPATCH_QUEUED, args = listOf(result.jobId.take(12))).asInfo()
+                                // The job id is a log detail, not something an owner reads over his keyboard: the
+                                // echo in the thread and the phase line already say it is queued.
+                                Notice(NoticeKey.DISPATCH_QUEUED).asInfo()
                             } else {
                                 // `reasonCode` is the server's own code (queue_full, paused…) and
                                 // travels as the detail: it says more than a house sentence would.
@@ -842,6 +845,15 @@ class BotsViewModel(
     fun clearBundle() = _state.update { it.copy(bundle = null, bundleFor = "") }
 
     fun clearBanner() = _state.update { it.copy(message = null, error = null, dispatchFeedback = null) }
+
+    /**
+     * Dismisses the "queued" acknowledgement alone.
+     *
+     * It fades on its own after a few seconds; clearing the banner wholesale would also take away
+     * a failure the owner has not read yet.
+     */
+    fun clearDispatchFeedback() =
+        _state.update { it.copy(dispatchFeedback = it.dispatchFeedback?.takeIf { n -> n.severity != NoticeSeverity.Info }) }
 
     /** Surfaces a screen-side failure (share sheet, missing file) in the same banner. */
     fun showError(message: String) =
