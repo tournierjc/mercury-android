@@ -3,6 +3,7 @@ package io.github.tournierjc.mercury.data
 import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.DlqJobDto
+import io.github.tournierjc.mercury.data.dto.ReasoningBlockDto
 import io.github.tournierjc.mercury.data.dto.RunSummaryDto
 import io.github.tournierjc.mercury.data.dto.TraceStepDto
 import java.time.Instant
@@ -330,6 +331,29 @@ object BotOps {
         val mark = if (step.ok) "✓" else "✗"
         val arg = step.arg.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
         return "$mark ${step.name.ifBlank { toolFallback }}$arg"
+    }
+
+    /**
+     * The thinking worth showing for a run, and how much of it.
+     *
+     * A step can think for thousands of characters; a dialog that dumps 24k of it is unreadable, and
+     * one that quietly cuts is a lie. Collapsed shows the last few steps, short; expanded shows every
+     * step the daemon kept, each still capped. The cut is always marked with an ellipsis.
+     */
+    fun reasoningBlocks(
+        blocks: List<ReasoningBlockDto>,
+        expanded: Boolean,
+        collapsedSteps: Int = 2,
+        collapsedChars: Int = 400,
+        expandedChars: Int = 4_000,
+    ): List<ReasoningBlockDto> {
+        if (blocks.isEmpty()) return emptyList()
+        val kept = if (expanded) blocks else blocks.takeLast(collapsedSteps.coerceAtLeast(1))
+        val cap = if (expanded) expandedChars else collapsedChars
+        return kept.map { block ->
+            val text = block.text.trim()
+            block.copy(text = if (text.length > cap) text.take(cap).trimEnd() + "…" else text)
+        }
     }
 
     /** One line for a run's transcript header. */

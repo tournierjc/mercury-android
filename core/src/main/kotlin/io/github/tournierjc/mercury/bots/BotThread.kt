@@ -45,6 +45,17 @@ data class BotMessage(
 object BotThread {
 
     /**
+     * True when the journal names a run the thread was not built from.
+     *
+     * The screen used to repaint only when the live feed said a turn had stopped writing — and the
+     * feed is the part that goes missing (a dropped stream, a turn that finished while the phone was
+     * away, a process the system killed). The journal writes a record exactly once, when the turn is
+     * over, so its newest line is the durable signal that there is something new to read.
+     */
+    fun isStale(knownRunId: String?, newestRunId: String?): Boolean =
+        !newestRunId.isNullOrBlank() && newestRunId != knownRunId
+
+    /**
      * @param records journal lines for one bot, any order.
      * @param prompts `runId` → the task the owner dispatched for that run.
      * @param outputs `runId` → the full answer, when the transcript is at hand.

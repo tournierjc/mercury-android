@@ -85,7 +85,19 @@ data class TraceStepDto(
     val task: Boolean = false,
 )
 
-/** `GET /api/bots/:id/runs/:runId` — `{record, prompt, output, trace}`. */
+/**
+ * One step's thinking, as the daemon kept it next to the trace.
+ *
+ * Live runs already showed a rolling tail of it; this is the whole thing, per step, so a run read
+ * back afterwards explains what the bot weighed and not only what it did.
+ */
+@Serializable
+data class ReasoningBlockDto(
+    val step: Int = 0,
+    val text: String = "",
+)
+
+/** `GET /api/bots/:id/runs/:runId` — `{record, prompt, output, trace, reasoning}`. */
 @Serializable
 data class RunTranscriptDto(
     val record: BotRunDto = BotRunDto(),
@@ -93,6 +105,9 @@ data class RunTranscriptDto(
     val output: String = "",
     val trace: List<TraceStepDto> = emptyList(),
     val error: String = "",
+    val reasoning: List<ReasoningBlockDto> = emptyList(),
+    /** True when the daemon dropped the oldest steps to stay within its budget. */
+    val reasoningTruncated: Boolean = false,
 )
 
 /** A dead-lettered job (`DurableBotJob`): what failed and how many times. */

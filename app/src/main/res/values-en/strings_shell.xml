@@ -56,6 +56,11 @@
     <string name="run_details">details</string>
     <string name="run_older">… %1$d older run(s)</string>
     <string name="run_detail_title">Run detail</string>
+    <string name="run_reasoning">Thinking</string>
+    <string name="run_reasoning_step">step %1$d</string>
+    <string name="run_reasoning_more">Expand</string>
+    <string name="run_reasoning_less">Collapse</string>
+    <string name="run_reasoning_truncated">The oldest steps were dropped by the daemon (24k character cap).</string>
     <string name="run_state">State</string>
     <string name="run_started">Started</string>
     <string name="run_duration">Duration</string>

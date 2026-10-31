@@ -197,4 +197,19 @@ class BotThreadTest {
         assertEquals("\u2717 run_command", answer.steps[1].label)
         assertEquals("gradlew :core:test", answer.steps[1].summary)
     }
+
+    @Test
+    fun `a journal line the thread has not seen makes the conversation stale`() {
+        // The screen reloads on this signal, so it has to fire exactly when there is something new —
+        // and it is the only path left when the live feed never reported the turn's end.
+        assertTrue(BotThread.isStale(knownRunId = "run-1", newestRunId = "run-2"))
+        assertTrue(BotThread.isStale(knownRunId = null, newestRunId = "run-1"))
+    }
+
+    @Test
+    fun `the same run, or no journal at all, is not stale`() {
+        assertFalse(BotThread.isStale(knownRunId = "run-1", newestRunId = "run-1"))
+        assertFalse(BotThread.isStale(knownRunId = "run-1", newestRunId = null))
+        assertFalse(BotThread.isStale(knownRunId = "run-1", newestRunId = "  "))
+    }
 }

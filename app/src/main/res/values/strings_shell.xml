@@ -56,6 +56,11 @@
     <string name="run_details">détail</string>
     <string name="run_older">… %1$d run(s) plus ancien(s)</string>
     <string name="run_detail_title">Détail du run</string>
+    <string name="run_reasoning">Réflexion</string>
+    <string name="run_reasoning_step">étape %1$d</string>
+    <string name="run_reasoning_more">Déplier</string>
+    <string name="run_reasoning_less">Replier</string>
+    <string name="run_reasoning_truncated">Les étapes les plus anciennes ont été lâchées par le daemon (plafond de 24 k caractères).</string>
     <string name="run_state">État</string>
     <string name="run_started">Démarré</string>
     <string name="run_duration">Durée</string>

@@ -343,6 +343,25 @@ class BotsViewModel(
         }
     }
 
+    /**
+     * One cheap look at the journal; the conversation is reloaded only if it says something new.
+     *
+     * The thread used to reload on the live feed's writing → over transition alone. When that event
+     * never arrives — the stream dropped, the turn ended while the app was in the background, the
+     * process was killed — the answer sat in the journal and the owner had to relaunch the app to
+     * see it. The journal is the durable record, so it is what the open screen watches.
+     */
+    fun pollConversation(id: String = _state.value.selectedId.orEmpty()) {
+        if (id.isBlank()) return
+        viewModelScope.launch {
+            val newest = runCatching { api.botRunJournal(id, limit = 1) }.getOrNull()
+                ?.lastOrNull()?.runId
+            if (!BotThread.isStale(_state.value.records.lastOrNull()?.runId, newest)) return@launch
+            if (_state.value.selectedId != id) return@launch
+            reloadConversation(id)
+        }
+    }
+
     fun reloadConversation(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch {
