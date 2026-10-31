@@ -272,6 +272,20 @@ fun ChatScreen(
             return
         }
 
+        AppScreen.Sessions -> {
+            SessionsScreen(
+                threads = threads,
+                currentSessionId = state.sessionId,
+                onBack = ::goBack,
+                onOpenThread = { thread ->
+                    onOpenThread(thread)
+                    go(AppScreen.Chat)
+                },
+                onDeleteThread = onDeleteThread,
+            )
+            return
+        }
+
         // The screens the app already had, kept reachable: the second brain's memory, the boards,
         // the roster, the share sheet, and the console — the webapp folded the console's counters
         // into Status and Usage, the app still owns the terminal view.
@@ -468,6 +482,7 @@ fun ChatScreen(
                     onOpenThread(thread)
                 },
                 current = if (botChat != null) AppScreen.Chat else screen,
+                onShowAllSessions = { go(AppScreen.Sessions) },
                 onOpen = { destination -> go(destination) },
                 bots = botWatch.bots,
                 avatars = botAvatars,

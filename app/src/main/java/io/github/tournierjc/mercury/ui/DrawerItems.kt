@@ -33,6 +33,12 @@ sealed interface DrawerRow {
     data object NoSession : DrawerRow
     data class Thread(val id: String) : DrawerRow
 
+    /**
+     * The way to the rest of them. [hidden] is what the drawer is not showing, so the row can say
+     * it instead of the owner wondering whether the list is complete.
+     */
+    data class AllSessions(val hidden: Int) : DrawerRow
+
     /** A group heading: « Second cerveau », « Configurer ». */
     data class SectionHeader(val section: DrawerSection) : DrawerRow
 
@@ -42,6 +48,9 @@ sealed interface DrawerRow {
     data object NavDivider : DrawerRow
     data object SignOut : DrawerRow
 }
+
+/** How many sessions the drawer lists before handing over to the sessions screen. */
+const val SESSION_LIMIT = 5
 
 /** The webapp's three sidebar groups. */
 enum class DrawerSection { Work, SecondBrain, Configure }
@@ -81,7 +90,15 @@ fun drawerRows(
         add(DrawerRow.AllCrew)
     }
     add(DrawerRow.SessionHeader)
-    if (threadIds.isEmpty()) add(DrawerRow.NoSession) else threadIds.forEach { add(DrawerRow.Thread(it)) }
+    if (threadIds.isEmpty()) {
+        add(DrawerRow.NoSession)
+    } else {
+        // A drawer is a way in, not an archive: five sessions are what fits without pushing the
+        // navigation off the sheet, and the rest live one tap away, with a filter.
+        val shown = threadIds.take(SESSION_LIMIT)
+        shown.forEach { add(DrawerRow.Thread(it)) }
+        if (threadIds.size > shown.size) add(DrawerRow.AllSessions(hidden = threadIds.size - shown.size))
+    }
     // The work, in the webapp's order — one named group, not a headerless block behind a rule.
     add(DrawerRow.SectionHeader(DrawerSection.Work))
     listOf(
