@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.tournierjc.mercury"
         minSdk = 26
         targetSdk = 35
-        versionCode = 97
-        versionName = "0.61.25"
+        versionCode = 98
+        versionName = "0.61.26"
     }
 
     buildTypes {
