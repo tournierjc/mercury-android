@@ -402,6 +402,9 @@ fun ChatScreen(
     // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
     val container = remember { (context.applicationContext as MercuryApp).container }
     val botsVm: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
+    // The drawer's arrangement, kept on the phone: the daemon has no field for it.
+    val orderMemory = container.botOrderMemory
+    var botOrder by remember { mutableStateOf(orderMemory.order()) }
     val botsState by botsVm.state.collectAsState()
     val botWatch by container.botWatcher.state.collectAsState()
     val botAvatars by botsVm.avatars.collectAsState()
@@ -486,6 +489,11 @@ fun ChatScreen(
         drawerContent = {
             ThreadDrawer(
                 threads = threads,
+                botOrder = botOrder,
+                onSaveOrder = { ids ->
+                    botOrder = ids
+                    orderMemory.save(ids)
+                },
                 currentSessionId = state.sessionId,
                 onNewChat = {
                     go(AppScreen.Chat)

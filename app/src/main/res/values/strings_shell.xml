@@ -5,6 +5,10 @@
     <string name="out_preview_raw">Afficher le texte brut</string>
     <string name="out_preview_rendered">Afficher la mise en forme</string>
     <!-- Tiroir -->
+    <string name="drawer_reorder">Réorganiser</string>
+    <string name="drawer_reorder_done">Terminé</string>
+    <string name="drawer_move_up">Monter</string>
+    <string name="drawer_move_down">Descendre</string>
     <string name="drawer_section_crew">Équipiers</string>
     <!-- La rangée d'un équipier : deux gestes, deux destinations. -->
     <string name="drawer_bot_open_chat">Ouvrir la conversation</string>
