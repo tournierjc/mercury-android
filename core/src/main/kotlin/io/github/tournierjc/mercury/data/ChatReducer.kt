@@ -44,7 +44,20 @@ data class ChatMessage(
     enum class Role { User, Assistant }
 }
 
-data class ToolStep(val tool: String, val label: String, val summary: String? = null)
+/**
+ * One tool call of a turn.
+ *
+ * [label] holds the call's argument (the command, the path). [summary] is the outcome when the
+ * daemon reported one — a live step's result, never its arguments. [failed] is a fact of its own,
+ * not a mark smuggled into the label: the trace draws a failure in red, and grepping for a `✗`
+ * glyph to decide that is a rendering detail leaking into the data.
+ */
+data class ToolStep(
+    val tool: String,
+    val label: String,
+    val summary: String? = null,
+    val failed: Boolean = false,
+)
 
 enum class InteractionKind {
     /** Approve a tool call (`yes` / `always` / `no`). */
@@ -147,13 +160,18 @@ object ChatReducer {
         }
 
         is ChatEvent.StepDone -> updateAssistant(state, at) { message ->
+            // The daemon marks a failed call in the outcome text; it becomes a flag the trace can
+            // colour, instead of a glyph the renderer has to look for.
+            val failed = event.summary.trimStart().startsWith("\u2717")
             val index = message.steps.indexOfLast { it.tool == event.tool && it.summary == null }
             if (index >= 0) {
                 message.copy(
-                    steps = message.steps.toMutableList().also { it[index] = it[index].copy(summary = event.summary) },
+                    steps = message.steps.toMutableList().also {
+                        it[index] = it[index].copy(summary = event.summary, failed = failed)
+                    },
                 )
             } else {
-                message.copy(steps = message.steps + ToolStep(event.tool, event.tool, event.summary))
+                message.copy(steps = message.steps + ToolStep(event.tool, event.tool, event.summary, failed))
             }
         }
 

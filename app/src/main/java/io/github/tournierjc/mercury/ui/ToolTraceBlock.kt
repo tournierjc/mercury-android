@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
@@ -22,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,23 +29,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.data.ToolGlyph
 import io.github.tournierjc.mercury.data.ToolStep
+import io.github.tournierjc.mercury.data.TraceLine
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
 /**
  * What the agent did with its tools, as a framed block of its own — not as prose, and not as chips
  * glued to the answer.
  *
- * The daemon stores one summary per turn, written as `- run_command … → ok` for the model to read;
- * the phone printed it verbatim in a reopened thread and showed a strip of pills during the turn.
- * One component now serves both: a bounded block, monospace, with a header that counts what ran and
- * what failed — a turn that went wrong is visible while folded.
+ * Each call is one line the way a terminal conversation shows it: an emoji for the kind of call
+ * (💻 a command, 📄 a read, 📚 a skill, 📦 a delivery), the tool's name, and its argument as the
+ * command it ran, in a code block. A turn that ran twenty calls is unreadable as a wall of
+ * monospace names, and unreadable as chips that truncate the command: the emoji says what kind of
+ * thing happened without reading a word, and the command is the only part worth reading in full.
  *
- * [folded] says whether it starts closed: history is context (closed), the turn in progress is the
- * thing you are watching (open).
+ * [folded] says whether it starts closed: history is context (closed, with the last calls still
+ * legible), the turn in progress is the thing you are watching (open).
  */
 @Composable
 fun ToolTraceBlock(
@@ -55,7 +59,8 @@ fun ToolTraceBlock(
 ) {
     val colors = LocalMercuryColors.current
     var open by rememberSaveable { mutableStateOf(!folded) }
-    val failures = steps.count { it.summary?.startsWith("✗") == true }
+    val lines = remember(steps) { steps.map { ToolGlyph.lineOf(it) } }
+    val failures = lines.count { it.failed }
 
     Column(
         modifier = modifier
@@ -76,6 +81,7 @@ fun ToolTraceBlock(
             Text(
                 text = stringResource(R.string.chat_trace_count, steps.size).uppercase(),
                 style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
                 color = if (failures > 0) colors.danger else colors.textSecondary,
                 modifier = Modifier.padding(start = 6.dp),
             )
@@ -99,52 +105,75 @@ fun ToolTraceBlock(
                 modifier = Modifier.size(20.dp),
             )
         }
-        if (open) {
+        // Folded is not mute: the last calls stay on screen, one line each, so a closed block still
+        // says what the turn was doing — and a failure is visible without opening anything.
+        val shown = if (open) lines else lines.takeLast(FOLDED_PREVIEW)
+        if (shown.isNotEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(if (open) 6.dp else 2.dp),
             ) {
-                steps.forEach { step -> ToolTraceRow(step) }
+                shown.forEach { line -> ToolTraceRow(line, compact = !open) }
             }
         }
     }
 }
 
+/** How many calls a closed trace still shows. Three fits above the fold on a phone. */
+private const val FOLDED_PREVIEW = 3
+
 @Composable
-private fun ToolTraceRow(step: ToolStep) {
+private fun ToolTraceRow(line: TraceLine, compact: Boolean) {
     val colors = LocalMercuryColors.current
-    val failed = step.summary?.startsWith("✗") == true
-    // Two lines, never one truncated: the arguments keep their own line, and the outcome its own.
-    // On a single row both were cut to an ellipsis — « ✗ Error: No p… » hid exactly the sentence
-    // that says what went wrong, which is the only reason to open the block.
+    val tint = if (line.failed) colors.danger else colors.accent
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // The emoji is the row's icon, so no dependency on an icon font per tool family.
             Text(
-                text = step.tool,
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = if (failed) colors.danger else colors.accent,
+                text = line.glyph,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(end = 6.dp),
+            )
+            Text(
+                text = line.name,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = tint,
                 maxLines = 1,
-                // The tool's name anchors the row: it may not be squeezed to nothing by its
-                // arguments. Cut here, because a name is one word and the arguments are the detail.
-                modifier = Modifier.widthIn(max = 110.dp),
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = step.label,
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = colors.textSecondary,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 6.dp),
+            if (compact && line.detail.isNotEmpty()) {
+                // One row when folded: name then command, cut at the edge. Opening the block is
+                // what a truncated command invites, and the ellipsis says it was cut.
+                Text(
+                    text = "  " + line.detail,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+            }
+        }
+        if (!compact && line.detail.isNotEmpty()) {
+            CodeSurface(
+                content = line.detail,
+                modifier = Modifier.padding(top = 3.dp, start = 2.dp),
             )
         }
-        step.summary?.takeIf { it.isNotBlank() }?.let { outcome ->
+        // The outcome is the daemon's word on the call; a failure keeps it in the danger colour so
+        // the opened block says what went wrong, which is the only reason to open it.
+        line.outcome?.let { outcome ->
             Text(
-                text = outcome,
+                text = outcome.removePrefix("\u2717").trim(),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (failed) colors.danger else colors.textSecondary,
+                color = if (line.failed) colors.danger else colors.textSecondary,
+                maxLines = if (compact) 1 else 4,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 2.dp, top = 1.dp),
             )
         }
