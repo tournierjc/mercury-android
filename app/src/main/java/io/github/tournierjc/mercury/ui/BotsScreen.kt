@@ -1019,7 +1019,8 @@ private fun BotDetail(
             state.inbox.forEach { mail ->
                 KeyValueRow(
                     (mail["from"] as? JsonPrimitive)?.contentOrNull.orEmpty().ifBlank { stringResource(R.string.bots_label_message) },
-                    (mail["body"] as? JsonPrimitive)?.contentOrNull.orEmpty().take(160),
+                    // The daemon's inbox serves `{ from, content }` (bot-turn.ts), not `body`.
+                    (mail["content"] as? JsonPrimitive)?.contentOrNull.orEmpty().take(160),
                 )
             }
         }

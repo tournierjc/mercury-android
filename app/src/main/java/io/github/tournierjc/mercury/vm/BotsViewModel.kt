@@ -17,6 +17,7 @@ import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.ui.attachmentNotice
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.RunRow
+import io.github.tournierjc.mercury.data.WireTime
 import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.bots.BotMessage
@@ -25,6 +26,7 @@ import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
 import io.github.tournierjc.mercury.data.dto.DlqJobDto
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
+import io.github.tournierjc.mercury.data.dto.TraceStepDto
 import io.github.tournierjc.mercury.util.OutputActions
 import io.github.tournierjc.mercury.util.OutputPreviewState
 import io.github.tournierjc.mercury.util.SharedFile
@@ -63,6 +65,10 @@ data class BotsUiState(
     val prompts: Map<String, String> = emptyMap(),
     /** `runId` → the full answer: the journal truncates its summary at 300 characters. */
     val answers: Map<String, String> = emptyMap(),
+    /** `runId` → the transcript's `timestamp`, epoch milliseconds (SPECS/115 §5 bis). */
+    val dates: Map<String, Long?> = emptyMap(),
+    /** `runId` → the tool calls the turn made: the bubbles' step pills. */
+    val traces: Map<String, List<TraceStepDto>> = emptyMap(),
     /** The conversation as the chat screen draws it, oldest first. */
     val messages: List<BotMessage> = emptyList(),
     /** Turns sent from this screen that the journal does not know about yet. */
@@ -192,6 +198,7 @@ class BotsViewModel(
                 records = emptyList(),
                 prompts = emptyMap(),
                 answers = emptyMap(),
+                dates = emptyMap(),
                 messages = emptyList(),
                 pending = emptyList(),
                 detailLoading = true,
@@ -218,6 +225,17 @@ class BotsViewModel(
             }.awaitAll().toMap()
             val prompts = turns.mapValues { (_, transcript) -> transcript?.prompt.orEmpty() }
             val answers = turns.mapValues { (_, transcript) -> transcript?.output.orEmpty() }
+            // The transcript's `timestamp`, presence included (SPECS/115 §3.4): absent keeps the
+            // journal's clock, a written-but-unreadable one draws no hour, a date dates the turn.
+            val dates = mutableMapOf<String, Long?>()
+            turns.forEach { (runId, transcript) ->
+                when (val date = transcript?.timestamp ?: WireTime.Absent) {
+                    is WireTime.At -> dates[runId] = date.millis
+                    WireTime.Unreadable -> dates[runId] = null
+                    WireTime.Absent -> Unit
+                }
+            }
+            val traces = turns.mapValues { (_, transcript) -> transcript?.trace.orEmpty() }
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -234,7 +252,9 @@ class BotsViewModel(
                     records = last,
                     prompts = prompts,
                     answers = answers,
-                    messages = BotThread.build(last, prompts, answers),
+                    dates = dates,
+                    traces = traces,
+                    messages = BotThread.build(last, prompts, answers, dates, traces = traces),
                     pending = emptyList(),
                     dlq = dlq?.dlq.orEmpty(),
                     detailLoading = false,
@@ -279,19 +299,28 @@ class BotsViewModel(
                 val turns = records.map { record ->
                     async { record.runId to transcript(id, record.runId) }
                 }.awaitAll().toMap()
-                Triple(
-                    records,
-                    turns.mapValues { (_, t) -> t?.prompt.orEmpty() },
-                    turns.mapValues { (_, t) -> t?.output.orEmpty() },
-                )
-            }.onSuccess { (records, prompts, answers) ->
+                records to turns
+            }.onSuccess { (records, turns) ->
                 if (_state.value.selectedId != id) return@onSuccess
+                val prompts = turns.mapValues { (_, t) -> t?.prompt.orEmpty() }
+                val answers = turns.mapValues { (_, t) -> t?.output.orEmpty() }
+                val dates = mutableMapOf<String, Long?>()
+                turns.forEach { (runId, t) ->
+                    when (val date = t?.timestamp ?: WireTime.Absent) {
+                        is WireTime.At -> dates[runId] = date.millis
+                        WireTime.Unreadable -> dates[runId] = null
+                        WireTime.Absent -> Unit
+                    }
+                }
+                val traces = turns.mapValues { (_, t) -> t?.trace.orEmpty() }
                 _state.update {
                     it.copy(
                         records = records,
                         prompts = prompts,
                         answers = answers,
-                        messages = BotThread.build(records, prompts, answers),
+                        dates = dates,
+                        traces = traces,
+                        messages = BotThread.build(records, prompts, answers, dates, traces = traces),
                         pending = emptyList(),
                     )
                 }
@@ -343,7 +372,9 @@ class BotsViewModel(
                                     key = "${result.jobId}-me",
                                     fromBot = false,
                                     text = message.trim().ifBlank { files.joinToString(" · ") { it.name } },
-                                    at = System.currentTimeMillis(),
+                                    // Not dated: the phone's clock is not the server's, and this
+                                    // turn has no journal line yet (SPECS/115 §3.4).
+                                    at = null,
                                     state = "queued",
                                 )
                             } else {

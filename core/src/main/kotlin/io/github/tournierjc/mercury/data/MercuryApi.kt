@@ -34,6 +34,9 @@ import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
 import io.github.tournierjc.mercury.data.dto.CreateBotRequest
 import io.github.tournierjc.mercury.data.dto.UpdateBotRequest
 import io.github.tournierjc.mercury.data.dto.ConfigDto
+import io.github.tournierjc.mercury.graph.GraphOutcome
+import io.github.tournierjc.mercury.graph.GraphRaw
+import io.github.tournierjc.mercury.graph.parseGraphResponse
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.ChatSettings
 import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
@@ -100,7 +103,20 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-class MercuryException(message: String) : IOException(message)
+/**
+ * A route failed and this client cannot go on.
+ *
+ * [code] and [body] are the answer itself, kept as the server wrote it. They exist because the
+ * message alone is a summary: `apiError(body)` reads `{error}` and falls back to "HTTP 503", so a
+ * caller that needs the route's own motif — the graph's `SQLITE_DEPENDENCY_ERROR`, for one — cannot
+ * rebuild it from the exception. The message stays the first parameter so every existing
+ * `MercuryException("…")` caller compiles unchanged; [code] is `0` when no response was ever read.
+ */
+class MercuryException(
+    message: String,
+    val code: Int = 0,
+    val body: String? = null,
+) : IOException(message)
 
 open class AuthException(message: String) : IOException(message)
 
@@ -1372,6 +1388,41 @@ class MercuryApi(
 
     suspend fun beliefGraph(): BeliefGraphDto = getDecoded("/api/brain/graph", BeliefGraphDto.serializer())
 
+    /**
+     * `GET /api/brain/graph`, read whatever the status.
+     *
+     * The route answers `503` with a body when SQLite is missing (`src/web/api/brain.ts:269`):
+     * `{nodes: [], edges: [], available: false, error}`. A missing dependency is an HTTP error on
+     * purpose — a `200 {available: false}` would lie to probes and proxies — so the client owes it
+     * to the body to be read. [getDecoded] would throw on the status and the body would be lost,
+     * which is how the technical code `SQLITE_DEPENDENCY_ERROR` used to reach the screen instead of
+     * the "graph not exposed" state. [parseGraphResponse] turns the bytes into one of three issues: a graph,
+     * an absent dependency with its motif, or a failure.
+     *
+     * A 401 or a 403 still throws [AuthException], like every other route: the session expiry of
+     * the app hangs off that exception.
+     */
+    suspend fun brainGraph(): GraphOutcome = beliefGraphRaw().let { raw ->
+        parseGraphResponse(raw.status, raw.body)
+    }
+
+    /**
+     * The graph route's status and body, unread and unraised.
+     *
+     * Kept separate from [beliefGraph] so the transport never decides what a `503` means: the
+     * routing lives in `:core` ([parseGraphResponse]) where a JVM test can prove all four cases.
+     * Only the session rules stay here — a `401`/`403` throws [AuthException] like every other
+     * route of this client, because the app's sign-out hangs off it.
+     */
+    suspend fun beliefGraphRaw(): GraphRaw = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url("/api/brain/graph")).get().build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+            GraphRaw(status = response.code, body = body)
+        }
+    }
+
     /** Memories the brain set aside because they contradicted something stronger. */
     suspend fun quarantine(): MemoriesPage = getDecoded("/api/brain/quarantine", MemoriesPage.serializer())
 
@@ -1593,7 +1644,7 @@ class MercuryApi(
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 if (response.code == 401 || response.code == 403) throw AuthException("session expired")
-                throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
+                throw MercuryException(apiError(body) ?: "HTTP ${response.code}", response.code, body)
             }
             body
         }

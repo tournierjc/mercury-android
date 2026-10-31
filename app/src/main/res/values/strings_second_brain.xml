@@ -39,6 +39,9 @@
     <!-- GraphScreen -->
     <string name="brain_graphe_vide">Aucun lien tissé pour l\'instant : le cerveau n\'a encore rapproché deux souvenirs.</string>
     <string name="brain_graphe_indisponible">Cette instance n\'expose pas le graphe.</string>
+    <!-- Le motif reste tel que le serveur l\'a écrit : c\'est ce que le propriétaire cherchera. -->
+    <string name="brain_graphe_indisponible_motif">Motif technique : %1$s</string>
+    <string name="brain_graphe_indisponible_reessayer">Réessayer</string>
     <string name="brain_graphe_aide">Pince pour zoomer, glisse pour déplacer, touche un nœud pour le lire en entier.</string>
     <string name="brain_graphe_comptes">%1$s · %2$s</string>
     <string name="brain_noeud_fermer">Fermer le détail</string>
@@ -50,6 +53,22 @@
         <item quantity="one">%1$d lien</item>
         <item quantity="other">%1$d liens</item>
     </plurals>
+    <!-- Filtre et légende : ce que le graphe contient, pas une palette théorique. -->
+    <string name="brain_graphe_filtrer">Filtrer par mots</string>
+    <string name="brain_graphe_filtre_effacer">Effacer le filtre</string>
+    <string name="brain_graphe_aucun_noeud">Aucun nœud ne porte ces mots.</string>
+    <!-- Le panneau d\'un nœud : ce que la route mémoire dit de lui. -->
+    <string name="brain_graphe_detail_resume">Résumé</string>
+    <string name="brain_graphe_detail_portee">Portée</string>
+    <string name="brain_graphe_detail_importance">Importance</string>
+    <string name="brain_graphe_detail_confiance">Confiance</string>
+    <string name="brain_graphe_detail_preuves">Preuves</string>
+    <string name="brain_graphe_detail_preuve_compte">%1$d · %2$s</string>
+    <string name="brain_graphe_detail_connexions">Connexions</string>
+    <string name="brain_graphe_detail_cree">Créé le</string>
+    <string name="brain_graphe_detail_maj">Mis à jour</string>
+    <string name="brain_graphe_detail_vu">Dernière vue</string>
+    <string name="brain_graphe_detail_pourcent">%1$d %%</string>
     <string name="memory_forget_title">Oublier ce souvenir ?</string>
     <string name="memory_forget_cancel">Garder</string>
     <!-- A graph node: its kind, then its weight. The space before % is French. -->

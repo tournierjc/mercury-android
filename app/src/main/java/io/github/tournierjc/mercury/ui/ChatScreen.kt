@@ -88,6 +88,8 @@ import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.QuoteReply
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.util.MediaPicker
+import io.github.tournierjc.mercury.util.formatMessageTime
+import io.github.tournierjc.mercury.util.messageTimeFromMillis
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.R
 import androidx.compose.ui.res.stringResource
@@ -419,7 +421,7 @@ fun ChatScreen(
             val queuedLabel = stringResource(R.string.chat_bot_queued)
             val failedLabel = stringResource(R.string.chat_bot_failed)
             val noAnswerLabel = stringResource(R.string.chat_bot_no_answer)
-            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.pending, botLive, botId, queuedLabel, failedLabel, noAnswerLabel) {
+            val botMessages = remember(botsState.records, botsState.prompts, botsState.answers, botsState.dates, botsState.pending, botLive, botId, queuedLabel, failedLabel, noAnswerLabel) {
                 if (botId == null) {
                     emptyList()
                 } else {
@@ -427,9 +429,11 @@ fun ChatScreen(
                         botsState.records,
                         botsState.prompts,
                         botsState.answers,
+                        botsState.dates,
                         botLive?.jobId,
                         botLive?.text.orEmpty(),
                         botLive?.running == true,
+                        botsState.traces,
                     )
                     val known = built.filter { !it.fromBot }.map { it.text }.toSet()
                     (built + botsState.pending.filter { it.text !in known }).map { message ->
@@ -445,6 +449,8 @@ fun ChatScreen(
                                 }
                             },
                             streaming = message.streaming,
+                            steps = message.steps,
+                            at = messageTimeFromMillis(message.at),
                         )
                     }
                 }
@@ -456,7 +462,8 @@ fun ChatScreen(
                     title = botName,
                     subtitle = listOfNotNull(
                         bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) },
-                        botLive?.takeIf { it.running }?.let { stringResource(R.string.chat_bot_writing) } ?: botWatch.activity[botId],
+                        botLive?.takeIf { it.running && it.text.isNotBlank() }?.let { stringResource(R.string.chat_bot_writing) }
+                            ?: botWatch.activity[botId],
                     ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { stringResource(R.string.chat_bot_idle) },
                     onMenu = { scope.launch { drawerState.open() } },
                     onNewChat = null,
@@ -947,10 +954,15 @@ internal fun MessageItem(
         Modifier.combinedClickable(onClick = {}, onLongClick = onLongPress)
     }
 
+    // §3.3: one formatter for every conversation; §4.4: an undated message draws no line. A turn
+    // still being written draws none either — the date it carries is the turn's start, not the
+    // moment the answer appears. Both sides obey the same rule, so no caller has to.
+    val hour = remember(message.at) { formatMessageTime(message.at) }
+
     if (message.role == ChatMessage.Role.User) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalAlignment = Alignment.End,
         ) {
             Column(
                 modifier = Modifier
@@ -979,6 +991,27 @@ internal fun MessageItem(
                         )
                     }
                 }
+            }
+            if (hour != null && !message.streaming) {
+                Text(
+                    text = hour,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 2.dp, end = 4.dp),
+                )
+            }
+            // §9.3: the state of the turn is drawn under the bubble, in the text column, never
+            // inside the frame — the bubble holds what was written, the line under it says how
+            // it travelled. A turn that never left the phone says so, in danger, and says no more:
+            // there is no retry to offer, so nothing here promises one.
+            if (message.delivery == ChatMessage.Delivery.Failed) {
+                Text(
+                    text = stringResource(R.string.chat_message_non_envoye),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.danger,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.padding(top = 2.dp, end = 4.dp),
+                )
             }
         }
         return
@@ -1021,6 +1054,14 @@ internal fun MessageItem(
                 text = "▍",
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.accent,
+            )
+        }
+        if (hour != null && !message.streaming) {
+            Text(
+                text = hour,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = 2.dp, start = 4.dp),
             )
         }
     }

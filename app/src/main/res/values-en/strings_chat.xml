@@ -18,6 +18,9 @@
     <string name="chat_voice_unavailable">Dictation unavailable on this device</string>
     <string name="chat_mic_denied">Microphone denied — allow access in settings</string>
     <string name="chat_remove_attachment">Remove %1$s</string>
+    <!-- Turn state under the bubble: the message never reached the daemon. The app has no retry,
+         so the line promises none. -->
+    <string name="chat_message_non_envoye">Message not sent.</string>
 
     <!-- Message actions -->
     <string name="chat_done">Done</string>

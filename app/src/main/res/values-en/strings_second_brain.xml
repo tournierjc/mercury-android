@@ -39,6 +39,9 @@
     <!-- GraphScreen -->
     <string name="brain_graphe_vide">No connections yet: the brain has not brought two memories together.</string>
     <string name="brain_graphe_indisponible">This instance does not expose the graph.</string>
+    <!-- The motif stays as the server spelled it: it is what the owner will search for. -->
+    <string name="brain_graphe_indisponible_motif">Technical reason: %1$s</string>
+    <string name="brain_graphe_indisponible_reessayer">Retry</string>
     <string name="brain_graphe_aide">Pinch to zoom, drag to pan, tap a node to read it whole.</string>
     <string name="brain_graphe_comptes">%1$s · %2$s</string>
     <string name="brain_noeud_fermer">Close the detail</string>
@@ -50,6 +53,22 @@
         <item quantity="one">%1$d link</item>
         <item quantity="other">%1$d links</item>
     </plurals>
+    <!-- Filter and legend: what the graph really holds, not a theoretical palette. -->
+    <string name="brain_graphe_filtrer">Filter by words</string>
+    <string name="brain_graphe_filtre_effacer">Clear the filter</string>
+    <string name="brain_graphe_aucun_noeud">No node holds these words.</string>
+    <!-- A node\'s panel: what the memory route says about it. -->
+    <string name="brain_graphe_detail_resume">Summary</string>
+    <string name="brain_graphe_detail_portee">Scope</string>
+    <string name="brain_graphe_detail_importance">Importance</string>
+    <string name="brain_graphe_detail_confiance">Confidence</string>
+    <string name="brain_graphe_detail_preuves">Evidence</string>
+    <string name="brain_graphe_detail_preuve_compte">%1$d · %2$s</string>
+    <string name="brain_graphe_detail_connexions">Connections</string>
+    <string name="brain_graphe_detail_cree">Created</string>
+    <string name="brain_graphe_detail_maj">Updated</string>
+    <string name="brain_graphe_detail_vu">Last seen</string>
+    <string name="brain_graphe_detail_pourcent">%1$d%%</string>
     <string name="memory_forget_title">Forget this memory?</string>
     <string name="memory_forget_cancel">Keep</string>
     <!-- A graph node: its kind, then its weight. The space before % is French. -->

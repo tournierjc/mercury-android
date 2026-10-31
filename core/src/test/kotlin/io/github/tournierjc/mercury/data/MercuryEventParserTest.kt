@@ -41,8 +41,77 @@ class MercuryEventParserTest {
             """{"id":"perm_1","prompt":"Run rm -rf build?","options":["yes","always","no"],"targetId":"s"}""",
         )
         assertEquals(
-            ChatEvent.PermissionRequest("perm_1", "Run rm -rf build?", listOf("yes", "always", "no")),
+            ChatEvent.PermissionRequest("perm_1", "Run rm -rf build?", optionsOf("yes", "always", "no")),
             event,
+        )
+    }
+
+    @Test
+    fun `choice prompt keeps the server label and the value it posts`() {
+        val event = parse(
+            "choice_prompt",
+            """{"id":"choice_1","question":"Quel fichier ?","options":[{"value":"src/main.kt","label":"src/main.kt (42 lignes)"},{"value":"build.gradle.kts","label":"build.gradle.kts"}],"targetId":"s"}""",
+        )
+        assertEquals(
+            ChatEvent.ChoicePrompt(
+                "choice_1",
+                "Quel fichier ?",
+                listOf(
+                    ChoiceOption("src/main.kt", "src/main.kt (42 lignes)"),
+                    ChoiceOption("build.gradle.kts", "build.gradle.kts"),
+                ),
+            ),
+            event,
+        )
+    }
+
+    @Test
+    fun `choice prompt still reads bare strings`() {
+        val event = parse(
+            "choice_prompt",
+            """{"id":"choice_1","question":"Quel fichier ?","options":["a","b"],"targetId":"s"}""",
+        )
+        assertEquals(
+            ChatEvent.ChoicePrompt("choice_1", "Quel fichier ?", listOf(ChoiceOption("a"), ChoiceOption("b"))),
+            event,
+        )
+        assertEquals(null, (event as ChatEvent.ChoicePrompt).options[0].label)
+    }
+
+    @Test
+    fun `choice prompt drops options without a value`() {
+        val event = parse(
+            "choice_prompt",
+            """{"id":"choice_1","question":"Quel fichier ?","options":[{"value":""},{"label":"x"},{"value":"a","label":"A"}],"targetId":"s"}""",
+        )
+        assertEquals(listOf(ChoiceOption("a", "A")), (event as ChatEvent.ChoicePrompt).options)
+    }
+
+    @Test
+    fun `choice prompt never invents an option`() {
+        val empty = parse("choice_prompt", """{"id":"c","question":"Quel fichier ?","options":[]}""")
+        assertEquals(emptyList<ChoiceOption>(), (empty as ChatEvent.ChoicePrompt).options)
+
+        val missing = parse("choice_prompt", """{"id":"c","question":"Quel fichier ?"}""")
+        assertEquals(emptyList<ChoiceOption>(), (missing as ChatEvent.ChoicePrompt).options)
+    }
+
+    @Test
+    fun `choice options are deduplicated by value and capped at eight`() {
+        val duplicate = parse(
+            "choice_prompt",
+            """{"id":"c","question":"q","options":[{"value":"a","label":"first"},{"value":"a","label":"second"},"b"]}""",
+        )
+        assertEquals(
+            listOf(ChoiceOption("a", "first"), ChoiceOption("b")),
+            (duplicate as ChatEvent.ChoicePrompt).options,
+        )
+
+        val many = (1..12).joinToString(",") { """{"value":"v$it","label":"V$it"}""" }
+        val capped = parse("choice_prompt", """{"id":"c","question":"q","options":[$many]}""")
+        assertEquals(
+            listOf("v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8"),
+            (capped as ChatEvent.ChoicePrompt).options.map { it.value },
         )
     }
 

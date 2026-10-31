@@ -1,6 +1,8 @@
 package io.github.tournierjc.mercury.data.dto
 
 import io.github.tournierjc.mercury.data.MillisSerializer
+import io.github.tournierjc.mercury.data.WireTime
+import io.github.tournierjc.mercury.data.WireTimeSerializer
 import kotlinx.serialization.Serializable
 
 /**
@@ -85,7 +87,14 @@ data class TraceStepDto(
     val task: Boolean = false,
 )
 
-/** `GET /api/bots/:id/runs/:runId` — `{record, prompt, output, trace}`. */
+/**
+ * `GET /api/bots/:id/runs/:runId` — `{record, prompt, output, trace, timestamp}`.
+ *
+ * `timestamp` is the exchange's own date, epoch milliseconds (SPECS/115 §5 bis, same field name
+ * and shape as `/api/chat/history`). It is optional and additive: on a daemon that does not date
+ * transcripts yet the key is simply absent, and the two bubbles of that exchange are then drawn
+ * without any hour rather than borrowing the run's clock.
+ */
 @Serializable
 data class RunTranscriptDto(
     val record: BotRunDto = BotRunDto(),
@@ -93,6 +102,8 @@ data class RunTranscriptDto(
     val output: String = "",
     val trace: List<TraceStepDto> = emptyList(),
     val error: String = "",
+    @Serializable(with = WireTimeSerializer::class)
+    val timestamp: WireTime? = WireTime.Absent,
 )
 
 /** A dead-lettered job (`DurableBotJob`): what failed and how many times. */

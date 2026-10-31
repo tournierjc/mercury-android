@@ -15,12 +15,20 @@ data class ThreadDto(
 @Serializable
 data class ThreadsResponse(val threads: List<ThreadDto> = emptyList())
 
+/**
+ * One stored message of a thread, as `GET /api/chat/threads/:id` serves it.
+ *
+ * `timestamp` is the message's own date, epoch milliseconds per SPECS/115 §5 bis — read through
+ * [TimestampSerializer], which also accepts the ISO string `chat.ts` `toThread` still sends. It
+ * is optional: a message the daemon did not date gets no hour under its bubble.
+ */
 @Serializable
 data class MessageDto(
     val role: String = "assistant",
     val kind: String? = null,
     val content: String = "",
-    val timestamp: String = "",
+    @Serializable(with = TimestampSerializer::class)
+    val timestamp: Long? = null,
 )
 
 @Serializable

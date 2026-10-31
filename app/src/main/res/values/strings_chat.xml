@@ -18,6 +18,9 @@
     <string name="chat_voice_unavailable">Dictée indisponible sur cet appareil</string>
     <string name="chat_mic_denied">Micro refusé — autorise l\'accès dans les réglages</string>
     <string name="chat_remove_attachment">Retirer %1$s</string>
+    <!-- État du tour, sous la bulle : le message n'a pas atteint le daemon. Aucune relance
+         n'existe côté app, donc la phrase ne promet rien de tel. -->
+    <string name="chat_message_non_envoye">Message non envoyé.</string>
 
     <!-- Actions sur un message -->
     <string name="chat_done">Terminé</string>

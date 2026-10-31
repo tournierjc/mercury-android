@@ -151,6 +151,7 @@
     <string name="perm_footnote_continue">A loop was detected: keep going or stop here.</string>
     <string name="perm_footnote_choice">Answer to unblock the agent.</string>
     <string name="perm_footnote_mode">You can change your mind at any time in settings.</string>
+    <string name="perm_no_options">No option is offered: this request cannot be decided here.</string>
     <string name="perm_action_allow">Allow</string>
     <string name="perm_action_always">Always</string>
     <string name="perm_action_deny">Deny</string>

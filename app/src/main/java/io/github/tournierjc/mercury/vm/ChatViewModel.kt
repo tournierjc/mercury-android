@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
 import io.github.tournierjc.mercury.data.Attachments
 import io.github.tournierjc.mercury.data.AuthException
+import io.github.tournierjc.mercury.data.ChatEvent
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.data.ChatReducer
 import io.github.tournierjc.mercury.data.Notice
@@ -17,7 +18,10 @@ import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.MercuryApi
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.ThreadDto
+import io.github.tournierjc.mercury.data.historyMessages
+import io.github.tournierjc.mercury.data.lastReplyTime
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -158,10 +162,19 @@ class ChatViewModel(
         // A photo with no caption still shows as a turn: name what travels rather than count it,
         // so the bubble needs no sentence (and no translation).
         val shown = trimmed.ifBlank { files.joinToString(" · ") { it.name } }
-        _state.update { ChatReducer.addUserMessage(it, shown) }
+        // The bubble written here is the only place a send failure can be read later: keep its id
+        // so the answer of POST /api/chat lands on this very turn, never on the next one.
+        var turnId = ""
+        _state.update { current ->
+            val next = ChatReducer.addUserMessage(current, shown)
+            turnId = next.messages.last().id
+            next
+        }
         viewModelScope.launch {
             try {
                 val sessionId = api.send(trimmed, _state.value.sessionId, files.map { it.toUpload() })
+                // A 2xx means the daemon took the turn, session id or not.
+                _state.update { ChatReducer.markUserSent(it, turnId) }
                 if (sessionId != null) {
                     _attachments.value = emptyList()
                     _state.update { it.copy(sessionId = sessionId) }
@@ -172,10 +185,12 @@ class ChatViewModel(
                 }
             } catch (e: AuthException) {
                 _signedIn.value = false
+                _state.update { ChatReducer.markUserFailed(it, turnId) }
                 _state.update { ChatReducer.setError(it, e.toNotice()) }
             } catch (e: Exception) {
                 // "Envoi impossible" alone told the owner nothing and hid a null message.
                 // Name the failure instead of guessing: the class, and the message if any.
+                _state.update { ChatReducer.markUserFailed(it, turnId) }
                 val reason = e.message?.takeIf { it.isNotBlank() } ?: e::class.simpleName
                 _state.update { ChatReducer.setError(it, Notice(NoticeKey.SEND_FAILED).withDetail(reason)) }
             }
@@ -211,13 +226,7 @@ class ChatViewModel(
             runCatching { api.threadMessages(thread.id) }
                 .onSuccess { messages ->
                     _state.update { current ->
-                        current.copy(messages = messages.mapIndexed { index, dto ->
-                            ChatMessage(
-                                id = "history-$index",
-                                role = if (dto.role == "user") ChatMessage.Role.User else ChatMessage.Role.Assistant,
-                                text = dto.content,
-                            )
-                        })
+                        current.copy(messages = historyMessages(messages))
                     }
                     ensureEvents(thread.id)
                 }
@@ -256,6 +265,35 @@ class ChatViewModel(
         eventsJob = viewModelScope.launch {
             api.events(sessionId).collect { event ->
                 _state.update { ChatReducer.onEvent(it, event) }
+                // The stream dates nothing: a finished turn reads its hour off the stored thread.
+                if (event is ChatEvent.TextDone) stampReplyFromThread(sessionId)
+            }
+        }
+    }
+
+    /**
+     * Dates the reply the daemon has just finished.
+     *
+     * `text_done` carries no instant and the phone's clock is not a source (SPECS/115 §3.4), so the
+     * date is read back off the thread: the daemon writes the turn when it ends, making the reply
+     * its last message. That write can land a moment after the event, hence the bounded retries —
+     * and when it never lands the bubble simply stays undated, which is the rule for a message
+     * with no date.
+     */
+    private fun stampReplyFromThread(sessionId: String?) {
+        if (sessionId == null) return
+        val replyId = _state.value.messages
+            .lastOrNull { it.role == ChatMessage.Role.Assistant }
+            ?.id
+            ?: return
+        viewModelScope.launch {
+            repeat(STAMP_ATTEMPTS) { attempt ->
+                val at = runCatching { api.threadMessages(sessionId).lastReplyTime() }.getOrNull()
+                if (at != null) {
+                    _state.update { ChatReducer.stampAssistantAt(it, replyId, at) }
+                    return@launch
+                }
+                if (attempt < STAMP_ATTEMPTS - 1) delay(STAMP_RETRY_MS)
             }
         }
     }
@@ -266,6 +304,14 @@ class ChatViewModel(
     }
 
     companion object {
+        /**
+         * How long the view waits for the daemon to store the finished turn: four looks, 300 ms
+         * apart. Enough to cover the write that follows `text_done`, short enough that a missing
+         * date never holds the screen.
+         */
+        private const val STAMP_ATTEMPTS = 4
+        private const val STAMP_RETRY_MS = 300L
+
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer { ChatViewModel(container.api, container) }
         }

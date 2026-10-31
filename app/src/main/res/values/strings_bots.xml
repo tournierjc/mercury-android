@@ -151,6 +151,7 @@
     <string name="perm_footnote_continue">Une boucle a été détectée : continue ou arrête ici.</string>
     <string name="perm_footnote_choice">Réponds pour débloquer l\'agent.</string>
     <string name="perm_footnote_mode">Tu peux changer d\'avis à tout moment dans les réglages.</string>
+    <string name="perm_no_options">Aucune option n\'est proposée : cette demande ne peut pas être tranchée ici.</string>
     <string name="perm_action_allow">Autoriser</string>
     <string name="perm_action_always">Toujours</string>
     <string name="perm_action_deny">Refuser</string>
