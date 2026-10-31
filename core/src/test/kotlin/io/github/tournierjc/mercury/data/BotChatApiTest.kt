@@ -19,15 +19,26 @@ class BotChatApiTest {
 
     private val paths = mutableListOf<String>()
 
-    private fun api(): MercuryApi {
+    /**
+     * A daemon that has one route and not the other: `codes` says which answer each path gets,
+     * so a test can lay down the 404 a released daemon answers on `/chat`.
+     */
+    private fun api(codes: Map<String, Int> = emptyMap()): MercuryApi {
         val client = OkHttpClient.Builder().addInterceptor { chain ->
             paths += chain.request().url.encodedPath
+            val code = codes[chain.request().url.encodedPath] ?: 202
+            val body = when (code) {
+                202 -> """{"accepted":true,"jobId":"job-1","status":"accepted"}"""
+                // A refusal the daemon words itself: the client must surface it, not replace it.
+                409 -> """{"accepted":false,"reasonCode":"target_busy"}"""
+                else -> """{"error":"Not Found"}"""
+            }
             Response.Builder()
                 .request(chain.request())
                 .protocol(Protocol.HTTP_1_1)
-                .code(202)
-                .message("Accepted")
-                .body("""{"accepted":true,"jobId":"job-1","status":"accepted"}""".toResponseBody("application/json".toMediaType()))
+                .code(code)
+                .message(if (code == 202) "Accepted" else "Not Found")
+                .body(body.toResponseBody("application/json".toMediaType()))
                 .build()
         }.build()
         return MercuryApi(client).apply { restoreBaseUrl("http://127.0.0.1:6181") }
@@ -46,5 +57,27 @@ class BotChatApiTest {
         api().dispatchBot("atelier", "écris un fichier")
 
         assertEquals(listOf("/api/bots/atelier/message"), paths)
+    }
+
+    // A daemon older than the `/chat` route answers 404. The conversation must not die on a route
+    // the server does not have: the message goes through `/message`, and the owner still gets an
+    // answer instead of "HTTP 404" written under the question.
+    @Test
+    fun `a daemon without the chat route still takes the message`() = runBlocking {
+        val result = api(mapOf("/api/bots/atelier/chat" to 404)).chatWithBot("atelier", "et le graphe ?")
+
+        assertEquals(true, result.accepted)
+        assertEquals(listOf("/api/bots/atelier/chat", "/api/bots/atelier/message"), paths)
+    }
+
+    // Only a missing route falls back. A 409 (busy, paused) is the daemon answering about this
+    // bot, and retrying on the other register would send the same question twice.
+    @Test
+    fun `a refusal is not a missing route`() = runBlocking {
+        val result = api(mapOf("/api/bots/atelier/chat" to 409)).chatWithBot("atelier", "et le graphe ?")
+
+        assertEquals(false, result.accepted)
+        assertEquals("target_busy", result.reasonCode)
+        assertEquals(listOf("/api/bots/atelier/chat"), paths)
     }
 }

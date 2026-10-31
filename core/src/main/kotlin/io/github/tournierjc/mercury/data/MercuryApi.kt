@@ -338,18 +338,33 @@ class MercuryApi(
                     )
                 }
             }.toString()
-            val request = Request.Builder()
-                .url(url("/api/bots/${encode(id)}/${if (chat) "chat" else "message"}"))
-                .post(payload.toRequestBody(jsonMedia))
-                .build()
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (response.code == 401 || response.code == 403) throw AuthException("session expired")
-                runCatching { json.decodeFromString(BotDispatch.serializer(), body) }.getOrNull()
-                    ?: BotDispatch(accepted = false, reasonCode = if (body.isBlank()) "HTTP ${response.code}" else body.take(120))
+            // Two registers, one message: `/chat` answers the owner in the conversation, `/message`
+            // runs the turn as a delivery task. A daemon older than the `/chat` route answers 404 —
+            // and a conversation must not die on a route the server does not have, so the same
+            // message goes through `/message`. Only a 404 falls back: a 409 (busy, paused) or a 401
+            // is a real answer about this bot, not a route that is missing.
+            val registers = if (chat) listOf("chat", "message") else listOf("message")
+            var last: BotDispatch? = null
+            for ((index, register) in registers.withIndex()) {
+                val request = Request.Builder()
+                    .url(url("/api/bots/${encode(id)}/$register"))
+                    .post(payload.toRequestBody(jsonMedia))
+                    .build()
+                val parsed = client.newCall(request).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+                    if (response.code == 404 && index < registers.lastIndex) {
+                        null // no such route here: try the other register
+                    } else {
+                        runCatching { json.decodeFromString(BotDispatch.serializer(), body) }.getOrNull()
+                            ?: BotDispatch(accepted = false, reasonCode = if (body.isBlank()) "HTTP ${response.code}" else body.take(120))
+                    }
+                }
+                if (parsed != null) return@withContext parsed
+                last = BotDispatch(accepted = false, reasonCode = "HTTP 404")
             }
+            last ?: BotDispatch(accepted = false, reasonCode = "HTTP 404")
         }
-
     suspend fun botPersona(id: String): JsonObject =
         getDecoded("/api/bots/${encode(id)}/persona", JsonObject.serializer())
 
