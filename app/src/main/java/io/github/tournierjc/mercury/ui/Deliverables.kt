@@ -850,8 +850,12 @@ fun BotDeliverablesSheet(
         containerColor = colors.canvas,
     ) {
         Column(
+            // The sheet does not scroll its own content: a folder of thirty files ran past the
+            // bottom of the screen with no way to reach the rest, because the column was measured
+            // with the sheet's bounded height and nothing carried the drag. The scroll belongs here.
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 28.dp),
         ) {
