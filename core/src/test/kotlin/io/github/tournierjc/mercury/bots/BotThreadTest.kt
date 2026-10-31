@@ -1,6 +1,7 @@
 package io.github.tournierjc.mercury.bots
 
 import io.github.tournierjc.mercury.data.dto.BotRunDto
+import io.github.tournierjc.mercury.data.dto.TraceStepDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -175,5 +176,25 @@ class BotThreadTest {
 
         assertEquals(1, messages.size)
         assertFalse(messages[0].streaming)
+    }
+
+    @Test
+    fun `the turn's tool calls ride the answer bubble, in order`() {
+        val trace = listOf(
+            TraceStepDto(name = "read_file", ok = true, arg = "src/a.kt"),
+            TraceStepDto(name = "run_command", ok = false, arg = "gradlew :core:test"),
+            TraceStepDto(name = "bot_deliver", ok = true, arg = "rapport.md"),
+        )
+        val messages = BotThread.build(
+            listOf(run("a", 1_000, summary = "fait")),
+            mapOf("a" to "question"),
+            traces = mapOf("a" to trace),
+        )
+
+        val answer = messages.last { it.fromBot }
+        assertEquals(3, answer.steps.size)
+        assertEquals(listOf("read_file", "run_command", "bot_deliver"), answer.steps.map { it.tool })
+        assertEquals("\u2717 run_command", answer.steps[1].label)
+        assertEquals("gradlew :core:test", answer.steps[1].summary)
     }
 }
