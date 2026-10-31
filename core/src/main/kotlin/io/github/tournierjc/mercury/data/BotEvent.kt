@@ -33,6 +33,15 @@ sealed interface BotEvent {
         val reasoningTail: String = "",
         /** Present on `thinking`/`turn-end`: the tail of the visible answer. */
         val textTail: String = "",
+        /**
+         * What put this turn in the queue: `chat` (the owner wrote in the app), `cron` (a scheduled
+         * routine), `mailbox` (another bot handed work over)…
+         *
+         * Empty from a daemon that predates it, which the notification policy reads as "unknown".
+         */
+        val trigger: String = "",
+        /** `chat` answers the owner; `work` delivers. */
+        val mode: String = "",
     ) : BotEvent
 
     data class Notice(val message: String) : BotEvent
@@ -67,6 +76,8 @@ sealed interface BotEvent {
                     elapsedMs = long(payload["elapsedMs"]),
                     reasoningTail = text(payload, "reasoningTail"),
                     textTail = text(payload, "textTail"),
+                    trigger = text(payload, "trigger"),
+                    mode = text(payload, "mode"),
                 )
                 "bot_notice" -> Notice(text(payload, "message"))
                 else -> Unknown(type.orEmpty())

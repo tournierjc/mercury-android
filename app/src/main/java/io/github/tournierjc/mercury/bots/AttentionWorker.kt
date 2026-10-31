@@ -48,7 +48,9 @@ class AttentionWorker(
         // sinon le silence des messages serait rompu par les alertes.
         val alerts = BotJson.currentAttention(roster.bots).filter { attention ->
             val bot = roster.bots.firstOrNull { BotJson.id(it) == attention.botId }
-            BotNotifyPolicy.rings(isLead = BotJson.isLead(bot), spokenTo = memory.spokenTo(attention.botId))
+            // Une question posée par un bot n'est pas un tour de travail : elle attend une
+            // réponse, quel que soit l'équipier. La règle d'origine ne s'applique donc pas ici.
+            BotNotifyPolicy.rings(trigger = "", isLead = BotJson.isLead(bot), spokenTo = memory.spokenTo(attention.botId))
         }
         val keys = alerts.associate { BotJson.attentionKey(it) to it }
         val seen = prefs.seenKeys

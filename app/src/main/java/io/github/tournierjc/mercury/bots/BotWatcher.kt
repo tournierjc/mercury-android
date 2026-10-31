@@ -114,10 +114,11 @@ class BotWatcher(
                                 val finished = event.kind == "turn-end" || event.kind == "turn-end-error"
                                 if (finished && event.textTail.isNotBlank()) {
                                     val bot = _state.value.bots.firstOrNull { BotJson.id(it) == event.botId }
-                                    // A fleet job runs one turn per teammate; ringing for each of
-                                    // them is the same news six times, and the owner ends up
-                                    // muting the app. The lead speaks for its crew.
+                                    // What caused the turn decides, not who the bot is: a direct
+                                    // message and a scheduled result always ring, a fleet run only
+                                    // through its lead.
                                     val rings = BotNotifyPolicy.shouldPost(
+                                        trigger = event.trigger,
                                         isLead = BotJson.isLead(bot),
                                         spokenTo = memory?.spokenTo(event.botId) ?: false,
                                         foreground = AppVisibility.foreground,

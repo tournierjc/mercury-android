@@ -3,29 +3,53 @@ package io.github.tournierjc.mercury.bots
 /**
  * Qui a le droit de faire sonner le téléphone.
  *
- * Un job de flotte produit un tour par équipier : prévenir de chacun, c'est recevoir six fois la
- * même nouvelle, et le propriétaire finit par couper les notifications — c'est-à-dire par perdre
- * aussi celles qui comptaient. Le **leader** est donc la voix d'une flotte : c'est lui qui rend
- * compte du travail de son équipe, dans le fil du job.
+ * La règle d'avant était une propriété du bot — « est-il leader ? lui ai-je déjà parlé ? » — et
+ * c'est ce qui n'allait pas : « lui ai-je déjà parlé » ne se périme jamais, donc un équipier à qui
+ * l'owner avait écrit une fois sonnait pour toutes ses tâches, y compris celles qu'un job de flotte
+ * venait de lui confier. Six équipiers, six sonneries pour une seule nouvelle.
  *
- * Un équipier qui n'est pas leader sonne pour une seule raison : le propriétaire lui a parlé. Une
- * conversation est un abonnement — elle survit à la fermeture de l'app (elle est mémorisée côté
- * téléphone), donc la réponse attendue arrive bien sur le téléphone même si l'app est tuée.
+ * La question n'est pas qui est ce bot, mais **qu'est-ce qui a produit ce tour** :
  *
- * Ce que le propriétaire a sous les yeux ne sonne pas : lire un fil est déjà la notification.
+ *  - `chat` : l'owner vient de lui écrire dans l'app — la réponse est attendue, elle sonne ;
+ *  - `cron` : une routine planifiée a rendu son résultat — c'est un livrable, il sonne ;
+ *  - sinon (`mailbox`, `api`, `web`…), c'est un tour de travail : il ne sonne que si le bot est le
+ *    **leader**, parce que c'est lui qui rend compte d'une mission demandée à sa flotte.
+ *
+ * Un daemon antérieur à ce champ n'envoie pas d'origine : on retombe alors sur l'ancienne règle,
+ * plutôt que de faire taire des nouvelles qu'on ne sait pas classer.
+ *
+ * Ce que l'owner a sous les yeux ne sonne pas : lire un fil est déjà la notification.
  */
 object BotNotifyPolicy {
 
-    /** La règle de fond : le leader, ou un bot auquel on a parlé. */
-    fun rings(isLead: Boolean, spokenTo: Boolean): Boolean = isLead || spokenTo
+    /**
+     * La règle de fond.
+     *
+     * @param trigger l'origine du tour (`chat`, `cron`, `mailbox`…), vide si le daemon ne la dit pas
+     * @param isLead  ce bot mène une flotte (`fleetRole == "lead"`)
+     * @param spokenTo l'owner lui a déjà écrit depuis ce téléphone — secours seul, quand l'origine
+     *   manque
+     */
+    fun rings(trigger: String, isLead: Boolean, spokenTo: Boolean): Boolean = when (trigger) {
+        // Une conversation : la réponse à ce qu'il vient d'écrire.
+        "chat" -> true
+        // Une routine planifiée : son résultat est un livrable, même d'un simple équipier.
+        "cron" -> true
+        // Un tour de travail venu d'une mission : le leader en est la voix.
+        "mailbox", "api", "web", "cloud", "telegram" -> isLead
+        // Origine inconnue (daemon plus ancien) : ne rien faire taire par ignorance.
+        else -> isLead || spokenTo
+    }
 
     /**
-     * @param isLead      ce bot mène une flotte (`fleetRole == "lead"`)
-     * @param spokenTo    le propriétaire lui a déjà écrit depuis ce téléphone
+     * @param trigger     l'origine du tour
+     * @param isLead      ce bot mène une flotte
+     * @param spokenTo    l'owner lui a déjà écrit depuis ce téléphone
      * @param foreground  l'app est au premier plan
      * @param openBotId   le fil ouvert à l'écran, s'il y en a un
      */
     fun shouldPost(
+        trigger: String,
         isLead: Boolean,
         spokenTo: Boolean,
         foreground: Boolean,
@@ -33,6 +57,6 @@ object BotNotifyPolicy {
         botId: String,
     ): Boolean {
         if (foreground && openBotId == botId) return false
-        return rings(isLead, spokenTo)
+        return rings(trigger, isLead, spokenTo)
     }
 }
