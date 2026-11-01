@@ -374,6 +374,8 @@ private fun PreviewPanel(preview: WorkspacePreview, onClose: () -> Unit) {
 private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: WorkspaceViewModel) {
     val colors = LocalMercuryColors.current
     var line by remember { mutableStateOf("") }
+    // Clearing the transcript throws away the only record of what ran: the glyph asks first.
+    var confirmClear by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
     // The field has no visible label — the `$` is the label. Screen readers still need a name.
     val commandLabel = stringResource(R.string.workspace_terminal_commande)
@@ -456,7 +458,7 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
             // Clearing the transcript is a destructive act: it keeps the danger colour and sits
             // right where the hand already is, instead of a bar of its own under the terminal.
             IconButton(
-                onClick = viewModel::clearTerminal,
+                onClick = { confirmClear = true },
                 enabled = state.commands.isNotEmpty() && !state.busy,
                 modifier = Modifier.size(34.dp),
             ) {
@@ -521,13 +523,11 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.extraSmall)
                         .background(colors.surface)
-                        .clickable(enabled = !state.busy) {
-                            if (isDestructiveCommand(command)) {
-                                pendingDestructive = command
-                            } else {
-                                send(command)
-                            }
-                        }
+                        // A past command is offered back, not re-run: a long or destructive line is
+                        // one mis-tap away from executing itself, so the chip fills the field and
+                        // the send button stays the only thing that runs it — and the destructive
+                        // gate in :core still asks before that send leaves the phone.
+                        .clickable(enabled = !state.busy) { line = command }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
@@ -562,6 +562,34 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
             },
             dismissButton = {
                 TextButton(onClick = { pendingDestructive = null }) {
+                    Text(stringResource(R.string.workspace_annuler), color = colors.textSecondary)
+                }
+            },
+        )
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.workspace_terminal_effacer_titre), color = colors.textPrimary) },
+            text = {
+                Text(
+                    text = stringResource(R.string.workspace_terminal_effacer_corps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    viewModel.clearTerminal()
+                }) {
+                    Text(stringResource(R.string.workspace_terminal_effacer), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClear = false }) {
                     Text(stringResource(R.string.workspace_annuler), color = colors.textSecondary)
                 }
             },

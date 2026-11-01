@@ -89,6 +89,9 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
     var showLanguagePicker by remember { mutableStateOf(false) }
     // The provider itself, not its name: the pin dialog opens on the pin already stored.
     var editingProvider by remember { mutableStateOf<ProviderDto?>(null) }
+    // Revoking the server session signs the phone out — the one account row that does not ask
+    // for a current password, so the dialog is where the tap says what is about to be lost.
+    var confirmRevoke by remember { mutableStateOf(false) }
     // The host address used to be asked once, at first launch, and never again: following the
     // server to another machine meant wiping the app. It now lives with the account rows.
     var showServerDialog by remember { mutableStateOf(false) }
@@ -458,7 +461,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
                 ActionRow(
                     title = stringResource(R.string.settings_account_revoke),
                     subtitle = stringResource(R.string.settings_account_revoke_hint),
-                    onClick = { viewModel.logoutServer() },
+                    onClick = { confirmRevoke = true },
                 )
             }
 
@@ -569,6 +572,34 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
         )
 
         null -> Unit
+    }
+
+    if (confirmRevoke) {
+        AlertDialog(
+            onDismissRequest = { confirmRevoke = false },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.settings_revoke_titre), color = colors.textPrimary) },
+            text = {
+                Text(
+                    text = stringResource(R.string.settings_revoke_corps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRevoke = false
+                    viewModel.logoutServer()
+                }) {
+                    Text(stringResource(R.string.settings_revoke_action), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRevoke = false }) {
+                    Text(stringResource(R.string.settings_cancel), color = colors.textSecondary)
+                }
+            },
+        )
     }
 }
 

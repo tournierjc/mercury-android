@@ -320,6 +320,8 @@ internal fun MemoryRow(memory: MemoryDto, deleteLabel: String, onForget: () -> U
 @Composable
 private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorrect: (String) -> Unit) {
     val colors = LocalMercuryColors.current
+    // Forgetting a belief retires a claim the brain may act from: the bin asks, like a memory's.
+    var forgetting by remember { mutableStateOf<BeliefDto?>(null) }
     CollapsibleSection(stringResource(R.string.memory_croyances), defaultOpen = true) {
         if (state.beliefs.isEmpty()) {
             Text(
@@ -385,7 +387,7 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                             modifier = Modifier.size(19.dp),
                         )
                     }
-                    IconButton(onClick = { viewModel.forgetBelief(belief.id) }, modifier = Modifier.size(38.dp)) {
+                    IconButton(onClick = { forgetting = belief }, modifier = Modifier.size(38.dp)) {
                         Icon(
                             Icons.Rounded.DeleteOutline,
                             contentDescription = stringResource(R.string.memory_oublier_croyance),
@@ -396,6 +398,28 @@ private fun BeliefsTab(state: MemoryUiState, viewModel: MemoryViewModel, onCorre
                 }
             }
         }
+    }
+
+    forgetting?.let { belief ->
+        AlertDialog(
+            onDismissRequest = { forgetting = null },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.memory_oublier_croyance_titre), color = colors.textPrimary) },
+            text = { Text(belief.statement, color = colors.textSecondary, maxLines = 3) },
+            confirmButton = {
+                TextButton(onClick = {
+                    forgetting = null
+                    viewModel.forgetBelief(belief.id)
+                }) {
+                    Text(stringResource(R.string.memory_oublier_croyance), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { forgetting = null }) {
+                    Text(stringResource(R.string.memory_forget_cancel), color = colors.textSecondary)
+                }
+            },
+        )
     }
 }
 

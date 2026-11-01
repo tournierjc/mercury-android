@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.ViewKanban
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -38,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -145,6 +147,9 @@ internal fun BoardCard(
     val description = BoardJson.description(board).trim()
     val cards = BoardJson.intField(board, "cardCount", "totalCards")
         ?: BoardJson.cards(board).size
+    // Deleting a board takes every card with it: the bin asks, the way memories and deliverables
+    // already do on this phone.
+    var confirmingDelete by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -165,11 +170,11 @@ internal fun BoardCard(
                 modifier = Modifier.weight(1f),
             )
             ActivePill(active = active, onClick = { onToggleActive(!active) })
-            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = { confirmingDelete = true }, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
                     contentDescription = stringResource(R.string.boards_supprimer),
-                    tint = colors.textSecondary,
+                    tint = colors.danger,
                     modifier = Modifier.size(17.dp),
                 )
             }
@@ -195,6 +200,42 @@ internal fun BoardCard(
             )
             BoardAge(board)
         }
+    }
+
+    if (confirmingDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            containerColor = colors.surface,
+            title = {
+                Text(
+                    text = stringResource(
+                        R.string.boards_supprimer_titre,
+                        BoardJson.title(board).ifBlank { stringResource(R.string.boards_titre_plateau) },
+                    ),
+                    color = colors.textPrimary,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.boards_supprimer_corps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingDelete = false
+                    onDelete()
+                }) {
+                    Text(stringResource(R.string.boards_supprimer), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingDelete = false }) {
+                    Text(stringResource(R.string.boards_annuler), color = colors.textSecondary)
+                }
+            },
+        )
     }
 }
 

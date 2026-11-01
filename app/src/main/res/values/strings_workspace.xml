@@ -32,10 +32,12 @@
     <string name="workspace_terminal_code">code %1$d</string>
     <string name="workspace_terminal_echec">Échec de la requête</string>
     <string name="workspace_terminal_historique">Historique</string>
-    <string name="workspace_terminal_relancer">Toucher pour relancer</string>
+    <string name="workspace_terminal_relancer">Toucher pour rappeler</string>
     <string name="workspace_terminal_effacer">Effacer</string>
     <string name="workspace_terminal_destructive_titre">Commande risquée</string>
     <string name="workspace_terminal_destructive_corps">« %1$s » peut détruire des données ou arrêter un service sur l\'hôte.</string>
+    <string name="workspace_terminal_effacer_titre">Effacer le terminal ?</string>
+    <string name="workspace_terminal_effacer_corps">L\'historique des commandes et leurs sorties seront perdus.</string>
 
     <!-- Git -->
     <string name="workspace_git_aucun_depot">Aucun dépôt git dans cet espace de travail.</string>

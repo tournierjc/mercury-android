@@ -48,6 +48,9 @@
     <string name="settings_account_password_hint">The current password is required</string>
     <string name="settings_account_revoke">Revoke the server session</string>
     <string name="settings_account_revoke_hint">Signs out the other tabs too</string>
+    <string name="settings_revoke_titre">Revoke the server session?</string>
+    <string name="settings_revoke_corps">You will be signed out here and in the other tabs. Sign-in will be needed again.</string>
+    <string name="settings_revoke_action">Revoke</string>
     <string name="settings_chat_model">Conversation model</string>
     <string name="settings_close">Close</string>
     <string name="settings_save">Save</string>

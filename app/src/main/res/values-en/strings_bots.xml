@@ -21,6 +21,8 @@
     <string name="bots_action_overwrite">Overwrite</string>
     <string name="bots_action_overwrite_on">Overwrite: yes</string>
     <string name="bots_fleet_import_hint">An imported bundle starts disabled: the fleet spends nothing until you turn it on.</string>
+    <string name="bots_fleet_overwrite_titre">Import with overwrite?</string>
+    <string name="bots_fleet_overwrite_corps">The bundle\'s bots replace the ones sharing their id: their profile, history and working files are lost.</string>
     <string name="bots_fleet_no_lead">No fleet lead. A lead spawns its specialists from its own sheet.</string>
     <string name="bots_role_fleet_lead">fleet lead</string>
     <string name="bots_crew_running">%1$d running</string>
@@ -53,6 +55,9 @@
     <string name="bots_action_share">Share</string>
     <string name="bots_action_delete">Delete</string>
     <string name="bots_action_remove_photo">No photo</string>
+    <string name="bots_photo_remove_titre">Remove the photo?</string>
+    <string name="bots_photo_remove_corps">The bot goes back to its monogram across the roster screens.</string>
+    <string name="bots_photo_remove_action">Remove</string>
     <string name="bots_bundle_hint">The bundle carries identity, persona, permissions and skills — never secrets or the journal. A fleet lead exports its whole crew.</string>
 
     <!-- BotsScreen: write to a bot -->
