@@ -3,21 +3,19 @@ package io.github.tournierjc.mercury.data
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
-import io.github.tournierjc.mercury.data.dto.AgentsResponse
 import io.github.tournierjc.mercury.data.dto.AddMemoryRequest
 import io.github.tournierjc.mercury.data.dto.BeliefGraphDto
 import io.github.tournierjc.mercury.data.dto.BeliefsPage
-import io.github.tournierjc.mercury.data.dto.BgResponse
 import io.github.tournierjc.mercury.data.dto.BotDispatch
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.data.dto.TerminalResult
 import io.github.tournierjc.mercury.data.dto.BotDetailDto
-import io.github.tournierjc.mercury.data.dto.BotJournalPage
 import io.github.tournierjc.mercury.data.dto.BotOutputsPage
 import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.BotRunsPage
@@ -31,8 +29,6 @@ import io.github.tournierjc.mercury.data.dto.DlqReplay
 import io.github.tournierjc.mercury.data.dto.OutputPreviewDto
 import io.github.tournierjc.mercury.data.dto.RunRecordPage
 import io.github.tournierjc.mercury.data.dto.RunTranscriptDto
-import io.github.tournierjc.mercury.data.dto.CreateBotRequest
-import io.github.tournierjc.mercury.data.dto.UpdateBotRequest
 import io.github.tournierjc.mercury.data.dto.InstanceConfig
 import io.github.tournierjc.mercury.data.dto.InstanceConfigSave
 import io.github.tournierjc.mercury.data.dto.BrainStatusDto
@@ -156,13 +152,17 @@ class MercuryApi(
         withContext(Dispatchers.IO) {
             noRedirectClient.newCall(request).execute().use { response ->
                 when {
-                    response.code in 200..399 -> Unit
                     response.code == 401 || response.code == 403 ->
                         throw CredentialsRefusedException("sign-in refused")
 
-                    else -> throw MercuryException("connect: HTTP ${response.code}")
+                    response.code !in 200..399 -> throw MercuryException("connect: HTTP ${response.code}")
                 }
             }
+        }
+        // A redirect can land on an error page instead of the cookie: without this
+        // check the sign-in would look accepted and fail later, far from its cause.
+        if (sessionJar?.hasSessionCookie() == false) {
+            throw MercuryException("connect: no session cookie")
         }
         baseUrl = normalized
     }
@@ -356,12 +356,18 @@ class MercuryApi(
                     .build()
                 val parsed = client.newCall(request).execute().use { response ->
                     val body = response.body?.string().orEmpty()
-                    if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+                    if (response.code == 401) throw AuthException("session expired")
                     if (response.code == 404 && index < registers.lastIndex) {
                         null // no such route here: try the other register
                     } else {
+                        // A 403 or 409 is an answer about this bot (refused, busy, paused):
+                        // it is decoded or shown, not turned into a lost session.
                         runCatching { json.decodeFromString(BotDispatch.serializer(), body) }.getOrNull()
-                            ?: BotDispatch(accepted = false, reasonCode = if (body.isBlank()) "HTTP ${response.code}" else body.take(120))
+                            ?: BotDispatch(
+                                accepted = false,
+                                reasonCode = apiError(body)
+                                    ?: if (body.isBlank()) "HTTP ${response.code}" else body.take(120),
+                            )
                     }
                 }
                 if (parsed != null) return@withContext parsed
@@ -401,18 +407,19 @@ class MercuryApi(
             try {
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
-                        throw if (response.code == 401) {
-                            AuthException("session expired")
-                        } else {
-                            MercuryException("crew stream: HTTP ${response.code}")
-                        }
+                        val text = response.body?.string().orEmpty()
+                        if (response.code == 401) throw AuthException("session expired")
+                        throw MercuryException(
+                            "crew stream: HTTP ${response.code}" +
+                                apiError(text)?.let { ": $it" }.orEmpty(),
+                        )
                     }
                     val source = response.body?.source() ?: run { close(); return@use }
                     val parser = SseParser()
                     while (!source.exhausted()) {
                         val line = source.readUtf8Line() ?: break
                         for (raw in parser.feed(line + "\n")) {
-                            trySend(BotEvent.parse(raw.type, raw.data))
+                            trySendBlocking(BotEvent.parse(raw.type, raw.data))
                         }
                     }
                 }
@@ -441,18 +448,19 @@ class MercuryApi(
             try {
                 call.execute().use { response ->
                     if (!response.isSuccessful) {
-                        throw if (response.code == 401 || response.code == 403) {
-                            AuthException("session expired")
-                        } else {
-                            MercuryException("board stream: HTTP ${response.code}")
-                        }
+                        val text = response.body?.string().orEmpty()
+                        if (response.code == 401) throw AuthException("session expired")
+                        throw MercuryException(
+                            "board stream: HTTP ${response.code}" +
+                                apiError(text)?.let { ": $it" }.orEmpty(),
+                        )
                     }
                     val source = response.body?.source() ?: run { close(); return@use }
                     val parser = SseParser()
                     while (!source.exhausted()) {
                         val line = source.readUtf8Line() ?: break
                         for (raw in parser.feed(line + "\n")) {
-                            trySend(BoardEvent.parse(raw.type, raw.data))
+                            trySendBlocking(BoardEvent.parse(raw.type, raw.data))
                         }
                     }
                 }
@@ -807,7 +815,7 @@ class MercuryApi(
                     fileName = DownloadedAttachment.fileNameFrom(response.header("Content-Disposition")),
                 )
 
-                response.code == 401 || response.code == 403 -> throw AuthException("session expired")
+                response.code == 401 -> throw AuthException("session expired")
                 else -> throw MercuryException(
                     apiError(body?.string().orEmpty()) ?: "HTTP ${response.code}",
                 )
@@ -1060,11 +1068,11 @@ class MercuryApi(
             .build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+            if (response.code == 401) throw AuthException("session expired")
             runCatching { json.decodeFromString(ProviderTestResult.serializer(), body) }.getOrNull()
                 ?: ProviderTestResult(
                     success = false,
-                    error = body.take(160).ifBlank { "HTTP ${response.code}" },
+                    error = apiError(body) ?: body.take(160).ifBlank { "HTTP ${response.code}" },
                 )
         }
     }
@@ -1096,12 +1104,6 @@ class MercuryApi(
 
     suspend fun stopBot(id: String): SimpleResponse =
         postJson("/api/bots/${encode(id)}/stop", JsonObject(emptyMap()), SimpleResponse.serializer())
-
-    suspend fun messageBot(id: String, message: String): SimpleResponse = postJson(
-        "/api/bots/${encode(id)}/message",
-        JsonObject(mapOf("message" to kotlinx.serialization.json.JsonPrimitive(message))),
-        SimpleResponse.serializer(),
-    )
 
     suspend fun runBot(id: String, routine: String? = null): SimpleResponse = postJson(
         "/api/bots/${encode(id)}/run",
@@ -1206,11 +1208,12 @@ class MercuryApi(
             .get()
             .build()
         client.newCall(request).execute().use { response ->
+            if (response.isSuccessful) return@withContext response.body?.bytes() ?: ByteArray(0)
+            val body = response.body?.string().orEmpty()
             when {
-                response.code == 401 || response.code == 403 -> throw AuthException("session expired")
+                response.code == 401 -> throw AuthException("session expired")
                 response.code == 404 -> throw MercuryException("404: output not found")
-                !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
-                else -> response.body?.bytes() ?: ByteArray(0)
+                else -> throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
             }
         }
     }
@@ -1235,9 +1238,9 @@ class MercuryApi(
             .build()
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
-            if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+            if (response.code == 401) throw AuthException("session expired")
             runCatching { json.decodeFromString(DlqReplay.serializer(), body) }.getOrNull()
-                ?: DlqReplay(accepted = false, reasonCode = "HTTP ${response.code}")
+                ?: DlqReplay(accepted = false, reasonCode = apiError(body) ?: "HTTP ${response.code}")
         }
     }
 
@@ -1248,35 +1251,11 @@ class MercuryApi(
         if (botId.isNullOrBlank()) emptyMap() else mapOf("bot" to botId),
     )
 
-    suspend fun botJournal(id: String, limit: Int = 20): BotJournalPage = getDecoded(
-        "/api/bots/${encode(id)}/journal",
-        BotJournalPage.serializer(),
-        mapOf("limit" to limit.toString()),
-    )
-
     suspend fun botTiers(): List<io.github.tournierjc.mercury.data.dto.BotTierDto> =
         getDecoded("/api/bots/tiers", BotTiersPage.serializer()).tiers
 
-    suspend fun createBot(id: String, name: String, description: String? = null, tier: String? = null): SimpleResponse =
-        postJson("/api/bots", CreateBotRequest(id, name, description, tier), SimpleResponse.serializer())
-
-    suspend fun updateBot(id: String, update: UpdateBotRequest): SimpleResponse =
-        patchJson("/api/bots/${encode(id)}", update, SimpleResponse.serializer())
-
     suspend fun deleteBot(id: String): SimpleResponse =
         deleteJson("/api/bots/${encode(id)}", SimpleResponse.serializer())
-
-    suspend fun setBotEnabled(id: String, enabled: Boolean): SimpleResponse = postJson(
-        "/api/bots/${encode(id)}/${if (enabled) "enable" else "disable"}",
-        JsonObject(emptyMap()),
-        SimpleResponse.serializer(),
-    )
-
-    suspend fun startAllBots(): SimpleResponse =
-        postJson("/api/bots-start-all", JsonObject(emptyMap()), SimpleResponse.serializer())
-
-    suspend fun stopAllBots(): SimpleResponse =
-        postJson("/api/bots-stop-all", JsonObject(emptyMap()), SimpleResponse.serializer())
 
     // ---------------------------------------------------------------------
     // Fleet money, disk and bundles
@@ -1318,40 +1297,15 @@ class MercuryApi(
                 .build()
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string().orEmpty()
-                if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+                if (response.code == 401) throw AuthException("session expired")
                 runCatching { json.decodeFromString(BundleImportResponse.serializer(), body) }.getOrNull()
-                    ?: BundleImportResponse(error = body.take(160).ifBlank { "HTTP ${response.code}" })
+                    ?: BundleImportResponse(error = apiError(body) ?: body.take(160).ifBlank { "HTTP ${response.code}" })
             }
         }
-
-    suspend fun backgroundTasks(): BgResponse = getDecoded("/api/bg", BgResponse.serializer())
-
-    suspend fun cancelTask(id: String): SimpleResponse =
-        postJson("/api/bg/${encode(id)}/cancel", JsonObject(emptyMap()), SimpleResponse.serializer())
-
-    suspend fun clearFinishedTasks(): SimpleResponse =
-        postJson("/api/bg/clear", JsonObject(emptyMap()), SimpleResponse.serializer())
-
-    suspend fun agents(): AgentsResponse = getDecoded("/api/agents", AgentsResponse.serializer())
-
-    suspend fun haltAgents(): SimpleResponse =
-        postJson("/api/agents/halt", JsonObject(emptyMap()), SimpleResponse.serializer())
-
-    suspend fun stopAgents(): SimpleResponse =
-        postJson("/api/agents/stop", JsonObject(emptyMap()), SimpleResponse.serializer())
-
-    suspend fun schedules(): List<JsonObject> =
-        getDecoded("/api/schedules", SchedulesResponse.serializer()).schedules
 
     /** The whole page, so a caller can read the daemon's `available` witness beside the rows. */
     suspend fun schedulesPage(): SchedulesResponse =
         getDecoded("/api/schedules", SchedulesResponse.serializer())
-
-    suspend fun deleteSchedule(id: String): SimpleResponse =
-        executeRaw("DELETE", "/api/schedules/${encode(id)}").let { body ->
-            runCatching { json.decodeFromString(SimpleResponse.serializer(), body) }
-                .getOrElse { SimpleResponse(success = true) }
-        }
 
     // ---------------------------------------------------------------------
     // Memory and workspace
@@ -1506,6 +1460,11 @@ class MercuryApi(
     /**
      * Live feed of the runtime for one session. Reconnection is the caller's
      * job: the flow completes when the stream ends.
+     *
+     * The SSE flows never drop a frame: [trySendBlocking] suspends the stream read
+     * when the collector falls behind instead of silently losing a chat delta or a
+     * board frame (the default 64-slot buffer would). The read runs on
+     * `Dispatchers.IO`, so blocking there is the backpressure working as intended.
      */
     fun events(sessionId: String?): Flow<ChatEvent> = callbackFlow {
         val url = urlWith("/api/chat/events") {
@@ -1536,13 +1495,13 @@ class MercuryApi(
                     while (!source.exhausted()) {
                         val line = source.readUtf8Line() ?: break
                         parser.feed(line + "\n").forEach { raw ->
-                            trySend(MercuryEventParser.parse(raw, json))
+                            trySendBlocking(MercuryEventParser.parse(raw, json))
                         }
                     }
                 }
                 close()
             } catch (t: Throwable) {
-                trySend(ChatEvent.Failure(t.message.orEmpty()))
+                trySendBlocking(ChatEvent.Failure(t.message.orEmpty()))
                 close()
             }
         }
@@ -1564,8 +1523,9 @@ class MercuryApi(
         json.decodeFromString(deserializer, execute(request))
     }
 
-    /** POST a JSON body and decode the answer. */
-    private suspend inline fun <reified Req, reified Res> postJson(
+    /** POST, PUT or PATCH a JSON body and decode the answer: one request shape, three verbs. */
+    private suspend inline fun <reified Req, reified Res> methodJson(
+        method: String,
         path: String,
         body: Req,
         responseSerializer: kotlinx.serialization.KSerializer<Res>,
@@ -1576,41 +1536,31 @@ class MercuryApi(
         )
         val request = Request.Builder()
             .url(url(path))
-            .post(payload.toRequestBody(jsonMedia))
+            .method(method, payload.toRequestBody(jsonMedia))
             .build()
         json.decodeFromString(responseSerializer, execute(request))
     }
+
+    /** POST a JSON body and decode the answer. */
+    private suspend inline fun <reified Req, reified Res> postJson(
+        path: String,
+        body: Req,
+        responseSerializer: kotlinx.serialization.KSerializer<Res>,
+    ): Res = methodJson("POST", path, body, responseSerializer)
 
     /** PUT a JSON body and decode the answer. */
     private suspend inline fun <reified Req, reified Res> putJson(
         path: String,
         body: Req,
         responseSerializer: kotlinx.serialization.KSerializer<Res>,
-    ): Res = withContext(Dispatchers.IO) {
-        val payload = json.encodeToString(
-            kotlinx.serialization.json.JsonElement.serializer(),
-            json.encodeToJsonElement(kotlinx.serialization.serializer<Req>(), body),
-        )
-        val request = Request.Builder()
-            .url(url(path))
-            .put(payload.toRequestBody(jsonMedia))
-            .build()
-        json.decodeFromString(responseSerializer, execute(request))
-    }
+    ): Res = methodJson("PUT", path, body, responseSerializer)
 
     /** PATCH a JSON body and decode the answer. */
     private suspend inline fun <reified Req, reified Res> patchJson(
         path: String,
         body: Req,
         responseSerializer: kotlinx.serialization.KSerializer<Res>,
-    ): Res = withContext(Dispatchers.IO) {
-        val payload = json.encodeToString(
-            kotlinx.serialization.json.JsonElement.serializer(),
-            json.encodeToJsonElement(kotlinx.serialization.serializer<Req>(), body),
-        )
-        val request = Request.Builder().url(url(path)).patch(payload.toRequestBody(jsonMedia)).build()
-        json.decodeFromString(responseSerializer, execute(request))
-    }
+    ): Res = methodJson("PATCH", path, body, responseSerializer)
 
     /** DELETE that decodes its answer (Mercury answers `{success:true}`). */
     private suspend fun <T> deleteJson(
@@ -1634,8 +1584,11 @@ class MercuryApi(
         client.newCall(request).execute().use { response ->
             when {
                 response.code == 404 -> null
-                response.code == 401 || response.code == 403 -> throw AuthException("session expired")
-                !response.isSuccessful -> throw MercuryException("HTTP ${response.code}")
+                response.code == 401 -> throw AuthException("session expired")
+                !response.isSuccessful -> {
+                    val body = response.body?.string().orEmpty()
+                    throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
+                }
                 else -> response.body?.bytes()
             }
         }
@@ -1666,12 +1619,6 @@ class MercuryApi(
         )
     }
 
-    private suspend fun executeRaw(method: String, path: String): String = withContext(Dispatchers.IO) {
-        val builder = Request.Builder().url(url(path))
-        val request = if (method == "DELETE") builder.delete().build() else builder.get().build()
-        execute(request)
-    }
-
     private fun encode(segment: String): String =
         java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
 
@@ -1690,11 +1637,29 @@ class MercuryApi(
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                if (response.code == 401 || response.code == 403) throw AuthException("session expired")
+                authFailure(response.code, body)?.let { throw it }
                 throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
             }
             body
         }
+    }
+
+    /**
+     * The failure that signs the owner out, or null when the answer is something the UI
+     * can show in place. Only a 401 says "session gone" on its own; a 403 is normally a
+     * refusal (shutdown off-host, an off-limits route) that must not log anyone out —
+     * unless the body itself says the session has expired, which some daemons answer
+     * with a 403.
+     */
+    private fun authFailure(code: Int, body: String): AuthException? {
+        if (code == 401) return AuthException("session expired")
+        if (code == 403) {
+            val reason = apiError(body)
+            if (reason != null && "expired" in reason.lowercase() && "session" in reason.lowercase()) {
+                return AuthException("session expired")
+            }
+        }
+        return null
     }
 
     /** Mercury answers `{error:"…"}`; anything else keeps the status code as the message. */

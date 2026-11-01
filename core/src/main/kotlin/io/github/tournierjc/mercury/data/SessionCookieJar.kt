@@ -58,6 +58,10 @@ class SessionCookieJar(private val store: CookieStore) : CookieJar {
 
     fun hasSession(): Boolean = cookies.values.any { it.expiresAt > System.currentTimeMillis() }
 
+    /** True when the jar holds a live [name] cookie — Mercury's session is `mercury_session`. */
+    fun hasSessionCookie(name: String = "mercury_session"): Boolean =
+        cookies.values.any { it.name == name && it.expiresAt > System.currentTimeMillis() }
+
     private fun key(cookie: Cookie) = "${cookie.domain}|${cookie.path}|${cookie.name}"
 
     private fun persist() {
