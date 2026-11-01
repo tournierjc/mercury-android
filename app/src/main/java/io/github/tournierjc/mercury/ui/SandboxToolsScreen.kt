@@ -73,8 +73,10 @@ fun SandboxToolsScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) { if (!state.loaded) vm.refresh() }
     // Installs are minutes and device flows end on another screen: follow them while they move, and
     // stop as soon as nothing is in flight (poll() returns immediately when nothing runs).
-    LaunchedEffect(state.installs.values.any { it.state == "running" } to state.flows.values.any { it.state == "pending" }) {
-        while (true) {
+    val installsRunning = state.installs.values.any { it.state == "running" }
+    val flowPending = state.flows.values.any { it.state == "pending" }
+    LaunchedEffect(installsRunning to flowPending) {
+        while (installsRunning || flowPending) {
             delay(3_000)
             vm.poll()
         }

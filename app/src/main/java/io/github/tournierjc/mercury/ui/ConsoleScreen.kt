@@ -86,7 +86,6 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.OutputSharing
 import io.github.tournierjc.mercury.util.ShareText
 import io.github.tournierjc.mercury.util.formatBytes
-import io.github.tournierjc.mercury.util.isDestructiveCommand
 import kotlinx.serialization.json.JsonObject
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.util.formatUptime
@@ -166,11 +165,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
                     modifier = Modifier.padding(top = 6.dp),
                 ) { Text(stringResource(R.string.console_shutdown_mercury), color = colors.danger) }
             }
-            Text(
-                text = " ",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
+            ScreenBottomSpacer()
         }
     }
 

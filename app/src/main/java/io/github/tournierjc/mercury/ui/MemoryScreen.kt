@@ -127,11 +127,7 @@ fun MemoryScreen(onBack: () -> Unit) {
                 MemoryTab.Beliefs -> BeliefsTab(state, viewModel, onCorrect = { correcting = it })
                 MemoryTab.Quarantine -> QuarantineTab(state, viewModel)
             }
-            Text(
-                text = " ",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
+            ScreenBottomSpacer()
         }
     }
 

@@ -34,6 +34,8 @@
     <string name="workspace_terminal_historique">History</string>
     <string name="workspace_terminal_relancer">Tap to run again</string>
     <string name="workspace_terminal_effacer">Clear</string>
+    <string name="workspace_terminal_destructive_titre">Risky command</string>
+    <string name="workspace_terminal_destructive_corps">“%1$s” can destroy data or stop a service on the host.</string>
 
     <!-- Git -->
     <string name="workspace_git_aucun_depot">No git repository in this workspace.</string>

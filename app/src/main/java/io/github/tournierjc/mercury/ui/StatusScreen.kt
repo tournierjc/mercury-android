@@ -79,11 +79,7 @@ fun StatusScreen(onBack: () -> Unit) {
             BrainSection(state)
             UsageSection(state)
             AgentSection(state)
-            Text(
-                text = " ",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
+            ScreenBottomSpacer()
         }
     }
 }

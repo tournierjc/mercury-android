@@ -76,6 +76,7 @@ import io.github.tournierjc.mercury.data.dto.GitFileDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.ui.workspace.WorkspaceEntry
 import io.github.tournierjc.mercury.ui.workspace.WorkspacePath
+import io.github.tournierjc.mercury.util.isDestructiveCommand
 import io.github.tournierjc.mercury.vm.WorkspaceCommand
 import io.github.tournierjc.mercury.vm.WorkspacePreview
 import io.github.tournierjc.mercury.vm.WorkspaceTab
@@ -155,11 +156,7 @@ fun WorkspaceScreen(onBack: () -> Unit) {
                 WorkspaceTab.Terminal -> TerminalTab(state, viewModel)
                 WorkspaceTab.Git -> GitTab(state, viewModel)
             }
-            Text(
-                text = " ",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
+            ScreenBottomSpacer()
         }
     }
 }
@@ -386,10 +383,22 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
         scroll.animateScrollTo(scroll.maxValue)
     }
 
+    // The daemon runs what it is given, and some of what it can be given destroys things:
+    // the gate in :core asks once, here, before the string leaves the phone.
+    var pendingDestructive by remember { mutableStateOf<String?>(null) }
+
+    fun send(command: String) {
+        viewModel.runCommand(command)
+        line = ""
+    }
+
     fun submit() {
         if (line.isBlank()) return
-        viewModel.runCommand(line)
-        line = ""
+        if (isDestructiveCommand(line)) {
+            pendingDestructive = line
+        } else {
+            send(line)
+        }
     }
 
     Text(
@@ -512,7 +521,13 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.extraSmall)
                         .background(colors.surface)
-                        .clickable(enabled = !state.busy) { viewModel.runCommand(command) }
+                        .clickable(enabled = !state.busy) {
+                            if (isDestructiveCommand(command)) {
+                                pendingDestructive = command
+                            } else {
+                                send(command)
+                            }
+                        }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
@@ -521,6 +536,37 @@ private fun ColumnScope.TerminalTab(state: WorkspaceUiState, viewModel: Workspac
 
     // Breathing room where the clear bar used to sit: the terminal tab ends on its history.
     Spacer(Modifier.size(4.dp))
+
+    pendingDestructive?.let { command ->
+        AlertDialog(
+            onDismissRequest = { pendingDestructive = null },
+            containerColor = colors.surface,
+            title = {
+                Text(
+                    stringResource(R.string.workspace_terminal_destructive_titre),
+                    color = colors.danger,
+                )
+            },
+            text = {
+                Text(
+                    stringResource(R.string.workspace_terminal_destructive_corps, command),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDestructive = null
+                    send(command)
+                }) { Text(stringResource(R.string.workspace_confirmer), color = colors.danger) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDestructive = null }) {
+                    Text(stringResource(R.string.workspace_annuler), color = colors.textSecondary)
+                }
+            },
+        )
+    }
 }
 
 @Composable

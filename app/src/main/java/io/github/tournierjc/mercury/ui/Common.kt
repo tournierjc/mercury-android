@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
@@ -441,6 +443,15 @@ fun ActionRow(
             }
         }
     }
+}
+
+/**
+ * The air every scrolling screen ends on, in one place instead of a bare `Text(" ")` per screen:
+ * the bottom margin is layout, not content, and a blank text node is neither.
+ */
+@Composable
+fun ScreenBottomSpacer(height: Dp = 24.dp) {
+    Spacer(modifier = Modifier.height(height))
 }
 
 @Composable
