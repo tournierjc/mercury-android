@@ -157,13 +157,15 @@ class ChatViewModel(
      * 20 MB PDF now rather than after a failed send.
      */
     fun attach(files: List<PendingFile>) {
-        val next = (_attachments.value + files).take(Attachments.MAX_FILES)
-        val notice = attachmentNotice(Attachments.problemWith(next))
+        // The batch is checked whole, before any truncation: trimming first made the limit
+        // notice unreachable and files beyond the cap vanished without a word.
+        val combined = _attachments.value + files
+        val notice = attachmentNotice(Attachments.problemWith(combined))
         if (notice != null) {
             _state.update { ChatReducer.setError(it, notice) }
             return
         }
-        _attachments.value = next
+        _attachments.value = combined
     }
 
     fun removeAttachment(index: Int) {
@@ -210,6 +212,10 @@ class ChatViewModel(
 
     fun answerPermission(id: String, action: String) {
         _state.update { ChatReducer.clearPermission(it) }
+        // A stream that exhausted its retries is dead until something relaunches it: answering a
+        // permission is exactly when the next events matter, so the reconnect is forced here
+        // (a live stream on the same session is left alone).
+        ensureEvents(_state.value.sessionId)
         viewModelScope.launch {
             runCatching { api.resolvePermission(id, action) }
                 .onFailure { e ->
@@ -317,7 +323,10 @@ class ChatViewModel(
      * failure is only shown once the retries are spent.
      */
     private fun ensureEvents(sessionId: String?) {
-        if (eventsJob != null && streamSession == sessionId) return
+        // A completed job is not a live one: after the retries were spent the coroutine was
+        // over while `eventsJob` stayed non-null, and every later send for the same session
+        // early-returned here — the answer existed server-side and never streamed in again.
+        if (eventsJob?.isActive == true && streamSession == sessionId) return
         eventsJob?.cancel()
         streamSession = sessionId
         eventsJob = viewModelScope.launch {
