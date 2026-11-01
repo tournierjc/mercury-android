@@ -96,6 +96,9 @@ fun ProvidersScreen(onBack: () -> Unit) {
                 ProviderEditDialog(
                     id = id,
                     existing = provider.routing,
+                    savedBaseUrl = provider.baseUrl,
+                    savedModel = provider.model,
+                    savedEnabled = provider.enabled,
                     onDismiss = { editing = null },
                     onConfirm = { apiKey, baseUrl, model, enabled, routing ->
                         editing = null
