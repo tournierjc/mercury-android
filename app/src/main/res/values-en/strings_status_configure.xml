@@ -66,7 +66,7 @@
         <item quantity="other">%d providers</item>
     </plurals>
     <string name="configure_providers_empty">No provider configured.</string>
-    <string name="configure_providers_edit_note">Keys, models and URLs are changed in Settings; a change only applies at the next start.</string>
+    <string name="configure_providers_edit_note">Changing a key, a model or a URL only takes effect at the next start.</string>
 
     <!-- Skills -->
     <string name="configure_skills_title">Skills</string>
