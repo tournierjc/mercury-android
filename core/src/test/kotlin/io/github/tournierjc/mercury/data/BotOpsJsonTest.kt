@@ -351,34 +351,41 @@ class BotOpsJsonTest {
     }
 
     @Test
-    fun `collapsed thinking shows the last steps, short, and says where it cut`() {
+    fun `opened thinking keeps every step the daemon recorded`() {
         val blocks = listOf(
-            ReasoningBlockDto(step = 1, text = "one ".repeat(300)),
+            ReasoningBlockDto(step = 1, text = "one"),
             ReasoningBlockDto(step = 2, text = "two"),
             ReasoningBlockDto(step = 3, text = "three"),
+            ReasoningBlockDto(step = 4, text = "four"),
         )
 
-        val collapsed = BotOps.reasoningBlocks(blocks, expanded = false)
+        // A folded panel shows nothing, so whatever this returns is drawn in full: nothing is
+        // dropped here, and the owner opens it to see the whole turn's thinking.
+        val shown = BotOps.reasoningBlocks(blocks)
 
-        // The newest thinking is what explains the outcome, and two steps is what fits unasked.
-        assertEquals(listOf(2, 3), collapsed.map { it.step })
-        assertEquals(listOf("two", "three"), collapsed.map { it.text })
+        assertEquals(listOf(1, 2, 3, 4), shown.map { it.step })
+        assertEquals(listOf("one", "two", "three", "four"), shown.map { it.text })
     }
 
     @Test
-    fun `expanded thinking keeps every step and still caps each one`() {
-        val long = "x".repeat(9_000)
-        val blocks = listOf(
-            ReasoningBlockDto(step = 1, text = "short"),
-            ReasoningBlockDto(step = 2, text = long),
-        )
+    fun `a long step is capped and the cut is marked`() {
+        val blocks = listOf(ReasoningBlockDto(step = 2, text = "x".repeat(9_000)))
 
-        val expanded = BotOps.reasoningBlocks(blocks, expanded = true)
+        val shown = BotOps.reasoningBlocks(blocks)
 
-        assertEquals(listOf(1, 2), expanded.map { it.step })
-        assertEquals("short", expanded[0].text)
-        assertEquals(4_001, expanded[1].text.length) // 4,000 characters + the ellipsis
-        assertTrue(expanded[1].text.endsWith("…"))
+        assertEquals(1, shown.size)
+        assertEquals(4_001, shown[0].text.length) // 4,000 characters + the ellipsis
+        assertTrue(shown[0].text.endsWith("…"))
+    }
+
+    @Test
+    fun `the cap is the caller's, so a narrow surface can ask for less`() {
+        val blocks = listOf(ReasoningBlockDto(step = 1, text = "y".repeat(1_000)))
+
+        val shown = BotOps.reasoningBlocks(blocks, cap = 400)
+
+        assertEquals(401, shown[0].text.length)
+        assertTrue(shown[0].text.endsWith("…"))
     }
 
     @Test
@@ -392,7 +399,7 @@ class BotOpsJsonTest {
             ReasoningBlockDto(step = 3, text = "zéro fichier"),
         )
 
-        val shown = BotOps.reasoningBlocks(blocks, expanded = true)
+        val shown = BotOps.reasoningBlocks(blocks)
 
         assertEquals(listOf(1, 2, 3), shown.map { it.step })
         assertEquals("The user wants a count.\n\nI'll run ls first.", shown[1].text)
@@ -405,37 +412,28 @@ class BotOpsJsonTest {
             ReasoningBlockDto(step = 2, text = "début de l'étape deux"),
         )
 
-        val shown = BotOps.reasoningBlocks(blocks, expanded = true)
+        val shown = BotOps.reasoningBlocks(blocks)
 
         assertEquals(listOf("fin de l'étape un", "début de l'étape deux"), shown.map { it.text })
     }
 
     @Test
-    fun `folding counts the merged steps, not the spurts`() {
-        // Four spurts over three steps, folded to two steps: the last two steps, whichever spurts
-        // they came in.
+    fun `the header counts steps, not spurts`() {
+        // What a folded card says instead of the text it hides.
         val blocks = listOf(
             ReasoningBlockDto(step = 1, text = "un"),
             ReasoningBlockDto(step = 2, text = "deux-a"),
             ReasoningBlockDto(step = 2, text = "deux-b"),
             ReasoningBlockDto(step = 3, text = "trois"),
+            ReasoningBlockDto(step = 3, text = "trois-bis"),
         )
 
-        val collapsed = BotOps.reasoningBlocks(blocks, expanded = false)
-
-        assertEquals(listOf(2, 3), collapsed.map { it.step })
-        assertEquals(listOf("deux-a\n\ndeux-b", "trois"), collapsed.map { it.text })
+        assertEquals(3, BotOps.reasoningStepCount(blocks))
     }
 
     @Test
-    fun `a collapsed step that overflows is marked as cut`() {
-        val blocks = listOf(ReasoningBlockDto(step = 7, text = "y".repeat(1_000)))
-
-        val shown = BotOps.reasoningBlocks(blocks, expanded = false)
-
-        assertEquals(1, shown.size)
-        assertEquals(7, shown[0].step)
-        assertTrue(shown[0].text.endsWith("…"))
-        assertTrue(shown[0].text.length <= 401)
+    fun `no thinking at all counts zero`() {
+        assertEquals(0, BotOps.reasoningStepCount(emptyList()))
+        assertTrue(BotOps.reasoningBlocks(emptyList()).isEmpty())
     }
 }
