@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,14 +72,15 @@ fun MoveArrows(
     val upLabel = androidx.compose.ui.res.stringResource(io.github.tournierjc.mercury.R.string.drawer_move_up)
     val downLabel = androidx.compose.ui.res.stringResource(io.github.tournierjc.mercury.R.string.drawer_move_down)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.material3.IconButton(onClick = onUp, enabled = canUp, modifier = Modifier.size(36.dp)) {
+        // Sans taille imposée : la cible de doigt de l'IconButton par défaut atteint 48 dp.
+        androidx.compose.material3.IconButton(onClick = onUp, enabled = canUp) {
             Icon(
                 Icons.Rounded.KeyboardArrowUp,
                 contentDescription = upLabel,
                 tint = if (canUp) colors.textPrimary else colors.hairlineStrong,
             )
         }
-        androidx.compose.material3.IconButton(onClick = onDown, enabled = canDown, modifier = Modifier.size(36.dp)) {
+        androidx.compose.material3.IconButton(onClick = onDown, enabled = canDown) {
             Icon(
                 Icons.Rounded.KeyboardArrowDown,
                 contentDescription = downLabel,
