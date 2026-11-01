@@ -25,6 +25,28 @@ import io.github.tournierjc.mercury.ui.noticeText
  */
 class BotNotifier(private val context: Context) {
 
+    /**
+     * A stable slot per bot, assigned on first sight and kept in prefs.
+     *
+     * A notification id derived from `botId.hashCode()` can collide — two bots sharing a bucket
+     * means one silently replaces the other's notification in the shade. The slot never changes
+     * for a given bot, so the next message from the same teammate still replaces its predecessor
+     * (one line per conversation, like the doc below says) and never anybody else's.
+     */
+    private fun slot(botId: String): Int {
+        val prefs = context.getSharedPreferences(IDS_PREFS, Context.MODE_PRIVATE)
+        val known = prefs.getInt(botId, -1)
+        if (known >= 0) return known
+        val next = prefs.getInt(SLOT_COUNTER, 0)
+        prefs.edit().putInt(botId, next).putInt(SLOT_COUNTER, next + 1).apply()
+        return next
+    }
+
+    /** Two ids per bot, from one slot: attention and messages must not erase each other. */
+    private fun attentionId(botId: String): Int = NOTIFICATION_ID + slot(botId) * 2
+
+    private fun messageId(botId: String): Int = MESSAGE_NOTIFICATION_ID + slot(botId) * 2 + 1
+
     fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -59,7 +81,7 @@ class BotNotifier(private val context: Context) {
         }
         val pending = PendingIntent.getActivity(
             context,
-            attention.botId.hashCode(),
+            attentionId(attention.botId),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -71,7 +93,7 @@ class BotNotifier(private val context: Context) {
             .setContentIntent(pending)
             .setAutoCancel(true)
             .build()
-        runCatching { manager.notify(NOTIFICATION_ID + attention.botId.hashCode(), notification) }
+        runCatching { manager.notify(attentionId(attention.botId), notification) }
     }
 
     /**
@@ -98,7 +120,7 @@ class BotNotifier(private val context: Context) {
         }
         val pending = PendingIntent.getActivity(
             context,
-            botId.hashCode(),
+            messageId(botId),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -111,7 +133,7 @@ class BotNotifier(private val context: Context) {
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_MESSAGE)
             .build()
-        runCatching { manager.notify(MESSAGE_NOTIFICATION_ID + botId.hashCode(), notification) }
+        runCatching { manager.notify(messageId(botId), notification) }
     }
 
     /** Le canal des messages, créé à part de celui de l'équipage : son et vibration. */
@@ -151,6 +173,8 @@ class BotNotifier(private val context: Context) {
         private const val NOTIFICATION_ID = 4200
         private const val MESSAGE_NOTIFICATION_ID = 4400
         private const val MESSAGE_CHARS = 220
+        private const val IDS_PREFS = "bot_notify_ids"
+        private const val SLOT_COUNTER = "slot_counter"
 
         fun titleNotice(attention: BotAttention): Notice = when (attention.kind) {
             BotAttention.Kind.NeedsYou -> Notice(NoticeKey.ATTENTION_NEEDS_YOU, args = listOf(attention.botName))

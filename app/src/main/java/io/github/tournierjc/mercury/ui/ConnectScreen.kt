@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.data.ServerAddress
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
 @Composable
@@ -47,6 +48,9 @@ fun ConnectScreen(
     var url by rememberSaveable { mutableStateOf(initialUrl) }
     var username by rememberSaveable { mutableStateOf(initialUsername) }
     var password by remember { mutableStateOf("") }
+    // The same rule Réglages applies to the same field: refuse the address here rather than let
+    // the sign-in fail later with a message about a base url the owner never saw.
+    val addressProblem = ServerAddress.validate(url)
 
     Column(
         modifier = Modifier
@@ -74,9 +78,23 @@ fun ConnectScreen(
             value = url,
             onValueChange = { url = it },
             label = stringResource(R.string.connect_label_server),
-            hint = "https://spark-a286.tail128204.ts.net:8443",
+            hint = "https://mercury.example.com:8443",
             keyboardType = KeyboardType.Uri,
         )
+        if (url.isNotBlank() && addressProblem != null) {
+            Text(
+                text = stringResource(
+                    when (addressProblem) {
+                        ServerAddress.Problem.Empty -> R.string.settings_server_problem_empty
+                        ServerAddress.Problem.UnsupportedScheme -> R.string.settings_server_problem_scheme
+                        ServerAddress.Problem.MissingHost -> R.string.settings_server_problem_host
+                    }
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.danger,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         Field(
             value = username,
             onValueChange = { username = it },
@@ -102,7 +120,9 @@ fun ConnectScreen(
 
         Button(
             onClick = { onSubmit(url, username, password) },
-            enabled = !busy && url.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+            enabled = !busy &&
+                url.isNotBlank() && addressProblem == null &&
+                username.isNotBlank() && password.isNotBlank(),
             shape = MaterialTheme.shapes.extraLarge,
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.textPrimary,

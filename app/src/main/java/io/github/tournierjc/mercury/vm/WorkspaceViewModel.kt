@@ -19,6 +19,7 @@ import io.github.tournierjc.mercury.data.dto.TerminalResult
 import io.github.tournierjc.mercury.data.dto.WorkspaceInfoDto
 import io.github.tournierjc.mercury.ui.workspace.WorkspaceEntry
 import io.github.tournierjc.mercury.ui.workspace.WorkspacePath
+import io.github.tournierjc.mercury.util.TerminalPaths
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -139,7 +140,7 @@ class WorkspaceViewModel(private val api: MercuryApi) : ViewModel() {
 
     /** Enters a directory, or the root when [path] is blank. */
     fun openDirectory(path: String) {
-        val target = WorkspacePath.normalise(path)
+        val target = TerminalPaths.normalise(path)
         action {
             _state.update { it.copy(filesLoading = true) }
             try {

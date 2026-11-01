@@ -45,9 +45,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /** Shared building blocks for the secondary screens (settings, console). */
 
@@ -507,27 +504,3 @@ fun InlineBanner(
         )
     }
 }
-
-/**
- * Best-effort one-line summary for payloads Mercury does not schema for us
- * (bots, tasks, schedules, agents). Falls back to the first scalar field.
- */
-fun JsonObject.titleHint(): String {
-    val preferred = listOf("title", "name", "id", "label", "prompt", "command", "cron")
-    for (key in preferred) {
-        val value = (this[key] as? JsonPrimitive)?.contentOrNull
-        if (!value.isNullOrBlank()) return value
-    }
-    return entries.firstOrNull { it.value is JsonPrimitive }?.value?.let { (it as JsonPrimitive).contentOrNull }.orEmpty()
-}
-
-/** Best-effort status/time line for the same payloads. */
-fun JsonObject.detailHint(): String {
-    val parts = mutableListOf<String>()
-    for (key in listOf("status", "state", "enabled", "schedule", "cron", "nextRun", "startedAt")) {
-        val value = (this[key] as? JsonPrimitive)?.contentOrNull
-        if (!value.isNullOrBlank()) parts += "$key=$value"
-    }
-    return parts.joinToString(" · ")
-}
-

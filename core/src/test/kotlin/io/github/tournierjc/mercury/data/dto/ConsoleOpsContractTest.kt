@@ -9,6 +9,7 @@ import io.github.tournierjc.mercury.data.dto.RegistrySkillInstallResult
 import io.github.tournierjc.mercury.data.dto.ShutdownResult
 import io.github.tournierjc.mercury.data.dto.WorkspaceRootResult
 import io.github.tournierjc.mercury.util.formatBytes
+import java.util.Locale
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -95,12 +96,12 @@ class ConsoleOpsContractTest {
     }
 
     @Test
-    fun `storage sizes read as bytes megabytes and gigabytes`() {
-        assertEquals("512 o", formatBytes(512))
-        assertEquals("2,0 ko", formatBytes(2048))
-        assertEquals("5,0 Mo", formatBytes(5L * 1024 * 1024))
-        assertEquals("1,5 Go", formatBytes((1.5 * 1024 * 1024 * 1024).toLong()))
-        assertEquals("—", formatBytes(0))
+    fun `storage sizes read in the locale's units`() {
+        assertEquals("512 o", formatBytes(512, Locale.FRENCH))
+        assertEquals("2 ko", formatBytes(2048, Locale.FRENCH))
+        assertEquals("5 Mo", formatBytes(5L * 1024 * 1024, Locale.FRENCH))
+        assertEquals("1,5 Go", formatBytes((1.5 * 1024 * 1024 * 1024).toLong(), Locale.FRENCH))
+        assertEquals("—", formatBytes(0, Locale.FRENCH))
     }
 
     @Test

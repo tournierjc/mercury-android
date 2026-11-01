@@ -322,6 +322,12 @@ enum class NoticeKey {
     WORKSPACE_SET,
     CREW_IMPORT_FAILED,
 
+    // ---- sandbox tools: the catalogue and the actions behind its rows
+    /** The tool catalogue could not be read; `detail` carries what the daemon said. */
+    SANDBOX_UNAVAILABLE,
+    /** An install, sign-in, sign-out or removal failed; `detail` carries what the daemon said. */
+    SANDBOX_ACTION_FAILED,
+
 }
 
 /**

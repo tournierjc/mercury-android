@@ -103,9 +103,9 @@ fun SandboxToolsScreen(onBack: () -> Unit) {
             )
 
             state.tools.isEmpty() -> Text(
-                text = state.error.ifBlank { stringResource(R.string.sandbox_empty) },
+                text = state.error?.let { noticeText(it) } ?: stringResource(R.string.sandbox_empty),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (state.error.isBlank()) colors.textSecondary else colors.danger,
+                color = if (state.error == null) colors.textSecondary else colors.danger,
                 modifier = Modifier.padding(16.dp),
             )
 
@@ -122,10 +122,10 @@ fun SandboxToolsScreen(onBack: () -> Unit) {
                         onRemove = { vm.remove(tool.id) },
                     )
                 }
-                if (state.error.isNotBlank()) {
+                state.error?.let { error ->
                     item {
                         TextButton(onClick = { vm.clearError() }) {
-                            Text(stringResource(R.string.sandbox_error, state.error), color = colors.danger)
+                            Text(noticeText(error), color = colors.danger)
                         }
                     }
                 }

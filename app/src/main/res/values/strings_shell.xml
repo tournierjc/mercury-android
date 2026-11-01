@@ -66,7 +66,6 @@
     <string name="sandbox_title">Outils des bots</string>
     <string name="sandbox_shared_note">Partagés par tous les bots — le sandbox confine les chemins, pas les processus</string>
     <string name="sandbox_empty">Aucun outil à afficher.</string>
-    <string name="sandbox_error">Erreur : %1$s</string>
     <string name="sandbox_install">Installer</string>
     <string name="sandbox_installing">Installation…</string>
     <string name="sandbox_install_failed">Échec : %1$s</string>

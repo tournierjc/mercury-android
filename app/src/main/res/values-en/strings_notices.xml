@@ -238,4 +238,6 @@
     <string name="notice_teammate_renamed">Name saved.</string>
     <string name="notice_teammate_name_refused">A blank name is not a name.</string>
     <string name="notice_code_mode_failed">The programming mode could not be changed.</string>
+    <string name="notice_sandbox_unavailable">Could not load the tools</string>
+    <string name="notice_sandbox_action_failed">The action failed</string>
 </resources>
