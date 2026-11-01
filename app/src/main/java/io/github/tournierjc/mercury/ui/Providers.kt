@@ -161,10 +161,20 @@ private const val OPENROUTER_ID = "openrouter"
 private fun csvList(value: String): List<String> =
     value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
 
+/**
+ * The provider's sheet, opened filled with what the daemon already holds.
+ *
+ * Every field but the key comes from the row itself (`baseUrl`, `model`, `enabled`). The key is the
+ * exception by design: `/api/providers` only ever returns its mask, so the field starts empty and
+ * says so — an empty key means "keep the saved one", never "erase it".
+ */
 @Composable
 internal fun ProviderEditDialog(
     id: String,
     existing: ProviderRoutingDto? = null,
+    savedBaseUrl: String = "",
+    savedModel: String = "",
+    savedEnabled: Boolean = true,
     onDismiss: () -> Unit,
     onConfirm: (
         apiKey: String?,
@@ -178,9 +188,9 @@ internal fun ProviderEditDialog(
     var apiKey by remember { mutableStateOf("") }
     var endpointOrder by remember { mutableStateOf(existing?.order?.joinToString(", ").orEmpty()) }
     var quantizations by remember { mutableStateOf(existing?.quantizations?.joinToString(", ").orEmpty()) }
-    var baseUrl by remember { mutableStateOf("") }
-    var model by remember { mutableStateOf("") }
-    var enabled by remember { mutableStateOf(true) }
+    var baseUrl by remember(id) { mutableStateOf(savedBaseUrl) }
+    var model by remember(id) { mutableStateOf(savedModel) }
+    var enabled by remember(id) { mutableStateOf(savedEnabled) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

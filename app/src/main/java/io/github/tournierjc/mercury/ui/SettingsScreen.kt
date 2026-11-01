@@ -470,6 +470,9 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
         ProviderEditDialog(
             id = id,
             existing = provider.routing,
+            savedBaseUrl = provider.baseUrl,
+            savedModel = provider.model,
+            savedEnabled = provider.enabled,
             onDismiss = { editingProvider = null },
             onConfirm = { apiKey, baseUrl, model, enabled, routing ->
                 editingProvider = null
