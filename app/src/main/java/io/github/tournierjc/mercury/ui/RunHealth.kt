@@ -143,28 +143,13 @@ fun RunDetailDialog(
                 // What the bot weighed before it acted. Collapsed by default: the trace and the
                 // answer are what an owner opens a run for, the thinking is what explains it.
                 if (loaded.reasoning.isNotEmpty()) {
-                    var expanded by remember(loaded.record.runId) { mutableStateOf(false) }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.run_reasoning).uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = { expanded = !expanded }) {
-                            Text(
-                                text = stringResource(if (expanded) R.string.run_reasoning_less else R.string.run_reasoning_more),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    }
+                    // The section carries its own header and its own toggle: drawing a second one
+                    // here gave two "RÉFLEXION / Déplier" rows, and the outer button only ever set
+                    // the section's *initial* state, so it stopped doing anything after composition.
                     ReasoningSection(
                         blocks = loaded.reasoning,
                         truncated = loaded.reasoningTruncated,
-                        initiallyExpanded = expanded,
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 }
                 if (loaded.trace.isNotEmpty()) {

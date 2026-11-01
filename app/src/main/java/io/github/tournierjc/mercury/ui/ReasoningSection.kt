@@ -60,21 +60,28 @@ fun ReasoningSection(
             }
         }
         BotOps.reasoningBlocks(blocks, expanded).forEach { block ->
-            Text(
-                text = stringResource(R.string.run_reasoning_step, block.step),
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Text(
-                text = block.text,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                color = colors.textPrimary,
+            // The step label belongs *inside* the tinted surface: drawn above it, it floated on the
+            // background and the rounded block read as holding a paragraph with a caption that had
+            // escaped it.
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(top = 6.dp)
                     .background(colors.surfaceMuted, MaterialTheme.shapes.extraSmall)
                     .padding(10.dp),
-            )
+            ) {
+                Text(
+                    text = stringResource(R.string.run_reasoning_step, block.step),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                )
+                Text(
+                    text = block.text,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = colors.textPrimary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
         if (truncated) {
             Text(

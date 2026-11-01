@@ -382,6 +382,52 @@ class BotOpsJsonTest {
     }
 
     @Test
+    fun `one step that thought twice reads as one step`() {
+        // Measured on a real turn: the daemon appends a block per reasoning spurt, so step 2 arrived
+        // twice and the screen drew two identical "étape 2" labels — one of them outside its frame.
+        val blocks = listOf(
+            ReasoningBlockDto(step = 1, text = "je regarde le dossier"),
+            ReasoningBlockDto(step = 2, text = "The user wants a count."),
+            ReasoningBlockDto(step = 2, text = "I'll run ls first."),
+            ReasoningBlockDto(step = 3, text = "zéro fichier"),
+        )
+
+        val shown = BotOps.reasoningBlocks(blocks, expanded = true)
+
+        assertEquals(listOf(1, 2, 3), shown.map { it.step })
+        assertEquals("The user wants a count.\n\nI'll run ls first.", shown[1].text)
+    }
+
+    @Test
+    fun `two steps are never joined, even when the words run on`() {
+        val blocks = listOf(
+            ReasoningBlockDto(step = 1, text = "fin de l'étape un"),
+            ReasoningBlockDto(step = 2, text = "début de l'étape deux"),
+        )
+
+        val shown = BotOps.reasoningBlocks(blocks, expanded = true)
+
+        assertEquals(listOf("fin de l'étape un", "début de l'étape deux"), shown.map { it.text })
+    }
+
+    @Test
+    fun `folding counts the merged steps, not the spurts`() {
+        // Four spurts over three steps, folded to two steps: the last two steps, whichever spurts
+        // they came in.
+        val blocks = listOf(
+            ReasoningBlockDto(step = 1, text = "un"),
+            ReasoningBlockDto(step = 2, text = "deux-a"),
+            ReasoningBlockDto(step = 2, text = "deux-b"),
+            ReasoningBlockDto(step = 3, text = "trois"),
+        )
+
+        val collapsed = BotOps.reasoningBlocks(blocks, expanded = false)
+
+        assertEquals(listOf(2, 3), collapsed.map { it.step })
+        assertEquals(listOf("deux-a\n\ndeux-b", "trois"), collapsed.map { it.text })
+    }
+
+    @Test
     fun `a collapsed step that overflows is marked as cut`() {
         val blocks = listOf(ReasoningBlockDto(step = 7, text = "y".repeat(1_000)))
 
