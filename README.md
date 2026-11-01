@@ -122,15 +122,23 @@ Toggle **Pont appareil** in the drawer:
 - **Messages d'apps** — notification access, `GET /messages?limit=` (SMS + notifications,
   the only way to see WhatsApp/Signal/Messenger content: Android has no readable store for them)
 - **Statut** — battery, network, timezone, `GET /device/status`
-- `GET /health` — version, device, active providers (no token)
+- `GET /health` — liveness probe only, answers `{"ok":true}` (no token, no instance facts);
+  the version/device/providers summary is the tokened `GET /device` route
 
 Security model:
 
 - every route except `/health` requires the bearer token (constant-time compare) in
-  `Authorization: Bearer …` — or `?token=` because Mercury's `fetch_url` sends no headers;
+  `Authorization: Bearer …`;
+- `?token=` exists because Mercury's `fetch_url` sends no headers, but a token in a URL
+  ends up in any relay's logs: once a tailnet interface is up, the query-token path is
+  only accepted from tailnet or loopback sources (a plain-LAN daemon cannot use it);
+  without a tailnet the bridge stays on the LAN and keeps accepting it so `fetch_url`
+  keeps working — that exposure is explicitly unsupported;
 - the token is generated on the device, stored in Keystore-backed encrypted prefs, and
-  revocable in one tap;
+  revocable in one tap; if the Keystore is unusable the bridge refuses to start rather
+  than serving with a plain-text token;
 - the socket binds to the Tailscale address when present, 120 requests/minute cap;
+- error bodies are fixed generic strings (no exception text leaves the phone);
 - nothing is cached, nothing is written to disk: each request re-reads the provider.
 
 Mercury side: `MERCURY_ALLOW_PRIVATE_FETCH=1` in `mercury.env` (SSRF protection

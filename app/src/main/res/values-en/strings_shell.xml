@@ -52,8 +52,10 @@
     <string name="bridge_hide_token">Hide token</string>
     <string name="bridge_revoke">Revoke the token</string>
     <string name="bridge_readable_title">What the agent can read</string>
-    <string name="bridge_endpoints">GET /health · version, device, active providers\nGET /device/status · battery, network, timezone\nGET /calendar?from=&amp;to=&amp;limit= · events (ISO 8601)\nGET /contacts?q=&amp;limit= · names, numbers, emails\nGET /sms?limit=&amp;address= · received SMS\nGET /messages?limit= · SMS + app notifications\nRequired header: Authorization: Bearer ***</string>
+    <string name="bridge_endpoints">GET /health · answers, revealing nothing (no token)\nGET /device/status · battery, network, timezone\nGET /calendar?from=&amp;to=&amp;limit= · events (ISO 8601)\nGET /contacts?q=&amp;limit= · names, numbers, emails\nGET /sms?limit=&amp;address= · received SMS\nGET /messages?limit= · SMS + app notifications\nRequired header: Authorization: Bearer ***</string>
     <string name="bridge_footer">Without the bridge, the agent sees nothing of the phone. With it, it sees only what you allowed, while the service runs. « Revoke » invalidates the old token.</string>
+    <string name="bridge_security_note">The bridge is meant for the tailnet. On an ordinary local network the exposure is unsupported: requests travel in cleartext and, for the agent\'s calls, the token travels in the URL.</string>
+    <string name="bridge_degraded">Secure storage is unavailable on this device (Keystore). The bridge stays off: the token would not be encrypted.</string>
     <string name="bridge_copied">Copied</string>
 
     <!-- Runs and incidents -->

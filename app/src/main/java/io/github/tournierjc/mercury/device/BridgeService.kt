@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import fi.iki.elonen.NanoHTTPD
 import io.github.tournierjc.mercury.MainActivity
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.SecurePrefs
 
 /**
  * Service de premier plan qui maintient le pont HTTP ouvert.
@@ -42,6 +43,13 @@ class BridgeService : Service() {
 
     private fun startServer() {
         server?.stop()
+        // Keystore unusable : le token vivrait en clair sur le disque. Le pont ne sert
+        // rien dans cet état — l'écran Pont l'annonce, au lieu de dégrader en silence.
+        if (SecurePrefs.degraded) {
+            BridgePrefs(this).enabled = false
+            server = null
+            return
+        }
         val prefs = BridgePrefs(this)
         prefs.enabled = true
         val readers = DeviceReaders(this)
