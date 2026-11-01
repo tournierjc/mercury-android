@@ -84,6 +84,8 @@
     <string name="sandbox_remove_warning">The tool is shared: every bot loses it immediately. Any signed-in account is left alone.</string>
     <string name="run_reasoning">Thinking</string>
     <string name="run_reasoning_step">step %1$d</string>
+    <!-- What a folded panel shows instead of the text. -->
+    <string name="run_reasoning_steps">%1$d step(s)</string>
     <string name="run_reasoning_more">Expand</string>
     <string name="run_reasoning_less">Collapse</string>
     <string name="run_reasoning_truncated">The oldest steps were dropped by the daemon (24k character cap).</string>

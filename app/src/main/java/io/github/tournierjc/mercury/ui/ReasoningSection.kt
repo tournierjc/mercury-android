@@ -81,6 +81,13 @@ fun ReasoningSection(
                 color = colors.textSecondary,
                 modifier = Modifier.padding(start = 6.dp),
             )
+            Text(
+                // What a closed card says instead of the text it holds.
+                text = stringResource(R.string.run_reasoning_steps, BotOps.reasoningStepCount(blocks)),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(start = 6.dp),
+            )
             Box(modifier = Modifier.weight(1f))
             Icon(
                 imageVector = if (open) Icons.Rounded.ArrowDropUp else Icons.Rounded.ArrowDropDown,
@@ -91,9 +98,11 @@ fun ReasoningSection(
                 modifier = Modifier.size(20.dp),
             )
         }
-        // A step can think twice: the daemon appends a block per spurt. `reasoningBlocks` joins the
-        // spurts of one step before folding, so one step reads as one label and one paragraph.
-        BotOps.reasoningBlocks(blocks, open).forEach { block ->
+        // Folded is mute. The panel must hold the thinking, and a closed card that still shows its
+        // last two steps is exactly what the owner saw as "certaines sont toujours visibles": the
+        // header's step count is what a closed card says instead.
+        if (!open) return@Column
+        BotOps.reasoningBlocks(blocks).forEach { block ->
             Text(
                 text = stringResource(R.string.run_reasoning_step, block.step),
                 style = MaterialTheme.typography.labelSmall,

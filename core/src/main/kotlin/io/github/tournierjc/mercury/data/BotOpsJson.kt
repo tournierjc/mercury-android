@@ -334,25 +334,35 @@ object BotOps {
     }
 
     /**
-     * The thinking worth showing for a run, and how much of it.
+     * The thinking of a run, one block per step, each capped.
      *
-     * A step can think for thousands of characters; a dialog that dumps 24k of it is unreadable, and
-     * one that quietly cuts is a lie. Collapsed shows the last few steps, short; expanded shows every
-     * step the daemon kept, each still capped. The cut is always marked with an ellipsis.
+     * A step can think for thousands of characters; a screen that dumps 24k of it is unreadable, and
+     * one that quietly cuts is a lie, so every cut is marked with an ellipsis. There is no "collapsed
+     * preview" here: a folded panel shows nothing, and this answers what to draw once it is opened.
      */
     fun reasoningBlocks(
         blocks: List<ReasoningBlockDto>,
-        expanded: Boolean,
-        collapsedSteps: Int = 2,
-        collapsedChars: Int = 400,
-        expandedChars: Int = 4_000,
+        cap: Int = 4_000,
     ): List<ReasoningBlockDto> {
         if (blocks.isEmpty()) return emptyList()
-        // One step can think twice: the daemon appends a block per reasoning spurt, so a single
-        // step often yields two. Drawn apart they read as two identical "étape 2" labels — the
-        // screen is not wrong about the count, the grouping is. Joined here, before the fold, so
-        // the label says the step and the surface says the thinking.
-        val merged = blocks.fold(mutableListOf<ReasoningBlockDto>()) { acc, block ->
+        return mergeSteps(blocks).map { block ->
+            val text = block.text.trim()
+            block.copy(text = if (text.length > cap) text.take(cap).trimEnd() + "…" else text)
+        }
+    }
+
+    /**
+     * How many steps the thinking covers — the number a folded panel shows instead of the text.
+     *
+     * One step can think twice: the daemon appends a block per reasoning spurt, so a single step
+     * often yields two. Drawn apart they read as two identical "étape 2" labels — the screen is not
+     * wrong about the count, the grouping is.
+     */
+    fun reasoningStepCount(blocks: List<ReasoningBlockDto>): Int = mergeSteps(blocks).size
+
+    private fun mergeSteps(blocks: List<ReasoningBlockDto>): List<ReasoningBlockDto> {
+        if (blocks.isEmpty()) return emptyList()
+        return blocks.fold(mutableListOf<ReasoningBlockDto>()) { acc, block ->
             val previous = acc.lastOrNull()
             if (previous != null && previous.step == block.step) {
                 acc[acc.lastIndex] = previous.copy(
@@ -362,12 +372,6 @@ object BotOps {
                 acc.add(block)
             }
             acc
-        }
-        val kept = if (expanded) merged else merged.takeLast(collapsedSteps.coerceAtLeast(1))
-        val cap = if (expanded) expandedChars else collapsedChars
-        return kept.map { block ->
-            val text = block.text.trim()
-            block.copy(text = if (text.length > cap) text.take(cap).trimEnd() + "…" else text)
         }
     }
 
