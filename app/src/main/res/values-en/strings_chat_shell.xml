@@ -22,6 +22,9 @@
     <string name="connect_label_password">Password</string>
     <string name="connect_sign_in">Sign in</string>
     <string name="connect_reachability_hint">The Mercury dashboard must be reachable from the phone (Tailscale + `tailscale serve`, or an SSH tunnel).</string>
+    <string name="connect_password_show">Show password</string>
+    <string name="connect_password_hide">Hide password</string>
+    <string name="chat_bot_close">Close conversation</string>
     <string name="common_loading">Loading…</string>
     <string name="composer_commands">Commands</string>
     <string name="composer_commands_search">Search a command</string>
