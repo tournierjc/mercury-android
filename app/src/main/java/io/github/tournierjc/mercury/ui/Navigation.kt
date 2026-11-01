@@ -1,5 +1,19 @@
 package io.github.tournierjc.mercury.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
+
 /**
  * One place the owner has been: the screen, the conversation open on it, and whether the sheet was
  * open when they left. Restoring all three is what makes Back feel like walking back rather than
@@ -64,4 +78,51 @@ class ExitGate(private val windowMs: Long = 2_000) {
         armedAt = nowMs
         return false
     }
+}
+
+/**
+ * The one way two screens swap in this app, wherever they live: a shared-axis slide. The incoming
+ * screen slips in from the far edge while fading up, the outgoing one slips out the other way
+ * while fading down — a change of screen reads as a change of depth, not a teleport. `forward` is
+ * a drill-in, `back` is its mirror.
+ *
+ * Centralised on purpose: the motion belongs to the shell, not to twenty screens each with their
+ * own idea of it. The M3 surfaces that already animate (drawer, sheets, dialogs) keep their own
+ * motion; this covers only the raw destination swaps.
+ *
+ * `exitProgress` is the progress of a predictive back-to-home gesture, 0 when idle: with nothing
+ * left to close the shell answers for the gesture itself, and this is the cue it shows — the
+ * whole shell shrinking the way the system preview would.
+ */
+@Composable
+fun ScreenSwitch(
+    target: AppScreen,
+    forward: Boolean,
+    exitProgress: () -> Float,
+    modifier: Modifier = Modifier,
+    content: @Composable AnimatedContentScope.(AppScreen) -> Unit,
+) {
+    AnimatedContent(
+        targetState = target,
+        modifier = modifier.graphicsLayer {
+            val progress = exitProgress()
+            val scale = 1f - 0.05f * progress
+            scaleX = scale
+            scaleY = scale
+            alpha = 1f - 0.2f * progress
+        },
+        transitionSpec = {
+            val drift = tween<IntOffset>(260, easing = FastOutSlowInEasing)
+            val fade = tween<Float>(260, easing = FastOutSlowInEasing)
+            if (forward) {
+                (slideInHorizontally(drift) { it / 4 } + fadeIn(fade)) togetherWith
+                    (slideOutHorizontally(drift) { -it / 4 } + fadeOut(fade))
+            } else {
+                (slideInHorizontally(drift) { -it / 4 } + fadeIn(fade)) togetherWith
+                    (slideOutHorizontally(drift) { it / 4 } + fadeOut(fade))
+            }
+        },
+        label = "ScreenSwitch",
+        content = content,
+    )
 }

@@ -68,7 +68,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +78,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.toMutableStateList
@@ -94,6 +95,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
@@ -189,6 +191,11 @@ fun ChatScreen(
     // Leaving the app takes two presses; the first says so.
     val exitGate = remember { ExitGate() }
     val exitPrompt = stringResource(R.string.chat_exit_prompt)
+    // The predictive-exit cue: while a back gesture runs with nothing left to close, the shell
+    // shrinks the way the system preview would — the app answers for the gesture itself.
+    val exitProgress = remember { mutableFloatStateOf(0f) }
+    // Which way the shell just moved: a drill-in slides in from the far edge, Back mirrors it.
+    var forward by remember { mutableStateOf(true) }
     val activity = remember(context) {
         generateSequence(context as Context?) { (it as? ContextWrapper)?.baseContext }
             .filterIsInstance<Activity>()
@@ -202,6 +209,7 @@ fun ChatScreen(
 
     /** Leaves the current place for [to], remembering the one being left. */
     fun go(to: AppScreen, conversation: String? = null) {
+        forward = true
         history.add(NavStep(screen = screen, conversation = botChat, drawerOpen = drawerState.isOpen))
         screen = to
         botChat = conversation
@@ -230,6 +238,7 @@ fun ChatScreen(
             is BackAction.Restore -> {
                 history.removeAt(history.lastIndex)
                 val step = action.step
+                forward = false
                 screen = step.screen
                 botChat = step.conversation
                 // Coming back to the roster reopens the bot whose page was left: the same place,
@@ -249,10 +258,26 @@ fun ChatScreen(
         }
     }
 
-    // Enabled only while there is something to close or somewhere to go back to: on the
-    // conversation with nothing open, Back still leaves the app.
-    // Always enabled now: at the door of the app the press is ours to answer, twice.
-    BackHandler(enabled = true) { goBack() }
+    // Always on: at the door of the app the press is ours to answer, twice. A predictive handler
+    // rather than a plain one — with the manifest flag on, the gesture hands over its progress,
+    // and while nothing is left to close the shell draws its own exit cue from it instead of
+    // leaving the system gesture half-alive behind an always-enabled interceptor.
+    PredictiveBackHandler(enabled = true) { events ->
+        try {
+            events.collect { event ->
+                if (backAction(drawerState.isOpen, history, botChat) == BackAction.LeaveApp) {
+                    exitProgress.floatValue = event.progress
+                }
+            }
+            // The gesture committed: answer it as any Back press would.
+            exitProgress.floatValue = 0f
+            goBack()
+        } catch (cancelled: CancellationException) {
+            // The thumb let go before the commit: nothing happened, stand the shell back up.
+            exitProgress.floatValue = 0f
+            throw cancelled
+        }
+    }
 
     // A tapped notification is a destination: "Bricoleur a terminé son travail" queues its
     // bot id, and the app lands on that bot instead of the last conversation.
@@ -262,6 +287,7 @@ fun ChatScreen(
             // nonce makes a second tap on the same bot a new event rather than a no-op.
             if (botChat != openBotId) botChat = openBotId
             // A notification is a new destination, not a step in the path the owner was walking.
+            forward = true
             history.clear()
             screen = AppScreen.Chat
             onOpenBotConsumed()
@@ -269,556 +295,553 @@ fun ChatScreen(
     }
 
 
-    when (screen) {
-        AppScreen.Bridge -> {
-            BridgeScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Settings -> {
-            SettingsScreen(onBack = ::goBack, onChangeServer = onChangeServer)
-            return
-        }
-
-        AppScreen.Status -> {
-            StatusScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Sessions -> {
-            SessionsScreen(
-                threads = threads,
-                currentSessionId = state.sessionId,
-                onBack = ::goBack,
-                onOpenThread = { thread ->
-                    onOpenThread(thread)
-                    go(AppScreen.Chat)
-                },
-                onDeleteThread = onDeleteThread,
-            )
-            return
-        }
-
-        // The screens the app already had, kept reachable: the second brain's memory, the boards,
-        // the roster, the share sheet, and the console — the webapp folded the console's counters
-        // into Status and Usage, the app still owns the terminal view.
-        AppScreen.Memory -> {
-            MemoryScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Boards -> {
-            BoardsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.SandboxTools -> {
-            SandboxToolsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Bots -> {
-            BotsScreen(
-                onBack = ::goBack,
-                initialBotId = botToOpen,
-                onOpened = { botToOpen = null },
-                // The sheet hands over to the conversation, and back comes home to the sheet:
-                // a single step each way, instead of landing in Mercury's screen and having to
-                // find the teammate again.
-                onOpenChat = { id -> openConversation(id) },
-                // Le même ordre que celui du menu, la même mémoire : ranger ici déplace le menu.
-                botOrder = botOrder,
-                onSaveOrder = { ids ->
-                    botOrder = ids
-                    orderMemory.save(ids)
-                },
-            )
-            return
-        }
-
-        AppScreen.Deliverables -> {
-            DeliverablesScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Console -> {
-            ConsoleScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Tasks -> {
-            TasksScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Workspace -> {
-            WorkspaceScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Persons -> {
-            PersonsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Goals -> {
-            GoalsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Graph -> {
-            GraphScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Providers -> {
-            ProvidersScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Skills -> {
-            SkillsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Mcp -> {
-            McpScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Plugins -> {
-            PluginsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Permissions -> {
-            PermissionsScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Schedules -> {
-            SchedulesScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Usage -> {
-            UsageScreen(onBack = ::goBack)
-            return
-        }
-
-        AppScreen.Chat -> Unit
-    }
-
-    // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
-    val container = remember { (context.applicationContext as MercuryApp).container }
-    val botsVm: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
-    // (L'ordre de l'équipage est lu plus haut, au-dessus du tiroir : une seule mémoire pour les deux écrans.)
-    val botsState by botsVm.state.collectAsState()
-    val botWatch by container.botWatcher.state.collectAsState()
-    val botAvatars by botsVm.avatars.collectAsState()
-    LaunchedEffect(botWatch.bots) { botsVm.loadAvatars(botWatch.bots) }
-    LaunchedEffect(botChat) { botChat?.let { botsVm.select(it) } }
-
-    var composerText by rememberSaveable { mutableStateOf("") }
-    // The message being answered, if any: the composer shows it as a chip and the send prepends
-    // it as a blockquote, which is how the quote reaches the daemon and survives a reload.
-    var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
-    /** Files waiting to be sent to the bot on screen. */
-    var botFiles by remember { mutableStateOf<List<PendingFile>>(emptyList()) }
-    LaunchedEffect(botChat) {
-        replyTo = null
-        // Files belong to the correspondent they were picked for.
-        botFiles = emptyList()
-    }
-    var voiceError by remember { mutableStateOf<String?>(null) }
-    var attachmentError by remember { mutableStateOf<String?>(null) }
-
-    // Photos and PDFs: the system picker needs no storage permission, and a picked
-    // file is read once, downscaled, and reduced to bytes — never copied to storage.
-    val attachmentUnreadable = stringResource(R.string.chat_attachment_unreadable)
-    val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        if (uris.isEmpty()) return@rememberLauncherForActivityResult
-        val files = uris.mapNotNull { uri ->
-            MediaPicker.read(context, uri).getOrElse { error ->
-                attachmentError = error.message ?: attachmentUnreadable
-                null
+    // The drawer destinations swap through one shared motion (ScreenSwitch, in Navigation.kt):
+    // a change of screen reads as a change of depth, not a teleport. The conversation is part of
+    // the same swap, so leaving it for a tool — and coming back — animates both ways, in the
+    // direction the owner moved.
+    ScreenSwitch(
+        target = screen,
+        forward = forward,
+        exitProgress = { exitProgress.floatValue },
+        modifier = Modifier.fillMaxSize(),
+    ) { target ->
+        when (target) {
+            AppScreen.Bridge -> {
+                BridgeScreen(onBack = ::goBack)
             }
-        }
-        if (files.isNotEmpty()) {
-            // A bot's conversation carries its own files: dropping a photo into Mercury's thread
-            // because the bot was on screen would send it to the wrong correspondent.
-            if (botChat != null) botFiles = (botFiles + files).take(MAX_BOT_FILES) else onPickAttachments(files)
-        }
-    }
 
-    // Read once, in the composable: the launcher callbacks are not composable scopes.
-    val voicePrompt = stringResource(R.string.chat_title)
-    val voiceUnavailable = stringResource(R.string.chat_voice_unavailable)
-    val micDenied = stringResource(R.string.chat_mic_denied)
-
-    val speechLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!spoken.isNullOrBlank()) {
-                composerText = listOf(composerText, spoken).filter { it.isNotBlank() }.joinToString(" ")
+            AppScreen.Settings -> {
+                SettingsScreen(onBack = ::goBack, onChangeServer = onChangeServer)
             }
-        }
-    }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            runCatching { speechLauncher.launch(speechIntent(voicePrompt)) }
-                .onFailure { voiceError = voiceUnavailable }
-        } else {
-            voiceError = micDenied
-        }
-    }
+            AppScreen.Status -> {
+                StatusScreen(onBack = ::goBack)
+            }
 
-    fun startVoice() {
-        voiceError = null
-        val granted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            runCatching { speechLauncher.launch(speechIntent(voicePrompt)) }
-                .onFailure { voiceError = voiceUnavailable }
-        } else {
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ThreadDrawer(
-                threads = threads,
-                botOrder = botOrder,
-                onSaveOrder = { ids ->
-                    botOrder = ids
-                    orderMemory.save(ids)
-                },
-                currentSessionId = state.sessionId,
-                onNewChat = {
-                    go(AppScreen.Chat)
-                    onNewChat()
-                },
-                onOpenThread = { thread ->
-                    go(AppScreen.Chat)
-                    onOpenThread(thread)
-                },
-                current = if (botChat != null) AppScreen.Chat else screen,
-                onShowAllSessions = { go(AppScreen.Sessions) },
-                onOpen = { destination -> go(destination) },
-                bots = botWatch.bots,
-                avatars = botAvatars,
-                activeBotId = botChat,
-                onOpenBot = { id -> openConversation(id) },
-                // A long press on a name goes to the page that changes it, not to the one that talks
-                // to it — and the sheet hands over to Équipiers with that bot already open.
-                onOpenBotConfig = { id -> openConfig(id) },
-                onDeleteThread = { thread ->
-                    onDeleteThread(thread)
-                    scope.launch { drawerState.close() }
-                },
-                onSignOut = {
-                    onSignOut()
-                    scope.launch { drawerState.close() }
-                },
-            )
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(colors.canvas)
-                .safeDrawingPadding()
-                .imePadding(),
-        ) {
-            val botId = botChat
-            // The screen knows which teammate it is showing; the notifier needs the same fact to
-            // stay quiet about a message that is already on screen.
-            LaunchedEffect(botId) { AppVisibility.openBotId = botId }
-            DisposableEffect(Unit) { onDispose { AppVisibility.openBotId = null } }
-            val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
-            val botLive = botId?.let { botWatch.live[it] }
-            val botName = bot?.let { BotJson.name(it) } ?: botId.orEmpty()
-            // Read in the composable: the list below is built inside remember { }, where a
-            // resource lookup is not allowed.
-            val queuedLabel = stringResource(R.string.chat_bot_queued)
-            val failedLabel = stringResource(R.string.chat_bot_failed)
-            val noAnswerLabel = stringResource(R.string.chat_bot_no_answer)
-            // The list is assembled by a pure function in `ui`, not here: it is rebuilt on every
-            // live tick inside a `remember` whose body nothing can test, and it used to be built
-            // from part of the state only — the tool calls and the thinking were fetched, stored,
-            // and passed to nothing.
-            val botMessages = remember(
-                botsState.records,
-                botsState.prompts,
-                botsState.answers,
-                botsState.traces,
-                botsState.reasoning,
-                botsState.reasoningTruncated,
-                botsState.pending,
-                botLive,
-                botWatch.activity[botId],
-                botId,
-            ) {
-                BotConversation.messages(
-                    state = botsState,
-                    botId = botId,
-                    live = botLive,
-                    activity = botWatch.activity[botId].orEmpty(),
-                    queued = queuedLabel,
-                    failed = failedLabel,
-                    noAnswer = noAnswerLabel,
+            AppScreen.Sessions -> {
+                SessionsScreen(
+                    threads = threads,
+                    currentSessionId = state.sessionId,
+                    onBack = ::goBack,
+                    onOpenThread = { thread ->
+                        onOpenThread(thread)
+                        go(AppScreen.Chat)
+                    },
+                    onDeleteThread = onDeleteThread,
                 )
             }
-            var showBotDeliverables by remember { mutableStateOf(false) }
-            // A turn that just ended has its answer in the journal, not in the 600-character tail
-            // the feed carried while it ran. Without this reload the full reply only appeared after
-            // leaving the screen and coming back — the owner watched an answer being written and
-            // then never saw the rest of it. Only on the running → over transition: reloading on
-            // every recomposition would double the load `select()` has just done.
-            // The journal is the proof a turn is over, and the feed can miss its `turn-end` (a
-            // dropped stream, a process the system killed): the header claimed a teammate was still
-            // writing a turn whose record had already been written.
-            val journalSaysOver = botLive?.jobId?.let { id -> botsState.records.any { it.runId == id } } == true
-            var wasWriting by remember(botId) { mutableStateOf(false) }
-            val writing = botLive?.running == true && !journalSaysOver
-            LaunchedEffect(botId, writing) {
-                val id = botId ?: return@LaunchedEffect
-                if (wasWriting && !writing) botsVm.reloadConversation(id)
-                wasWriting = writing
+
+            // The screens the app already had, kept reachable: the second brain's memory, the boards,
+            // the roster, the share sheet, and the console — the webapp folded the console's counters
+            // into Status and Usage, the app still owns the terminal view.
+            AppScreen.Memory -> {
+                MemoryScreen(onBack = ::goBack)
             }
-            // The feed is the fast path, not the only one: a turn's record lands in the journal even
-            // when the live stream dropped, ended while the app was in the background, or the
-            // process was killed — and then the answer was invisible until the app was relaunched.
-            // One cheap request while the screen is in front; the reload only when it says something
-            // is new, and nothing at all while the app is behind another app.
-            val lifecycleOwner = LocalLifecycleOwner.current
-            LaunchedEffect(botId, lifecycleOwner) {
-                val id = botId ?: return@LaunchedEffect
-                lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    while (true) {
-                        botsVm.pollConversation(id)
-                        delay(5_000)
+
+            AppScreen.Boards -> {
+                BoardsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.SandboxTools -> {
+                SandboxToolsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Bots -> {
+                BotsScreen(
+                    onBack = ::goBack,
+                    initialBotId = botToOpen,
+                    onOpened = { botToOpen = null },
+                    // The sheet hands over to the conversation, and back comes home to the sheet:
+                    // a single step each way, instead of landing in Mercury's screen and having to
+                    // find the teammate again.
+                    onOpenChat = { id -> openConversation(id) },
+                    // Le même ordre que celui du menu, la même mémoire : ranger ici déplace le menu.
+                    botOrder = botOrder,
+                    onSaveOrder = { ids ->
+                        botOrder = ids
+                        orderMemory.save(ids)
+                    },
+                )
+            }
+
+            AppScreen.Deliverables -> {
+                DeliverablesScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Console -> {
+                ConsoleScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Tasks -> {
+                TasksScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Workspace -> {
+                WorkspaceScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Persons -> {
+                PersonsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Goals -> {
+                GoalsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Graph -> {
+                GraphScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Providers -> {
+                ProvidersScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Skills -> {
+                SkillsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Mcp -> {
+                McpScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Plugins -> {
+                PluginsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Permissions -> {
+                PermissionsScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Schedules -> {
+                SchedulesScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Usage -> {
+                UsageScreen(onBack = ::goBack)
+            }
+
+            AppScreen.Chat -> Unit
+        }
+
+        if (target == AppScreen.Chat) {
+
+            // One conversation, two correspondents: Mercury, or a teammate picked in the drawer.
+            val container = remember { (context.applicationContext as MercuryApp).container }
+            val botsVm: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
+            // (L'ordre de l'équipage est lu plus haut, au-dessus du tiroir : une seule mémoire pour les deux écrans.)
+            val botsState by botsVm.state.collectAsState()
+            val botWatch by container.botWatcher.state.collectAsState()
+            val botAvatars by botsVm.avatars.collectAsState()
+            LaunchedEffect(botWatch.bots) { botsVm.loadAvatars(botWatch.bots) }
+            LaunchedEffect(botChat) { botChat?.let { botsVm.select(it) } }
+
+            var composerText by rememberSaveable { mutableStateOf("") }
+            // The message being answered, if any: the composer shows it as a chip and the send prepends
+            // it as a blockquote, which is how the quote reaches the daemon and survives a reload.
+            var replyTo by remember { mutableStateOf<ChatMessage?>(null) }
+            /** Files waiting to be sent to the bot on screen. */
+            var botFiles by remember { mutableStateOf<List<PendingFile>>(emptyList()) }
+            LaunchedEffect(botChat) {
+                replyTo = null
+                // Files belong to the correspondent they were picked for.
+                botFiles = emptyList()
+            }
+            var voiceError by remember { mutableStateOf<String?>(null) }
+            var attachmentError by remember { mutableStateOf<String?>(null) }
+
+            // Photos and PDFs: the system picker needs no storage permission, and a picked
+            // file is read once, downscaled, and reduced to bytes — never copied to storage.
+            val attachmentUnreadable = stringResource(R.string.chat_attachment_unreadable)
+            val attachmentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+                if (uris.isEmpty()) return@rememberLauncherForActivityResult
+                val files = uris.mapNotNull { uri ->
+                    MediaPicker.read(context, uri).getOrElse { error ->
+                        attachmentError = error.message ?: attachmentUnreadable
+                        null
+                    }
+                }
+                if (files.isNotEmpty()) {
+                    // A bot's conversation carries its own files: dropping a photo into Mercury's thread
+                    // because the bot was on screen would send it to the wrong correspondent.
+                    if (botChat != null) botFiles = (botFiles + files).take(MAX_BOT_FILES) else onPickAttachments(files)
+                }
+            }
+
+            // Read once, in the composable: the launcher callbacks are not composable scopes.
+            val voicePrompt = stringResource(R.string.chat_title)
+            val voiceUnavailable = stringResource(R.string.chat_voice_unavailable)
+            val micDenied = stringResource(R.string.chat_mic_denied)
+
+            val speechLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+                    if (!spoken.isNullOrBlank()) {
+                        composerText = listOf(composerText, spoken).filter { it.isNotBlank() }.joinToString(" ")
                     }
                 }
             }
 
-            if (botId != null) {
-                TopBar(
-                    title = botName,
-                    // One fact at a time. "au repos · thinking" said both at once: the daemon's
-                    // static state and the live phase contradicted each other, and the phase was
-                    // the daemon's own English ("thinking", "running command") on a French screen.
-                    subtitle = run {
-                        val phase = activityLabel(botWatch.activity[botId].orEmpty())
-                        val state = bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) }.orEmpty()
-                        when {
-                            // Only claim a teammate is writing when there is something to show.
-                            writing && botLive?.text?.isNotBlank() == true -> stringResource(R.string.chat_bot_writing)
-                            // A running turn is described by what it is doing, not by a state
-                            // that says it is idle.
-                            botLive?.running == true -> phase.ifBlank { stringResource(R.string.chat_bot_busy) }
-                            else -> state.ifBlank { stringResource(R.string.chat_bot_idle) }
-                        }
-                    },
-                    onMenu = { scope.launch { drawerState.open() } },
-                    onNewChat = null,
-                    syncing = syncing,
-                    avatar = { if (bot != null) BotFace(bot, botAvatars[botId], small = true) },
-                    actions = {
-                        IconButton(onClick = { showBotDeliverables = true }) {
-                            Icon(
-                                imageVector = Icons.Rounded.FolderOpen,
-                                contentDescription = stringResource(R.string.chat_bot_deliverables, botName),
-                                tint = if (botsState.outputs.isEmpty()) colors.textSecondary else colors.accent,
-                            )
-                        }
-                        IconButton(onClick = { openConfig(botId) }) {
-                            Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.chat_bot_settings, botName), tint = colors.textSecondary)
-                        }
-                    },
-                )
-                Box(modifier = Modifier.weight(1f)) {
-                    if (botMessages.isEmpty() && botsState.detailLoading) {
-                        // Arriving from a notification: the transcript takes a beat, and the
-                        // welcome screen used to flash in that gap as if the conversation were
-                        // empty.
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                color = colors.accent,
-                                strokeWidth = 2.dp,
-                            )
-                        }
-                    } else if (botMessages.isEmpty()) {
-                        BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt, chat = true) }
-                    } else {
-                        MessageList(
-                            botMessages,
-                            onReply = { replyTo = it },
-                            // A bot conversation is its own list: switching to it from the
-                            // roster must not animate through Mercury's messages.
-                            conversationKey = "bot:$botId",
-                            // The row names whoever answered: "Mercury" over a bot's words was
-                            // simply the wrong bot.
-                            senderName = botName,
-                            onLoadFull = { key -> botsVm.loadAnswer(key.substringBeforeLast("-bot")) },
-                        )
-                    }
+            val permissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { granted ->
+                if (granted) {
+                    runCatching { speechLauncher.launch(speechIntent(voicePrompt)) }
+                        .onFailure { voiceError = voiceUnavailable }
+                } else {
+                    voiceError = micDenied
                 }
-                botsState.error?.let { notice -> ErrorBar(notice = notice, onDismiss = { botsVm.clearBanner() }) }
-                botsState.dispatchFeedback?.let { notice ->
-                    // A send that left is acknowledged quietly and fades; a refusal is read.
-                    if (notice.severity == NoticeSeverity.Info) {
-                        DispatchAck(
-                            notice = notice,
-                            onDone = { botsVm.clearDispatchFeedback() },
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                        )
-                    } else {
-                        Text(
-                            text = noticeText(notice),
-                            style = MaterialTheme.typography.labelSmall,
-                            // The severity carries the colour: no more guessing from a leading word.
-                            color = noticeTint(notice.severity),
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-                AttachmentStrip(attachments = botFiles, onRemove = { index -> botFiles = botFiles.filterIndexed { i, _ -> i != index } })
-                replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
-                Composer(
-                    value = composerText,
-                    onValueChange = { composerText = it },
-                    onSend = {
-                        val text = composerText.trim()
-                        val files = botFiles
-                        if (text.isNotEmpty() || files.isNotEmpty()) {
-                            composerText = ""
-                            botFiles = emptyList()
-                            val payload = replyTo?.let { QuoteReply.compose(it.text, text) } ?: text
-                            replyTo = null
-                            // Chat mode: the bot answers, it does not file a work report.
-                            botsVm.dispatch(payload, files, chat = true)
-                        }
-                    },
-                    onVoice = { startVoice() },
-                    onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf")) },
-                    attachmentCount = botFiles.size,
-                    busy = botsState.busy,
-                    hint = stringResource(R.string.chat_bot_write, botName),
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                )
-                if (showBotDeliverables && botId != null) {
-                    LaunchedEffect(showBotDeliverables) { botsVm.reloadOutputs(botId) }
-                    BotDeliverablesSheet(
-                        botId = botId,
-                        botName = botName,
-                        outputs = botsState.outputs,
-                        busy = botsState.busy,
-                        onPreview = botsVm::previewOutput,
-                        onShare = botsVm::shareOutput,
-                        onDelete = botsVm::deleteOutput,
-                        onReload = { botsVm.reloadOutputs(botId) },
-                        onDismiss = { showBotDeliverables = false },
-                    )
-                }
-                BotOutputPreviewHost(botsState, botsVm)
-            } else {
-            TopBar(
-                title = state.title.ifBlank { "Mercury" },
-                subtitle = listOf(state.provider, state.model).filter { it.isNotBlank() }.joinToString(" · "),
-                onMenu = { scope.launch { drawerState.open() } },
-                onNewChat = onNewChat,
-                syncing = syncing,
-            )
+            }
 
-            Box(modifier = Modifier.weight(1f)) {
-                if (state.isWelcome) {
-                    Welcome(
-                        onPick = { text ->
-                            composerText = ""
-                            onSend(text)
+            fun startVoice() {
+                voiceError = null
+                val granted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    runCatching { speechLauncher.launch(speechIntent(voicePrompt)) }
+                        .onFailure { voiceError = voiceUnavailable }
+                } else {
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
+
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ThreadDrawer(
+                        threads = threads,
+                        botOrder = botOrder,
+                        onSaveOrder = { ids ->
+                            botOrder = ids
+                            orderMemory.save(ids)
+                        },
+                        currentSessionId = state.sessionId,
+                        onNewChat = {
+                            go(AppScreen.Chat)
+                            onNewChat()
+                        },
+                        onOpenThread = { thread ->
+                            go(AppScreen.Chat)
+                            onOpenThread(thread)
+                        },
+                        current = if (botChat != null) AppScreen.Chat else screen,
+                        onShowAllSessions = { go(AppScreen.Sessions) },
+                        onOpen = { destination -> go(destination) },
+                        bots = botWatch.bots,
+                        avatars = botAvatars,
+                        activeBotId = botChat,
+                        onOpenBot = { id -> openConversation(id) },
+                        // A long press on a name goes to the page that changes it, not to the one that talks
+                        // to it — and the sheet hands over to Équipiers with that bot already open.
+                        onOpenBotConfig = { id -> openConfig(id) },
+                        onDeleteThread = { thread ->
+                            onDeleteThread(thread)
+                            scope.launch { drawerState.close() }
+                        },
+                        onSignOut = {
+                            onSignOut()
+                            scope.launch { drawerState.close() }
                         },
                     )
-                } else {
-                    MessageList(state.messages, onReply = { replyTo = it }, conversationKey = "mercury")
-                }
-            }
-
-            state.error?.let { notice -> ErrorBar(notice = notice, onDismiss = onDismissError) }
-            attachmentError?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.danger,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                )
-            }
-            if (voiceError != null) {
-                Text(
-                    text = voiceError.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.danger,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                )
-            }
-            state.warning?.let { notice ->
-                Box(modifier = Modifier.padding(horizontal = 14.dp)) {
-                    // A warning used to be painted as an info line (`isError = false`, always).
-                    NoticeBanner(notice, onDismiss = onDismissWarning)
-                }
-            }
-            state.interaction?.let { interaction ->
-                Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
-                    InteractionCard(
-                        interaction = interaction,
-                        onAction = { action -> onPermission(interaction.id, action) },
-                    )
-                }
-            }
-
-            AttachmentStrip(attachments = attachments, onRemove = onRemoveAttachment)
-
-            // The programming mode, where the next message is typed: it changes what the agent does
-            // with that message, so it belongs above the field and not in the console.
-            CodeModeBar(
-                mode = codeMode,
-                available = codeModeAvailable,
-                onPick = onCodeMode,
-            )
-
-            replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
-            Composer(
-                value = composerText,
-                onValueChange = { composerText = it },
-                onSend = {
-                    val text = composerText
-                    if (text.isNotBlank() || attachments.isNotEmpty()) {
-                        composerText = ""
-                        val payload = if (replyTo != null) {
-                            QuoteReply.compose(replyTo!!.text, text)
-                        } else {
-                            text
-                        }
-                        replyTo = null
-                        onSend(payload)
-                    }
                 },
-                onVoice = { startVoice() },
-                onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf")) },
-                attachmentCount = attachments.size,
-                busy = state.streaming,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(colors.canvas)
+                        .safeDrawingPadding()
+                        .imePadding(),
+                ) {
+                    val botId = botChat
+                    // The screen knows which teammate it is showing; the notifier needs the same fact to
+                    // stay quiet about a message that is already on screen.
+                    LaunchedEffect(botId) { AppVisibility.openBotId = botId }
+                    DisposableEffect(Unit) { onDispose { AppVisibility.openBotId = null } }
+                    val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
+                    val botLive = botId?.let { botWatch.live[it] }
+                    val botName = bot?.let { BotJson.name(it) } ?: botId.orEmpty()
+                    // Read in the composable: the list below is built inside remember { }, where a
+                    // resource lookup is not allowed.
+                    val queuedLabel = stringResource(R.string.chat_bot_queued)
+                    val failedLabel = stringResource(R.string.chat_bot_failed)
+                    val noAnswerLabel = stringResource(R.string.chat_bot_no_answer)
+                    // The list is assembled by a pure function in `ui`, not here: it is rebuilt on every
+                    // live tick inside a `remember` whose body nothing can test, and it used to be built
+                    // from part of the state only — the tool calls and the thinking were fetched, stored,
+                    // and passed to nothing.
+                    val botMessages = remember(
+                        botsState.records,
+                        botsState.prompts,
+                        botsState.answers,
+                        botsState.traces,
+                        botsState.reasoning,
+                        botsState.reasoningTruncated,
+                        botsState.pending,
+                        botLive,
+                        botWatch.activity[botId],
+                        botId,
+                    ) {
+                        BotConversation.messages(
+                            state = botsState,
+                            botId = botId,
+                            live = botLive,
+                            activity = botWatch.activity[botId].orEmpty(),
+                            queued = queuedLabel,
+                            failed = failedLabel,
+                            noAnswer = noAnswerLabel,
+                        )
+                    }
+                    var showBotDeliverables by remember { mutableStateOf(false) }
+                    // A turn that just ended has its answer in the journal, not in the 600-character tail
+                    // the feed carried while it ran. Without this reload the full reply only appeared after
+                    // leaving the screen and coming back — the owner watched an answer being written and
+                    // then never saw the rest of it. Only on the running → over transition: reloading on
+                    // every recomposition would double the load `select()` has just done.
+                    // The journal is the proof a turn is over, and the feed can miss its `turn-end` (a
+                    // dropped stream, a process the system killed): the header claimed a teammate was still
+                    // writing a turn whose record had already been written.
+                    val journalSaysOver = botLive?.jobId?.let { id -> botsState.records.any { it.runId == id } } == true
+                    var wasWriting by remember(botId) { mutableStateOf(false) }
+                    val writing = botLive?.running == true && !journalSaysOver
+                    LaunchedEffect(botId, writing) {
+                        val id = botId ?: return@LaunchedEffect
+                        if (wasWriting && !writing) botsVm.reloadConversation(id)
+                        wasWriting = writing
+                    }
+                    // The feed is the fast path, not the only one: a turn's record lands in the journal even
+                    // when the live stream dropped, ended while the app was in the background, or the
+                    // process was killed — and then the answer was invisible until the app was relaunched.
+                    // One cheap request while the screen is in front; the reload only when it says something
+                    // is new, and nothing at all while the app is behind another app.
+                    val lifecycleOwner = LocalLifecycleOwner.current
+                    LaunchedEffect(botId, lifecycleOwner) {
+                        val id = botId ?: return@LaunchedEffect
+                        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                            while (true) {
+                                botsVm.pollConversation(id)
+                                delay(5_000)
+                            }
+                        }
+                    }
+
+                    if (botId != null) {
+                        TopBar(
+                            title = botName,
+                            // One fact at a time. "au repos · thinking" said both at once: the daemon's
+                            // static state and the live phase contradicted each other, and the phase was
+                            // the daemon's own English ("thinking", "running command") on a French screen.
+                            subtitle = run {
+                                val phase = activityLabel(botWatch.activity[botId].orEmpty())
+                                val state = bot?.let { noticeText(BotJson.stateNotice(BotJson.state(it))) }.orEmpty()
+                                when {
+                                    // Only claim a teammate is writing when there is something to show.
+                                    writing && botLive?.text?.isNotBlank() == true -> stringResource(R.string.chat_bot_writing)
+                                    // A running turn is described by what it is doing, not by a state
+                                    // that says it is idle.
+                                    botLive?.running == true -> phase.ifBlank { stringResource(R.string.chat_bot_busy) }
+                                    else -> state.ifBlank { stringResource(R.string.chat_bot_idle) }
+                                }
+                            },
+                            onMenu = { scope.launch { drawerState.open() } },
+                            onNewChat = null,
+                            syncing = syncing,
+                            avatar = { if (bot != null) BotFace(bot, botAvatars[botId], small = true) },
+                            actions = {
+                                IconButton(onClick = { showBotDeliverables = true }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.FolderOpen,
+                                        contentDescription = stringResource(R.string.chat_bot_deliverables, botName),
+                                        tint = if (botsState.outputs.isEmpty()) colors.textSecondary else colors.accent,
+                                    )
+                                }
+                                IconButton(onClick = { openConfig(botId) }) {
+                                    Icon(Icons.Rounded.MoreHoriz, contentDescription = stringResource(R.string.chat_bot_settings, botName), tint = colors.textSecondary)
+                                }
+                                // Closing the conversation is a gesture Back owns today; a
+                                // visible affordance says the same thing without the guesswork.
+                                IconButton(onClick = ::goBack) {
+                                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.chat_bot_close), tint = colors.textSecondary)
+                                }
+                            },
+                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (botMessages.isEmpty() && botsState.detailLoading) {
+                                // Arriving from a notification: the transcript takes a beat, and the
+                                // welcome screen used to flash in that gap as if the conversation were
+                                // empty.
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        color = colors.accent,
+                                        strokeWidth = 2.dp,
+                                    )
+                                }
+                            } else if (botMessages.isEmpty()) {
+                                BotWelcome(botName) { prompt -> composerText = ""; botsVm.dispatch(prompt, chat = true) }
+                            } else {
+                                MessageList(
+                                    botMessages,
+                                    onReply = { replyTo = it },
+                                    // A bot conversation is its own list: switching to it from the
+                                    // roster must not animate through Mercury's messages.
+                                    conversationKey = "bot:$botId",
+                                    // The row names whoever answered: "Mercury" over a bot's words was
+                                    // simply the wrong bot.
+                                    senderName = botName,
+                                    onLoadFull = { key -> botsVm.loadAnswer(key.substringBeforeLast("-bot")) },
+                                )
+                            }
+                        }
+                        botsState.error?.let { notice -> ErrorBar(notice = notice, onDismiss = { botsVm.clearBanner() }) }
+                        botsState.dispatchFeedback?.let { notice ->
+                            // A send that left is acknowledged quietly and fades; a refusal is read.
+                            if (notice.severity == NoticeSeverity.Info) {
+                                DispatchAck(
+                                    notice = notice,
+                                    onDone = { botsVm.clearDispatchFeedback() },
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                                )
+                            } else {
+                                Text(
+                                    text = noticeText(notice),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    // The severity carries the colour: no more guessing from a leading word.
+                                    color = noticeTint(notice.severity),
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
+                        AttachmentStrip(attachments = botFiles, onRemove = { index -> botFiles = botFiles.filterIndexed { i, _ -> i != index } })
+                        replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
+                        Composer(
+                            value = composerText,
+                            onValueChange = { composerText = it },
+                            onSend = {
+                                val text = composerText.trim()
+                                val files = botFiles
+                                if (text.isNotEmpty() || files.isNotEmpty()) {
+                                    composerText = ""
+                                    botFiles = emptyList()
+                                    val payload = replyTo?.let { QuoteReply.compose(it.text, text) } ?: text
+                                    replyTo = null
+                                    // Chat mode: the bot answers, it does not file a work report.
+                                    botsVm.dispatch(payload, files, chat = true)
+                                }
+                            },
+                            onVoice = { startVoice() },
+                            onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf")) },
+                            attachmentCount = botFiles.size,
+                            busy = botsState.busy,
+                            hint = stringResource(R.string.chat_bot_write, botName),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        )
+                        if (showBotDeliverables && botId != null) {
+                            LaunchedEffect(showBotDeliverables) { botsVm.reloadOutputs(botId) }
+                            BotDeliverablesSheet(
+                                botId = botId,
+                                botName = botName,
+                                outputs = botsState.outputs,
+                                busy = botsState.busy,
+                                onPreview = botsVm::previewOutput,
+                                onShare = botsVm::shareOutput,
+                                onDelete = botsVm::deleteOutput,
+                                onReload = { botsVm.reloadOutputs(botId) },
+                                onDismiss = { showBotDeliverables = false },
+                            )
+                        }
+                        BotOutputPreviewHost(botsState, botsVm)
+                    } else {
+                    TopBar(
+                        title = state.title.ifBlank { "Mercury" },
+                        subtitle = listOf(state.provider, state.model).filter { it.isNotBlank() }.joinToString(" · "),
+                        onMenu = { scope.launch { drawerState.open() } },
+                        onNewChat = onNewChat,
+                        syncing = syncing,
+                    )
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (state.isWelcome) {
+                            Welcome(
+                                onPick = { text ->
+                                    composerText = ""
+                                    onSend(text)
+                                },
+                            )
+                        } else {
+                            MessageList(state.messages, onReply = { replyTo = it }, conversationKey = "mercury")
+                        }
+                    }
+
+                    state.error?.let { notice -> ErrorBar(notice = notice, onDismiss = onDismissError) }
+                    attachmentError?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.danger,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (voiceError != null) {
+                        Text(
+                            text = voiceError.orEmpty(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.danger,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                        )
+                    }
+                    state.warning?.let { notice ->
+                        Box(modifier = Modifier.padding(horizontal = 14.dp)) {
+                            // A warning used to be painted as an info line (`isError = false`, always).
+                            NoticeBanner(notice, onDismiss = onDismissWarning)
+                        }
+                    }
+                    state.interaction?.let { interaction ->
+                        Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+                            InteractionCard(
+                                interaction = interaction,
+                                onAction = { action -> onPermission(interaction.id, action) },
+                            )
+                        }
+                    }
+
+                    AttachmentStrip(attachments = attachments, onRemove = onRemoveAttachment)
+
+                    // The programming mode, where the next message is typed: it changes what the agent does
+                    // with that message, so it belongs above the field and not in the console.
+                    CodeModeBar(
+                        mode = codeMode,
+                        available = codeModeAvailable,
+                        onPick = onCodeMode,
+                    )
+
+                    replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
+                    Composer(
+                        value = composerText,
+                        onValueChange = { composerText = it },
+                        onSend = {
+                            val text = composerText
+                            if (text.isNotBlank() || attachments.isNotEmpty()) {
+                                composerText = ""
+                                val payload = if (replyTo != null) {
+                                    QuoteReply.compose(replyTo!!.text, text)
+                                } else {
+                                    text
+                                }
+                                replyTo = null
+                                onSend(payload)
+                            }
+                        },
+                        onVoice = { startVoice() },
+                        onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf")) },
+                        attachmentCount = attachments.size,
+                        busy = state.streaming,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    )
+                    }
+                }
             }
         }
     }
