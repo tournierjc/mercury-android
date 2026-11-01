@@ -10,14 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +46,13 @@ import io.github.tournierjc.mercury.data.dto.SandboxToolDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.vm.SandboxToolsViewModel
 import kotlinx.coroutines.delay
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 /**
  * The tools the bots can run, and whether they are signed in.
@@ -150,83 +156,101 @@ private fun ToolRow(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = tool.label,
-                style = MaterialTheme.typography.titleSmall,
-                color = colors.textPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            // The sign-in state is the second question an owner asks, after "is it there".
-            val authLabel = when {
-                !tool.present -> ""
-                tool.auth == "connected" -> stringResource(R.string.sandbox_connected)
-                tool.auth == "no" -> stringResource(R.string.sandbox_not_connected)
-                else -> ""
-            }
-            if (authLabel.isNotBlank()) {
-                Text(
-                    text = authLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (tool.auth == "connected") colors.textSecondary else colors.danger,
-                )
-            }
-        }
-        Text(
-            text = listOf(tool.version, tool.path).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { tool.description },
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.textSecondary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
         val running = install?.state == "running" || busy
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // One rule for the whole row, in :core and tested: which buttons a tool offers is
-            // independent of how they are drawn.
-            SandboxToolActions.of(tool).forEach { action ->
-                when (action) {
-                    SandboxToolAction.Install -> Button(onClick = onInstall, enabled = !running) {
-                        Text(stringResource(if (running) R.string.sandbox_installing else R.string.sandbox_install))
+        Row(verticalAlignment = Alignment.Top) {
+            // What the tool is, on the left: name, sign-in state, version and path.
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = tool.label,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                    )
+                    // The sign-in state is the second question an owner asks, after "is it there".
+                    val authLabel = when {
+                        !tool.present -> ""
+                        tool.auth == "connected" -> stringResource(R.string.sandbox_connected)
+                        tool.auth == "no" -> stringResource(R.string.sandbox_not_connected)
+                        else -> ""
                     }
-
-                    SandboxToolAction.Connect -> OutlinedButton(
-                        onClick = onConnect,
-                        enabled = flow?.state != "pending",
-                    ) {
-                        Text(stringResource(R.string.sandbox_connect))
-                    }
-
-                    // Signing out affects every bot at once, so it asks once instead of sitting one
-                    // tap away from an accidental revocation.
-                    SandboxToolAction.Disconnect -> OutlinedButton(
-                        onClick = { confirming = true },
-                        enabled = !busy,
-                    ) {
-                        Text(stringResource(R.string.sandbox_disconnect))
-                    }
-
-                    // Deleting what we installed: the second question the owner asked on this
-                    // screen, and the one that had no answer at all.
-                    SandboxToolAction.Remove -> OutlinedButton(
-                        onClick = { confirmingRemove = true },
-                        enabled = !busy,
-                    ) {
-                        Text(stringResource(R.string.sandbox_remove), color = colors.danger)
+                    if (authLabel.isNotBlank()) {
+                        Text(
+                            text = authLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (tool.auth == "connected") colors.textSecondary else colors.danger,
+                            modifier = Modifier.padding(start = 10.dp),
+                        )
                     }
                 }
-            }
-            if (!tool.present && tool.installBlocked.isNotBlank()) {
                 Text(
-                    text = tool.installBlocked,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = listOf(tool.version, tool.path).filter { it.isNotBlank() }
+                        .joinToString(" · ").ifBlank { tool.description },
+                    style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                if (!tool.present && tool.installBlocked.isNotBlank()) {
+                    Text(
+                        text = tool.installBlocked,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
+                }
             }
-            if (running) CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
+            // The actions, in one column on the right edge: as text buttons they pushed the version
+            // and the path into a narrow ribbon, and the widest labels wrapped. An icon column costs
+            // 40 dp of width and keeps every row the same height whatever it offers.
+            Column(horizontalAlignment = Alignment.End) {
+                // One rule for the whole row, in :core and tested: which actions a tool offers is
+                // independent of how they are drawn.
+                SandboxToolActions.of(tool).forEach { action ->
+                    when (action) {
+                        SandboxToolAction.Install -> ToolActionButton(
+                            icon = Icons.Rounded.Download,
+                            label = stringResource(if (running) R.string.sandbox_installing else R.string.sandbox_install),
+                            enabled = !running,
+                            onClick = onInstall,
+                        )
+
+                        SandboxToolAction.Connect -> ToolActionButton(
+                            icon = Icons.Rounded.Link,
+                            label = stringResource(R.string.sandbox_connect),
+                            enabled = flow?.state != "pending",
+                            onClick = onConnect,
+                        )
+
+                        // Signing out affects every bot at once, so it asks once instead of sitting
+                        // one tap away from an accidental revocation.
+                        SandboxToolAction.Disconnect -> ToolActionButton(
+                            icon = Icons.AutoMirrored.Rounded.Logout,
+                            label = stringResource(R.string.sandbox_disconnect),
+                            enabled = !busy,
+                            onClick = { confirming = true },
+                        )
+
+                        // Deleting what we installed: the second question the owner asked on this
+                        // screen, and the one that had no answer at all.
+                        SandboxToolAction.Remove -> ToolActionButton(
+                            icon = Icons.Rounded.DeleteOutline,
+                            label = stringResource(R.string.sandbox_remove),
+                            enabled = !busy,
+                            destructive = true,
+                            onClick = { confirmingRemove = true },
+                        )
+                    }
+                }
+                if (running) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(12.dp).size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.accent,
+                    )
+                }
+            }
         }
 
         install?.takeIf { it.state == "failed" }?.let {
@@ -329,6 +353,37 @@ private fun ToolRow(
                     Text(stringResource(R.string.common_cancel))
                 }
             },
+        )
+    }
+}
+
+/**
+ * Une action de la ligne, en icône.
+ *
+ * Le libellé reste, mais il va à TalkBack (`contentDescription`) au lieu de tenir 90 dp de large sur
+ * chaque rangée : quatre actions en texte poussaient la version et le chemin dans un ruban étroit, et
+ * « Désinstaller » finissait sur deux lignes. La colonne d'icônes garde toutes les rangées de la même
+ * hauteur, quelle que soit l'action qu'elles offrent.
+ */
+@Composable
+private fun ToolActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val colors = LocalMercuryColors.current
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(40.dp)) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = when {
+                !enabled -> colors.textSecondary.copy(alpha = 0.4f)
+                destructive -> colors.danger
+                else -> colors.accent
+            },
+            modifier = Modifier.size(22.dp),
         )
     }
 }
