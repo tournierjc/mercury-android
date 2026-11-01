@@ -78,6 +78,11 @@ class ConsoleViewModel(private val api: MercuryApi, container: AppContainer) : V
         viewModelScope.launch {
             _state.update { it.copy(musicBusy = true) }
             runCatching { block() }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(error = Notice(NoticeKey.MUSIC_ACTION_FAILED).withDetail(e.message))
+                    }
+                }
             _state.update { it.copy(musicBusy = false) }
             refreshMusic()
         }
@@ -108,6 +113,7 @@ class ConsoleViewModel(private val api: MercuryApi, container: AppContainer) : V
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             runCatching { api.shutdown() }
+                .onSuccess { _state.update { s -> s.copy(busy = false) } }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.toNotice()) } }
         }
     }

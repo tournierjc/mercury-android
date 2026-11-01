@@ -143,6 +143,7 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.DAEMON_RESTART_REQUESTED -> R.string.notice_daemon_restart_requested
     NoticeKey.SHUTDOWN_ACCEPTED -> R.string.notice_shutdown_accepted
     NoticeKey.SHUTDOWN_REFUSED -> R.string.notice_shutdown_refused
+    NoticeKey.MUSIC_ACTION_FAILED -> R.string.notice_music_action_failed
     NoticeKey.CREW_IMPORT_NOTHING -> R.string.notice_crew_import_nothing
     NoticeKey.CREW_IMPORTED -> R.string.notice_crew_imported
     NoticeKey.TIER_APPLIED -> R.string.notice_tier_applied

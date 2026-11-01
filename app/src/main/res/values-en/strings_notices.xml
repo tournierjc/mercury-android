@@ -105,6 +105,7 @@
     <string name="notice_daemon_restart_requested">Restart accepted — the runtime returns in a few seconds</string>
     <string name="notice_shutdown_accepted">Shutdown accepted (pid %1$s) — the daemon is stopping</string>
     <string name="notice_shutdown_refused">Shutdown refused by the daemon</string>
+    <string name="notice_music_action_failed">The Spotify action failed.</string>
     <string name="notice_crew_import_nothing">Nothing imported — %1$s teammate(s) already there</string>
     <string name="notice_crew_imported">%1$s teammate(s) imported, disabled: %2$s</string>
     <string name="notice_tier_applied">Permission tier applied</string>

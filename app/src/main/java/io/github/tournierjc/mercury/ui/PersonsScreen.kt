@@ -128,11 +128,7 @@ fun PersonsScreen(onBack: () -> Unit) {
                     onToggle = { viewModel.toggle(person) },
                 )
             }
-            Text(
-                text = " ",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
+            ScreenBottomSpacer()
         }
     }
 }

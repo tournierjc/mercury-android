@@ -292,7 +292,7 @@ fun BotsScreen(
             } else {
                 BotDetail(state, watch, viewModel, avatars, onOpenChat = onOpenChat)
             }
-            Text(" ", modifier = Modifier.padding(bottom = 28.dp))
+            ScreenBottomSpacer(28.dp)
         }
     }
 

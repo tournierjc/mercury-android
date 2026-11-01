@@ -555,11 +555,7 @@ private fun ConfigureScaffold(
                 .padding(horizontal = 14.dp),
         ) {
             content()
-            Text(
-                text = " ",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(bottom = 24.dp),
-            )
+            ScreenBottomSpacer()
         }
     }
 }

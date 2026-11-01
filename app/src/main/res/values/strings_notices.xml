@@ -106,6 +106,7 @@
     <string name="notice_daemon_restart_requested">Redémarrage accepté — le runtime revient dans quelques secondes</string>
     <string name="notice_shutdown_accepted">Arrêt accepté (pid %1$s) — le démon s\'arrête</string>
     <string name="notice_shutdown_refused">Arrêt refusé par le démon</string>
+    <string name="notice_music_action_failed">L\'action Spotify a échoué.</string>
     <string name="notice_crew_import_nothing">Rien d\'importé — %1$s équipier(s) déjà présent(s)</string>
     <string name="notice_crew_imported">%1$s équipier(s) importé(s), désactivé(s) : %2$s</string>
     <string name="notice_tier_applied">Palier de permissions appliqué</string>

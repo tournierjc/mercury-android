@@ -184,6 +184,8 @@ enum class NoticeKey {
     DAEMON_RESTART_REQUESTED,
     SHUTDOWN_ACCEPTED,
     SHUTDOWN_REFUSED,
+    /** A Spotify command (play, pause, volume…) was refused or could not reach the daemon. */
+    MUSIC_ACTION_FAILED,
     CREW_IMPORT_NOTHING,
     CREW_IMPORTED,
     TIER_APPLIED,
