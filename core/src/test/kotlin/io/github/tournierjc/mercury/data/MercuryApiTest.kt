@@ -117,6 +117,35 @@ class MercuryApiTest {
     }
 
     @Test
+    fun `403 is a refusal the UI can show, not a lost session`() {
+        server.enqueue(
+            MockResponse().setResponseCode(403).setBody("""{"error":"Shutdown is only accepted from this machine"}"""),
+        )
+        val error = assertThrows(MercuryException::class.java) {
+            runBlocking { api.threads() }
+        }
+        // The server's own text travels, and the session stays signed in.
+        assertEquals("Shutdown is only accepted from this machine", error.message)
+    }
+
+    @Test
+    fun `a 403 whose body says the session expired still signs out`() {
+        server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":"session expired"}"""))
+        assertThrows(AuthException::class.java) {
+            runBlocking { api.threads() }
+        }
+    }
+
+    @Test
+    fun `login refuses a redirect that carries no session cookie`() {
+        server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/"))
+        val error = assertThrows(MercuryException::class.java) {
+            runBlocking { api.login(server.url("/").toString(), "mercury", "s3cret") }
+        }
+        assertTrue(error.message!!.contains("session cookie"))
+    }
+
+    @Test
     fun `sse stream is decoded into chat events`() = runBlocking {
         server.enqueue(
             MockResponse()

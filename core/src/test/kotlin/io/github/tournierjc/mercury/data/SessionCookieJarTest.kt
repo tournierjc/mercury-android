@@ -46,6 +46,26 @@ class SessionCookieJarTest {
     }
 
     @Test
+    fun `hasSessionCookie looks for the named session cookie only`() {
+        val jar = SessionCookieJar(InMemoryCookieStore())
+        val other = Cookie.Builder()
+            .name("other_cookie")
+            .value("x")
+            .hostOnlyDomain("spark.example.ts.net")
+            .path("/")
+            .expiresAt(Long.MAX_VALUE)
+            .build()
+        jar.saveFromResponse(origin, listOf(other))
+
+        assertFalse(jar.hasSessionCookie())
+        assertFalse(jar.hasSessionCookie("mercury_session"))
+
+        jar.saveFromResponse(origin, listOf(cookie("tok")))
+        assertTrue(jar.hasSessionCookie())
+        assertFalse(jar.hasSessionCookie("another"))
+    }
+
+    @Test
     fun `cookies for another host are not sent`() {
         val jar = SessionCookieJar(InMemoryCookieStore())
         jar.saveFromResponse(origin, listOf(cookie("tok")))
