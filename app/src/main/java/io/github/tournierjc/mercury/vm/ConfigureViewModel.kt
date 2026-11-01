@@ -11,6 +11,9 @@ import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.dto.McpServerDto
 import io.github.tournierjc.mercury.data.dto.PermissionsDto
 import io.github.tournierjc.mercury.data.dto.ProviderDto
+import io.github.tournierjc.mercury.data.dto.ProviderRoutingDto
+import io.github.tournierjc.mercury.data.dto.ProviderTestResult
+import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
 import io.github.tournierjc.mercury.data.dto.SkillDto
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import io.github.tournierjc.mercury.data.dto.UsageEntry
@@ -112,6 +115,11 @@ data class ConfigureUiState(
     val byModel: List<UsageSlice> = emptyList(),
     val byChannel: List<UsageSlice> = emptyList(),
     val recent: List<UsageRequest> = emptyList(),
+    /** A write to a provider is in flight: the row's two glyphs wait rather than queue a second. */
+    val busy: Boolean = false,
+    /** The last probe, and whose it was — a result shown under another row would be a lie. */
+    val providerTest: ProviderTestResult? = null,
+    val providerTestFor: String = "",
     val error: Notice? = null,
     /**
      * The routes that did not answer. A failed route leaves its list empty, and an empty list
@@ -201,6 +209,58 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
                     failed = failed,
                 )
             }
+        }
+    }
+
+    /**
+     * Writes what the edit sheet collected: a key, an endpoint, a model, the enabled flag, routing.
+     *
+     * The Fournisseurs screen used to answer these two glyphs with empty lambdas, so the pencil and
+     * the bolt did nothing at all — the only writable copy of the row lived in Réglages. Same API,
+     * same dialog, one screen that does what it draws.
+     */
+    fun saveProvider(
+        id: String,
+        apiKey: String? = null,
+        baseUrl: String? = null,
+        model: String? = null,
+        enabled: Boolean? = null,
+        routing: ProviderRoutingDto? = null,
+    ) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            var saved = false
+            runCatching {
+                api.saveProvider(
+                    id,
+                    ProviderUpdateRequest(
+                        apiKey = apiKey?.trim()?.ifBlank { null },
+                        baseUrl = baseUrl?.trim()?.ifBlank { null },
+                        model = model?.trim()?.ifBlank { null },
+                        enabled = enabled,
+                        routing = routing,
+                    ),
+                )
+            }
+                .onSuccess { saved = true; _state.update { it.copy(busy = false) } }
+                .onFailure { e -> _state.update { it.copy(busy = false, error = e.toNotice()) } }
+            // Only a save reloads the list — and so it must not follow a failure, whose banner
+            // refresh() would wipe before it was ever read.
+            if (saved) refresh()
+        }
+    }
+
+    /** Probes one provider; the answer lands under its own row, server words untouched. */
+    fun testProvider(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(providerTest = null, providerTestFor = id, error = null) }
+            runCatching { api.testProvider(id) }
+                .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(providerTest = ProviderTestResult(success = false, error = e.message.orEmpty()), providerTestFor = id)
+                    }
+                }
         }
     }
 
