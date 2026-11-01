@@ -32,6 +32,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Mercury"
         android:usesCleartextTraffic="true">
+        <!-- usesCleartextTraffic : le daemon Mercury est auto-hébergé par l'utilisateur, souvent
+             sur un LAN (http://192.168.x.x) — network_security_config.xml est statique et ne peut
+             pas énumérer ces hôtes. L'exposition claire reste bornée : l'app ne parle qu'à la base
+             URL configurée (validateur de schéma côté app), et le pont appareil sert, il ne sort
+             pas. Voir README « Pont appareil ». -->
 
         <activity
             android:name=".MainActivity"

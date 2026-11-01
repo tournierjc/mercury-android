@@ -43,12 +43,15 @@ PHONE_TOKEN="<token affiché dans l'app : Pont appareil → Afficher>"
 ```
 
 `fetch_url` de Mercury n'envoie pas d'en-têtes : passe le token en paramètre.
+Ce passage en paramètre n'est accepté que depuis le tailnet (ou la boucle locale) :
+si le pont écoute sur un réseau local ordinaire, les appels sont refusés — demande à
+l'utilisateur de lancer Tailscale des deux côtés.
 
 ## Routes
 
 | But | Appel |
 |---|---|
-| Vérifier que le pont répond | `GET $PHONE_URL/health` (pas de token) |
+| Vérifier que le pont répond | `GET $PHONE_URL/health` (pas de token, répond juste `{ok:true}`) |
 | Batterie, réseau, fuseau, heure | `GET $PHONE_URL/device/status?token=$PHONE_TOKEN` |
 | Agenda | `GET $PHONE_URL/calendar?from=<ISO8601>&to=<ISO8601>&limit=20&token=$PHONE_TOKEN` |
 | Contacts | `GET $PHONE_URL/contacts?q=<nom>&limit=10&token=$PHONE_TOKEN` |

@@ -2,8 +2,6 @@ package io.github.tournierjc.mercury
 
 import android.app.Application
 import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import io.github.tournierjc.mercury.bots.BotOrderMemory
 import io.github.tournierjc.mercury.bots.BotNotifyMemory
 import io.github.tournierjc.mercury.bots.BotNotifier
@@ -25,18 +23,9 @@ class AppContainer(context: Context) {
 
     private val prefs = context.getSharedPreferences("mercury", Context.MODE_PRIVATE)
 
-    private val securePrefs = runCatching {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "mercury_secure",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
-    }.getOrElse { context.getSharedPreferences("mercury_secure_plain", Context.MODE_PRIVATE) }
+    // One factory for the session cookie's prefs: same store as the bridge token, one
+    // fallback decision (SecurePrefs.degraded) instead of two diverging copies.
+    private val securePrefs = SecurePrefs.get(context)
 
     private val cookieStore = object : CookieStore {
         override fun load(): List<String> =

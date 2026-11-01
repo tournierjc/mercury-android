@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.SecurePrefs
 import io.github.tournierjc.mercury.device.BridgeAddress
 import io.github.tournierjc.mercury.device.BridgePrefs
 import io.github.tournierjc.mercury.device.BridgeService
@@ -126,6 +127,21 @@ fun BridgeScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(top = 8.dp),
         )
 
+        val degraded = remember { SecurePrefs.degraded }
+        if (degraded) {
+            Text(
+                text = stringResource(R.string.bridge_degraded),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.danger,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .background(colors.surface)
+                    .padding(16.dp),
+            )
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -148,6 +164,8 @@ fun BridgeScreen(onBack: () -> Unit) {
             }
             Switch(
                 checked = enabled,
+                // Keystore cassé : le token ne serait pas chiffré, le pont ne sert rien.
+                enabled = !degraded,
                 onCheckedChange = { wantEnabled ->
                     if (wantEnabled) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -273,6 +291,14 @@ fun BridgeScreen(onBack: () -> Unit) {
                 }
             },
         )
+
+        Text(
+            text = stringResource(R.string.bridge_security_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+
         Button(
             onClick = {
                 token = prefs.rotateToken()

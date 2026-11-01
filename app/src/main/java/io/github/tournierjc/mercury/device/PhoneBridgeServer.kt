@@ -10,8 +10,12 @@ import io.github.tournierjc.mercury.BuildConfig
  * l'appareil à l'agent Mercury (qui les appelle depuis le Spark via `fetch_url`).
  *
  * Sécurité :
- *  - tout sauf `/health` exige `Authorization: Bearer <token>` (comparaison à
- *    temps constant) ;
+ *  - tout sauf `/health` (réduit à `{ok:true}`) exige `Authorization: Bearer <token>`
+ *    (comparaison à temps constant) ;
+ *  - le paramètre `?token=` (nécessaire : `fetch_url` n'envoie pas d'en-têtes) n'est
+ *    accepté que depuis une adresse de boucle ou du tailnet ; sans tailnet, le pont
+ *    écoute sur le réseau local et le paramètre reste accepté — mode non pris en
+ *    charge, annoncé comme tel sur l'écran Pont ;
  *  - aucune écriture, aucune suppression : uniquement des GET ;
  *  - aucune donnée n'est stockée côté serveur, chaque requête relit le provider.
  */
@@ -22,6 +26,9 @@ class PhoneBridgeServer(
     port: Int,
 ) : NanoHTTPD(bindHost, port) {
 
+    /** Figé au démarrage : si le tailnet apparaît/disparaît, le pont est relancé (rebind). */
+    private val tailnetPresent = BridgeAddress.hasTailnet()
+
     /** Garde-fou anti-emballement : l'agent ne peut pas marteler le téléphone. */
     private var windowStart = 0L
     private var windowCount = 0
@@ -31,16 +38,9 @@ class PhoneBridgeServer(
         val path = session.uri.trimEnd('/').ifEmpty { "/" }
         return try {
             if (path == "/health" || path == "/device/health") {
-                return ok(
-                    DeviceJson.json.encodeToString(
-                        BridgeInfo.serializer(),
-                        BridgeInfo(
-                            version = BuildConfig.VERSION_NAME,
-                            device = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
-                            providers = readers.grantedProviders(),
-                        ),
-                    ),
-                )
+                // Sans token, volontairement muet : une sonde ne doit rien apprendre
+                // sur l'appareil (version, modèle, providers) à qui scanne le réseau.
+                return ok("""{"ok":true}""")
             }
             if (!withinRateLimit()) {
                 return json(Response.Status.TOO_MANY_REQUESTS, encode(BridgeError.serializer(), BridgeError("rate limited")))
@@ -105,27 +105,38 @@ class PhoneBridgeServer(
                 else -> json(Response.Status.NOT_FOUND, encode(BridgeError.serializer(), BridgeError("unknown route")))
             }
         } catch (e: BridgeException) {
-            json(Response.Status.FORBIDDEN, encode(BridgeError.serializer(), BridgeError(e.message ?: "refused")))
+            // Corps d'erreur figé : le détail (chemin provider, texte d'exception) reste côté
+            // téléphone, il n'y a rien à en faire pour l'agent.
+            json(Response.Status.FORBIDDEN, encode(BridgeError.serializer(), BridgeError("refused")))
         } catch (e: Exception) {
             json(
                 Response.Status.INTERNAL_ERROR,
-                encode(BridgeError.serializer(), BridgeError(e.message ?: "internal error")),
+                encode(BridgeError.serializer(), BridgeError("internal error")),
             )
         }
     }
 
     /**
      * Le header `Authorization` est la voie propre. Le paramètre `?token=` existe
-     * parce que l'outil `fetch_url` de Mercury n'envoie pas d'en-têtes : il ne
-     * doit être utilisé que sur le tailnet, et le token se révoque en un tap.
+     * parce que l'outil `fetch_url` de Mercury n'envoie pas d'en-têtes — mais un
+     * token dans une URL finit dans les journaux de n'importe quel relais : il
+     * n'est accepté que d'un pair du tailnet (ou de la boucle locale). Sans
+     * tailnet, le pont écoute sur le réseau local et le paramètre reste accepté,
+     * faute de quoi `fetch_url` cesserait de fonctionner ; ce mode est explicitement
+     * non pris en charge (voir l'écran Pont) et le token se révoque en un tap.
      */
     private fun isAuthorized(session: IHTTPSession): Boolean {
         val header = session.headers["authorization"] ?: session.headers["x-mercury-token"]
         if (prefs.isAuthorized(header)) return true
         val queryToken = param(session, "token")
-        return queryToken != null && prefs.isAuthorized("Bearer $queryToken")
+        if (queryToken == null || !BridgeAccess.queryTokenAllowed(session.remoteIpAddress, tailnetPresent)) {
+            return false
+        }
+        return prefs.isAuthorized("Bearer $queryToken")
     }
 
+    /** Un seul verrou : les requêtes arrivent sur le pool de threads de NanoHTTPD. */
+    @Synchronized
     private fun withinRateLimit(): Boolean {
         val now = System.currentTimeMillis()
         if (now - windowStart > 60_000) {

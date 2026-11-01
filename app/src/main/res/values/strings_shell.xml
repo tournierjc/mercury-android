@@ -52,8 +52,10 @@
     <string name="bridge_hide_token">Masquer le token</string>
     <string name="bridge_revoke">Révoquer le token</string>
     <string name="bridge_readable_title">Ce que l\'agent peut lire</string>
-    <string name="bridge_endpoints">GET /health · version, appareil, fournisseurs actifs\nGET /device/status · batterie, réseau, fuseau horaire\nGET /calendar?from=&amp;to=&amp;limit= · événements (ISO 8601)\nGET /contacts?q=&amp;limit= · noms, numéros, e-mails\nGET /sms?limit=&amp;address= · messages SMS reçus\nGET /messages?limit= · SMS + notifications d\'apps\nEn-tête requis : Authorization: Bearer ***</string>
+    <string name="bridge_endpoints">GET /health · répond, sans rien dévoiler (pas de token)\nGET /device/status · batterie, réseau, fuseau horaire\nGET /calendar?from=&amp;to=&amp;limit= · événements (ISO 8601)\nGET /contacts?q=&amp;limit= · noms, numéros, e-mails\nGET /sms?limit=&amp;address= · messages SMS reçus\nGET /messages?limit= · SMS + notifications d\'apps\nEn-tête requis : Authorization: Bearer ***</string>
     <string name="bridge_footer">Sans le pont, l\'agent ne voit rien du téléphone. Avec, il ne voit que ce que tu as autorisé, pendant que le service tourne. « Révoquer » invalide l\'ancien token.</string>
+    <string name="bridge_security_note">Le pont est prévu pour le tailnet. Sur un réseau local ordinaire, l\'exposition n\'est pas prise en charge : les requêtes circulent en clair et, pour les appels de l\'agent, le token passe dans l\'URL.</string>
+    <string name="bridge_degraded">Stockage sécurisé indisponible sur cet appareil (Keystore). Le pont reste désactivé : le token ne serait pas chiffré.</string>
     <string name="bridge_copied">Copié</string>
 
     <!-- Runs et incidents -->
