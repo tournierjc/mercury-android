@@ -473,6 +473,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
             savedBaseUrl = provider.baseUrl,
             savedModel = provider.model,
             savedEnabled = provider.enabled,
+            hasKey = provider.hasKey,
             onDismiss = { editingProvider = null },
             onConfirm = { apiKey, baseUrl, model, enabled, routing ->
                 editingProvider = null

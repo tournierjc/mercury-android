@@ -1,6 +1,18 @@
 package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -167,6 +178,11 @@ private fun csvList(value: String): List<String> =
  * Every field but the key comes from the row itself (`baseUrl`, `model`, `enabled`). The key is the
  * exception by design: `/api/providers` only ever returns its mask, so the field starts empty and
  * says so — an empty key means "keep the saved one", never "erase it".
+ *
+ * Laid out as a sheet rather than a stack of boxes: the name and its state first (what am I
+ * editing, and is it usable), then two named groups, and the switch that decides whether bots may
+ * reach it at all. Endpoint and model are set in a monospace face — they are identifiers, and a
+ * host typed with a wrong character is the one mistake this sheet exists to prevent.
  */
 @Composable
 internal fun ProviderEditDialog(
@@ -175,6 +191,7 @@ internal fun ProviderEditDialog(
     savedBaseUrl: String = "",
     savedModel: String = "",
     savedEnabled: Boolean = true,
+    hasKey: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (
         apiKey: String?,
@@ -185,96 +202,177 @@ internal fun ProviderEditDialog(
     ) -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    var apiKey by remember { mutableStateOf("") }
-    var endpointOrder by remember { mutableStateOf(existing?.order?.joinToString(", ").orEmpty()) }
-    var quantizations by remember { mutableStateOf(existing?.quantizations?.joinToString(", ").orEmpty()) }
+    var apiKey by remember(id) { mutableStateOf("") }
+    var endpointOrder by remember(id) { mutableStateOf(existing?.order?.joinToString(", ").orEmpty()) }
+    var quantizations by remember(id) { mutableStateOf(existing?.quantizations?.joinToString(", ").orEmpty()) }
     var baseUrl by remember(id) { mutableStateOf(savedBaseUrl) }
     var model by remember(id) { mutableStateOf(savedModel) }
     var enabled by remember(id) { mutableStateOf(savedEnabled) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = colors.surface,
-        title = { Text(id, color = colors.textPrimary) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = { Text(stringResource(R.string.prov_key_label)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = baseUrl,
-                    onValueChange = { baseUrl = it },
-                    label = { Text(stringResource(R.string.prov_url_label)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text(stringResource(R.string.prov_model_label)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (id == OPENROUTER_ID) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(26.dp),
+            color = colors.surface,
+            border = BorderStroke(1.dp, colors.hairline),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            text = id,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            text = stringResource(if (hasKey) R.string.prov_key_saved else R.string.prov_key_none),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.prov_cancel), tint = colors.textSecondary)
+                    }
+                }
+
+                SheetGroup(stringResource(R.string.prov_section_access)) {
                     OutlinedTextField(
-                        value = endpointOrder,
-                        onValueChange = { endpointOrder = it },
-                        label = { Text(stringResource(R.string.prov_routing_order)) },
+                        value = apiKey,
+                        onValueChange = { apiKey = it },
+                        label = { Text(stringResource(R.string.prov_key_label)) },
                         singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
-                        value = quantizations,
-                        onValueChange = { quantizations = it },
-                        label = { Text(stringResource(R.string.prov_routing_quant)) },
+                        value = baseUrl,
+                        onValueChange = { baseUrl = it },
+                        label = { Text(stringResource(R.string.prov_url_label)) },
                         singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        text = stringResource(R.string.prov_routing_hint),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.textSecondary,
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.prov_enabled),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.textPrimary,
-                        modifier = Modifier.weight(1f),
+
+                SheetGroup(stringResource(R.string.prov_section_model)) {
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        label = { Text(stringResource(R.string.prov_model_label)) },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+
+                if (id == OPENROUTER_ID) {
+                    SheetGroup(stringResource(R.string.prov_section_routing)) {
+                        OutlinedTextField(
+                            value = endpointOrder,
+                            onValueChange = { endpointOrder = it },
+                            label = { Text(stringResource(R.string.prov_routing_order)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = quantizations,
+                            onValueChange = { quantizations = it },
+                            label = { Text(stringResource(R.string.prov_routing_quant)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            text = stringResource(R.string.prov_routing_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                }
+
+                Surface(
+                    color = colors.surfaceMuted,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = stringResource(R.string.prov_enabled),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textPrimary,
+                            )
+                            Text(
+                                text = stringResource(R.string.prov_enabled_hint),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                        Switch(checked = enabled, onCheckedChange = { enabled = it })
+                    }
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.prov_cancel), color = colors.textSecondary)
+                    }
+                    Button(
+                        onClick = {
+                            onConfirm(
+                                apiKey.ifBlank { null },
+                                baseUrl.ifBlank { null },
+                                model.ifBlank { null },
+                                enabled,
+                                if (id == OPENROUTER_ID) {
+                                    ProviderRoutingDto(
+                                        order = csvList(endpointOrder),
+                                        quantizations = csvList(quantizations),
+                                    )
+                                } else {
+                                    null
+                                },
+                            )
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                    ) {
+                        Text(stringResource(R.string.prov_save))
+                    }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onConfirm(
-                        apiKey.ifBlank { null },
-                        baseUrl.ifBlank { null },
-                        model.ifBlank { null },
-                        enabled,
-                        if (id == OPENROUTER_ID) {
-                            ProviderRoutingDto(
-                                order = csvList(endpointOrder),
-                                quantizations = csvList(quantizations),
-                            )
-                        } else {
-                            null
-                        },
-                    )
-                },
-            ) { Text(stringResource(R.string.prov_save)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.prov_cancel)) } },
-    )
+        }
+    }
+}
+
+/** A named block of fields: the small capitals of a settings sheet, then its boxes. */
+@Composable
+private fun SheetGroup(label: String, content: @Composable () -> Unit) {
+    val colors = LocalMercuryColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
+            color = colors.textSecondary,
+        )
+        content()
+    }
 }

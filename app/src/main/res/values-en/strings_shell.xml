@@ -154,6 +154,12 @@
     <string name="prov_failed">Failed · </string>
     <string name="prov_refused">connection refused</string>
     <string name="prov_key_label">API key (empty = unchanged)</string>
+    <string name="prov_section_access">Access</string>
+    <string name="prov_section_model">Model</string>
+    <string name="prov_section_routing">Routing</string>
+    <string name="prov_enabled_hint">Bots may pick this provider</string>
+    <string name="prov_key_saved">Key saved · editable</string>
+    <string name="prov_key_none">No key yet</string>
     <string name="prov_url_label">Base URL (empty = unchanged)</string>
     <string name="prov_model_label">Default model (empty = unchanged)</string>
     <string name="prov_enabled">Enabled</string>

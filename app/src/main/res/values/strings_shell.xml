@@ -154,6 +154,12 @@
     <string name="prov_failed">Échec · </string>
     <string name="prov_refused">connexion refusée</string>
     <string name="prov_key_label">Clé API (vide = inchangée)</string>
+    <string name="prov_section_access">Accès</string>
+    <string name="prov_section_model">Modèle</string>
+    <string name="prov_section_routing">Routage</string>
+    <string name="prov_enabled_hint">Les bots peuvent choisir ce fournisseur</string>
+    <string name="prov_key_saved">Clé enregistrée · modifiable</string>
+    <string name="prov_key_none">Aucune clé</string>
     <string name="prov_url_label">URL de base (vide = inchangée)</string>
     <string name="prov_model_label">Modèle par défaut (vide = inchangé)</string>
     <string name="prov_enabled">Activé</string>
