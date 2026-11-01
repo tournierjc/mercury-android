@@ -99,6 +99,7 @@ fun ProvidersScreen(onBack: () -> Unit) {
                     savedBaseUrl = provider.baseUrl,
                     savedModel = provider.model,
                     savedEnabled = provider.enabled,
+                    hasKey = provider.hasKey,
                     onDismiss = { editing = null },
                     onConfirm = { apiKey, baseUrl, model, enabled, routing ->
                         editing = null
