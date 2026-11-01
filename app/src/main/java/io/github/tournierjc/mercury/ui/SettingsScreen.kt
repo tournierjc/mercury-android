@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
@@ -553,6 +554,9 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
             title = stringResource(R.string.settings_new_username),
             confirmLabel = stringResource(R.string.settings_save),
             secondLabel = stringResource(R.string.settings_username),
+            // The new username is a name, not a secret: it reads in the clear, only the
+            // current password stays masked.
+            maskValue = false,
             onDismiss = { dialog = null },
             onConfirm = { current, value ->
                 dialog = null
@@ -564,6 +568,7 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
             title = stringResource(R.string.settings_new_password),
             confirmLabel = stringResource(R.string.settings_change_action),
             secondLabel = stringResource(R.string.settings_password),
+            maskValue = true,
             onDismiss = { dialog = null },
             onConfirm = { current, value ->
                 dialog = null
@@ -606,12 +611,17 @@ fun SettingsScreen(onBack: () -> Unit, onChangeServer: (String) -> Unit) {
 /**
  * Two-field dialog used for both account changes. Values are handed to the
  * ViewModel directly so they never land in observable state.
+ *
+ * The current password is always masked; the new value is masked only when it is a
+ * secret — a username typed as dots looked like a bug. The 6-character minimum is said
+ * under the field, so a disabled Save explains itself.
  */
 @Composable
 private fun CredentialDialog(
     title: String,
     confirmLabel: String,
     secondLabel: String,
+    maskValue: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (current: String, value: String) -> Unit,
 ) {
@@ -639,8 +649,16 @@ private fun CredentialDialog(
                     onValueChange = { value = it },
                     label = { Text(secondLabel) },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    visualTransformation = if (maskValue) PasswordVisualTransformation() else VisualTransformation.None,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (maskValue) KeyboardType.Password else KeyboardType.Text,
+                    ),
+                    supportingText = {
+                        Text(
+                            text = stringResource(R.string.settings_value_min_length, 6),
+                            color = colors.textSecondary,
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
