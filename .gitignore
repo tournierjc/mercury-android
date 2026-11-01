@@ -18,3 +18,7 @@ release/
 
 # OS
 .DS_Store
+
+# Release signing (credentials never enter the repo)
+keystore.properties
+mercury-release.keystore

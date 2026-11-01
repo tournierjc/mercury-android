@@ -160,6 +160,31 @@ JDK 17+ and the Android SDK (compileSdk 35) are required.
 
 A prebuilt debug APK is attached to every release and by CI on `main`.
 
+### Release signing
+
+The release build type is signed with the release key so every build installs over previous
+versions. Where the key comes from, in order:
+
+1. a gitignored `keystore.properties` at the repo root (local builds):
+
+   ```properties
+   storeFile=mercury-release.keystore   # resolved from the repo root
+   storePassword=…
+   keyAlias=mercury
+   keyPassword=…
+   ```
+
+2. the environment variables `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+   `ANDROID_KEY_PASSWORD` with the keystore at the repo root (CI: set the secrets
+   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+   `ANDROID_KEY_PASSWORD` and decode `ANDROID_KEYSTORE_BASE64` to
+   `mercury-release.keystore` before running Gradle);
+3. nothing — then release falls back to the debug signing config, so a plain local
+   `assembleRelease` still produces an installable APK.
+
+The keystore itself never enters the repo (both `keystore.properties` and
+`mercury-release.keystore` are gitignored).
+
 ### Building on an ARM64 host (DGX Spark, arm64 VM)
 
 Google ships `aapt2` for **x86_64 only** — no `linux_arm64` classifier exists on Google Maven, so any Android
