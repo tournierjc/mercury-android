@@ -276,6 +276,9 @@ class BotsViewModel(
             // The transcript already had it: reading the thinking costs no extra request.
             val thoughts = turns.mapValues { (_, transcript) -> transcript?.reasoning.orEmpty() }
             val thoughtsCut = turns.filterValues { it?.reasoningTruncated == true }.keys
+            // A slow fetch must not repaint the sheet of the bot the owner has since selected:
+            // twelve transcripts can lag well behind a quick second selection.
+            if (_state.value.selectedId != id) return@launch
             _state.update {
                 it.copy(
                     manifest = detail?.bot,
@@ -486,26 +489,38 @@ class BotsViewModel(
         }
     }
 
-    fun setEnabled(id: String, enabled: Boolean) =
+    fun setEnabled(id: String, enabled: Boolean) {
+        val body = buildJsonObject { put("enabled", enabled) }
         patch(
             id,
-            """{"enabled":$enabled}""",
+            body,
             // The same fact the console reports, same key, teammate named.
             Notice(if (enabled) NoticeKey.TEAMMATE_ENABLED else NoticeKey.TEAMMATE_DISABLED, args = listOf(id)),
         )
+    }
 
     /**
      * `model` is an object in the manifest — `{ provider, model }` — so a bot inherits the main
      * default only when the key is absent. Sending a bare string wrote the wrong shape.
      */
-    fun setModel(id: String, provider: String, model: String) = patch(
-        id,
-        """{"model":{"provider":"${escape(provider)}","model":"${escape(model)}"}}""",
-        Notice(NoticeKey.TEAMMATE_MODEL_SAVED),
-    )
+    fun setModel(id: String, provider: String, model: String) {
+        val body = buildJsonObject {
+            put(
+                "model",
+                buildJsonObject {
+                    put("provider", provider)
+                    put("model", model)
+                },
+            )
+        }
+        patch(id, body, Notice(NoticeKey.TEAMMATE_MODEL_SAVED))
+    }
 
     /** Back to the main default: the key is removed rather than emptied. */
-    fun clearModel(id: String) = patch(id, """{"model":null}""", Notice(NoticeKey.TEAMMATE_MODEL_CLEARED))
+    fun clearModel(id: String) {
+        val body = buildJsonObject { put("model", null as String?) }
+        patch(id, body, Notice(NoticeKey.TEAMMATE_MODEL_CLEARED))
+    }
 
     /** The provider/model list, once per screen: it changes when a key is added, not per bot. */
     fun loadModels() {
@@ -528,11 +543,15 @@ class BotsViewModel(
             _state.update { it.copy(error = Notice(NoticeKey.TEAMMATE_NAME_REFUSED)) }
             return
         }
-        patch(id, """{"name":"${escape(cleaned)}"}""", Notice(NoticeKey.TEAMMATE_RENAMED))
+        patch(id, buildJsonObject { put("name", cleaned) }, Notice(NoticeKey.TEAMMATE_RENAMED))
     }
 
-    fun setDescription(id: String, description: String) =
-        patch(id, """{"description":"${escape(description)}"}""", Notice(NoticeKey.TEAMMATE_DESCRIPTION_SAVED))
+    fun setDescription(id: String, description: String) {
+        // Free text pasted from anywhere: trimming is what keeps a stray CRLF or a trailing
+        // space from being stored, and the structured build keeps every control character
+        // safe on the way out — the hand-built JSON never did.
+        patch(id, buildJsonObject { put("description", description.trim()) }, Notice(NoticeKey.TEAMMATE_DESCRIPTION_SAVED))
+    }
 
     /** Daily token cap lives in `autonomy`; 0 means "no cap". */
     /**
@@ -547,7 +566,7 @@ class BotsViewModel(
         val body = buildJsonObject {
             put("autonomy", merged)
         }
-        patch(id, body.toString(), Notice(NoticeKey.TEAMMATE_BUDGET_SAVED))
+        patch(id, body, Notice(NoticeKey.TEAMMATE_BUDGET_SAVED))
     }
 
     fun setDailyBudget(id: String, tokens: Int) =
@@ -802,6 +821,13 @@ class BotsViewModel(
      * screen left pointing at it would fetch a 404 on every reload.
      */
     fun delete(id: String) {
+        // The banner names the teammate, not the id: the manifest is gone once the delete lands,
+        // so the label is read up front (BotJson.name falls back to the id when the roster
+        // carries no better one).
+        val name = BotJson.name(
+            _state.value.roster.firstOrNull { BotJson.id(it) == id }
+                ?: watcher.state.value.bots.firstOrNull { BotJson.id(it) == id },
+        )
         viewModelScope.launch {
             _state.update { it.copy(busy = true, message = null, error = null) }
             runCatching { api.deleteBot(id) }
@@ -809,7 +835,7 @@ class BotsViewModel(
                     if (_state.value.selectedId == id) {
                         _state.value = BotsUiState() // the sheet closes; the roster is the screen
                     }
-                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.TEAMMATE_DELETED_NAMED, args = listOf(id))) }
+                    _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.TEAMMATE_DELETED_NAMED, args = listOf(name))) }
                     refreshRoster()
                 }
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
@@ -999,10 +1025,6 @@ class BotsViewModel(
         }
     }
 
-    private fun patch(id: String, patchJson: String, success: Notice?) {
-        patch(id, kotlinx.serialization.json.Json.parseToJsonElement(patchJson) as JsonObject, success)
-    }
-
     private fun patch(id: String, body: JsonObject, success: Notice?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
@@ -1039,9 +1061,6 @@ class BotsViewModel(
                 .onFailure { e -> _state.update { s -> s.copy(busy = false, error = e.readable()) } }
         }
     }
-
-    private fun escape(text: String): String =
-        text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 
     /** One mapping for the whole file (and the same one the other screens use): see `toNotice`. */
     private fun Throwable.readable(): Notice = toNotice()

@@ -346,6 +346,9 @@ class BoardsViewModel(
             val comments = runCatching { api.cardComments(boardId, cardId) }.getOrNull()
             val attachments = runCatching { api.cardAttachments(boardId, cardId) }.getOrNull()
             val card = _state.value.cards.firstOrNull { BoardJson.id(it) == cardId }
+            // A second, faster openCard must not be overwritten by the first fetch still in
+            // flight — the sheet belongs to the card it now shows.
+            if (_state.value.cardDetail?.cardId != cardId || _state.value.openBoardId != boardId) return@launch
             _state.update {
                 it.copy(
                     cardDetail = CardDetail(
