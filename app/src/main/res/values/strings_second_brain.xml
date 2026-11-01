@@ -42,6 +42,9 @@
     <string name="brain_graphe_aide">Pince pour zoomer, glisse pour déplacer, touche un nœud pour le lire en entier.</string>
     <string name="brain_graphe_comptes">%1$s · %2$s</string>
     <string name="brain_noeud_fermer">Fermer le détail</string>
+    <!-- Le canevas se décrit d'un bloc pour TalkBack : comptes, puis geste. -->
+    <string name="brain_graphe_a11y">Graphe des souvenirs : %1$s et %2$s. Pincez pour zoomer, et chaque nœud s\'ouvre par un double toucher.</string>
+    <string name="brain_noeud_ouvrir">Ouvrir ce souvenir</string>
     <plurals name="brain_nb_noeuds">
         <item quantity="one">%1$d nœud</item>
         <item quantity="other">%1$d nœuds</item>

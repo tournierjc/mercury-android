@@ -6,6 +6,7 @@
     <string name="common_collapse_section">Réduire %1$s</string>
     <string name="common_expand_section">Déplier %1$s</string>
     <string name="common_ok">OK</string>
+    <string name="common_dismiss">Ignorer</string>
 
     <!-- Composer.kt -->
     <string name="composer_hint_default">Demande à Mercury…</string>
@@ -41,4 +42,7 @@
     <string name="chat_mode_auto_hint">Il passe en mode programme quand la demande s\'y prête.</string>
     <string name="chat_mode_plan_hint">Il lit et propose un plan, il n\'écrit rien.</string>
     <string name="chat_mode_execute_hint">Il modifie les fichiers du Spark directement.</string>
+    <!-- L'état du déclencheur, annoncé par TalkBack : la teinte ne suffit pas. -->
+    <string name="chat_mode_state_on">mode programmation activé</string>
+    <string name="chat_mode_state_off">mode programmation désactivé</string>
 </resources>

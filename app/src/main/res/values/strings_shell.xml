@@ -172,6 +172,10 @@
     <!-- How many further faults the spec had: the card only prints the first one. -->
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">en %1$s</string>
+    <!-- Les dessins OpenUi se décrivent en texte : TalkBack ne lit pas un Canvas. -->
+    <string name="openui_chart_a11y">Graphique : %1$s</string>
+    <string name="openui_pie_a11y">Répartition : %1$s</string>
+    <string name="openui_gauge_a11y">Jauge à %1$d %% de son maximum</string>
     <string name="chat_exit_prompt">Appuie encore une fois pour quitter</string>
     <!-- Les vitaux du démon, déménagés de la Console vers l'écran État. -->
     <string name="status_label_tokens">Jetons du jour</string>

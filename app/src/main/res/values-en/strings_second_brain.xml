@@ -42,6 +42,9 @@
     <string name="brain_graphe_aide">Pinch to zoom, drag to pan, tap a node to read it whole.</string>
     <string name="brain_graphe_comptes">%1$s · %2$s</string>
     <string name="brain_noeud_fermer">Close the detail</string>
+    <!-- The canvas describes itself as a whole for TalkBack: counts, then the gesture. -->
+    <string name="brain_graphe_a11y">Memory graph: %1$s and %2$s. Pinch to zoom, and each node opens with a double tap.</string>
+    <string name="brain_noeud_ouvrir">Open this memory</string>
     <plurals name="brain_nb_noeuds">
         <item quantity="one">%1$d node</item>
         <item quantity="other">%1$d nodes</item>

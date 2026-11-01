@@ -172,6 +172,10 @@
     <!-- How many further faults the spec had: the card only prints the first one. -->
     <string name="openui_more_faults">+%1$d</string>
     <string name="openui_in">in %1$s</string>
+    <!-- The OpenUi drawings describe themselves in text: TalkBack does not read a Canvas. -->
+    <string name="openui_chart_a11y">Chart: %1$s</string>
+    <string name="openui_pie_a11y">Breakdown: %1$s</string>
+    <string name="openui_gauge_a11y">Gauge at %1$d %% of maximum</string>
     <string name="chat_exit_prompt">Press back again to exit</string>
     <string name="status_label_tokens">Tokens today</string>
     <string name="status_label_loop">Loop p99</string>
