@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -170,7 +172,8 @@ fun SegmentedTabs(
                     .weight(1f)
                     .heightIn(min = 48.dp)
                     .clip(MaterialTheme.shapes.extraSmall)
-                    .clickable { onSelect(index) }
+                    // La sélection est un état, pas une teinte : TalkBack annonce l'onglet choisi.
+                    .selectable(selected = active, role = Role.Tab, onClick = { onSelect(index) })
                     .padding(vertical = 8.dp),
             ) {
                 Text(
@@ -422,10 +425,11 @@ fun ActionRow(
                 actions.chunked(2).forEach { pair ->
                     Row {
                         pair.forEach { action ->
+                            // Sans taille imposée : l'IconButton garde son glyphe de 18 dp et M3
+                            // ramène la cible de doigt à 48 dp (36 dp ne l'atteignait pas).
                             IconButton(
                                 onClick = action.onClick,
                                 enabled = action.enabled,
-                                modifier = Modifier.size(36.dp),
                             ) {
                                 Icon(
                                     imageVector = action.icon,
@@ -480,13 +484,18 @@ fun InlineBanner(
     tint: Color? = null,
 ) {
     val colors = LocalMercuryColors.current
+    // Le bandeau entier est le geste de fermeture ; il s'annonce alors comme un bouton dont
+    // l'action est nommée, sinon TalkBack ne voit qu'un texte et un « OK » décoratif.
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 6.dp)
             .clip(MaterialTheme.shapes.extraSmall)
             .background(colors.surface)
-            .clickable { onDismiss() }
+            .clickable(
+                onClickLabel = stringResource(R.string.common_dismiss),
+                role = Role.Button,
+            ) { onDismiss() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

@@ -45,21 +45,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
 /**
  * Every control in a "type and send" strip is this size, so the row reads as one line and not as
- * three. Shared with the bot sheet's quick task, which had its own 36 dp buttons beside a 44 dp
- * field and a 6 dp nudge that left the words below the glyphs.
+ * three — and the touch target meets the 48 dp floor everywhere the constant is shared.
  */
-internal val ComposerControlSize = 40.dp
+internal val ComposerControlSize = 48.dp
 internal val ComposerControlIcon = 20.dp
-
-/** The width of the two controls that open the row: 30 dp leaves 10 dp between two glyphs. */
-private val LeadingControlWidth = 30.dp
 
 @Composable
 fun Composer(
@@ -98,7 +93,6 @@ fun Composer(
             ComposerControl(
                 icon = Icons.Rounded.Mic,
                 label = stringResource(R.string.composer_dictate),
-                width = LeadingControlWidth,
                 onClick = onVoice,
             )
         }
@@ -106,7 +100,6 @@ fun Composer(
             ComposerControl(
                 icon = Icons.Rounded.Terminal,
                 label = stringResource(R.string.composer_commands),
-                width = LeadingControlWidth,
                 onClick = { showCommands = true },
             )
             SlashCommandMenu(
@@ -161,8 +154,8 @@ fun Composer(
 /**
  * A glyph in the capsule: one size, one touch target, one tint.
  *
- * [IconButton] alone is 48 dp while the send disc is 40, so the row used to sit at three different
- * heights depending on which control you looked at.
+ * Every control is one 48 dp square, so the row sits at one height and the 20 dp glyph keeps its
+ * air — the leading controls used to be 30 dp wide, below the touch-target floor.
  */
 @Composable
 private fun ComposerControl(
@@ -170,17 +163,11 @@ private fun ComposerControl(
     label: String,
     enabled: Boolean = true,
     badge: Int? = null,
-    /**
-     * Narrower than [ComposerControlSize] for the two controls that open the row: at 40 dp each,
-     * the 20 dp glyph leaves 20 dp of air between dictation and the palette, which read as a gap
-     * in the capsule rather than as two neighbours.
-     */
-    width: Dp = ComposerControlSize,
     onClick: () -> Unit,
 ) {
     val colors = LocalMercuryColors.current
-    Box(modifier = Modifier.size(width, ComposerControlSize), contentAlignment = Alignment.Center) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(width, ComposerControlSize)) {
+    Box(modifier = Modifier.size(ComposerControlSize), contentAlignment = Alignment.Center) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(ComposerControlSize)) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
@@ -310,12 +297,12 @@ private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
     val colors = LocalMercuryColors.current
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(ComposerControlSize)
             .clip(CircleShape)
             .background(if (enabled) colors.textPrimary else colors.surfaceMuted),
         contentAlignment = Alignment.Center,
     ) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(40.dp)) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(ComposerControlSize)) {
             Icon(
                 imageVector = Icons.Rounded.ArrowUpward,
                 contentDescription = stringResource(R.string.composer_send),

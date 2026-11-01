@@ -29,6 +29,7 @@ import io.github.tournierjc.mercury.data.groupedByBot
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -71,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import io.github.tournierjc.mercury.R
@@ -494,16 +496,23 @@ private fun FilterChip(
 ) {
     val colors = LocalMercuryColors.current
     val tint = if (accent) colors.accent else colors.textPrimary
+    // La pastille tient 48 dp sous le doigt (le libellé garde sa taille) et se déclare comme une
+    // case à cocher : la sélection et le petit × d'effacement sont des états, pas des teintes.
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(50))
             .then(
                 if (selected) Modifier.background((if (accent) colors.accent else colors.textPrimary).copy(alpha = 0.14f))
                 else Modifier.border(1.dp, colors.hairline, RoundedCornerShape(50)),
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 5.dp),
+            .toggleable(
+                value = selected,
+                role = Role.Checkbox,
+                onValueChange = { onClick() },
+            )
+            .padding(horizontal = 11.dp),
     ) {
         Text(
             text = label,
@@ -518,11 +527,12 @@ private fun FilterChip(
             modifier = Modifier.widthIn(max = 170.dp),
         )
         if (onClear != null) {
+            // Le × reste un glyphe de 13 dp, mais sa cible de doigt couvre 48 dp : c'était la
+            // plus petite cible de l'app.
             Box(
                 modifier = Modifier
                     .padding(start = 6.dp)
-                    .size(16.dp)
-                    .clip(RoundedCornerShape(50))
+                    .size(48.dp)
                     .clickable(onClick = onClear),
                 contentAlignment = Alignment.Center,
             ) {
@@ -584,7 +594,7 @@ private fun DeliverableRow(
                 color = colors.textSecondary,
             )
         }
-        IconButton(onClick = { onPreview(output) }, modifier = Modifier.size(38.dp)) {
+        IconButton(onClick = { onPreview(output) }) {
             Icon(
                 Icons.Rounded.Visibility,
                 contentDescription = stringResource(R.string.out_preview_of, output.name),
@@ -592,7 +602,7 @@ private fun DeliverableRow(
                 modifier = Modifier.size(19.dp),
             )
         }
-        IconButton(onClick = { onShare(output) }, enabled = !busy, modifier = Modifier.size(38.dp)) {
+        IconButton(onClick = { onShare(output) }, enabled = !busy) {
             Icon(
                 Icons.Rounded.Share,
                 contentDescription = stringResource(R.string.out_share_of, output.name),
@@ -600,7 +610,7 @@ private fun DeliverableRow(
                 modifier = Modifier.size(19.dp),
             )
         }
-        IconButton(onClick = { onDelete(output) }, enabled = !busy, modifier = Modifier.size(38.dp)) {
+        IconButton(onClick = { onDelete(output) }, enabled = !busy) {
             Icon(
                 Icons.Rounded.DeleteOutline,
                 contentDescription = stringResource(R.string.out_delete_of, output.name),

@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
@@ -197,7 +200,8 @@ private fun PathRow(
  * A grant as a lit or outlined word — the vocabulary the tier cells already use.
  *
  * Three `Switch`es do not fit beside a folder field on a phone, and an unlabelled one is a riddle:
- * these are 30 dp high, tappable, and say what they grant.
+ * these are 48 dp under the finger, tappable, and say what they grant — as a toggle state, not
+ * only as a tint.
  */
 @Composable
 private fun GrantChip(label: String, checked: Boolean, enabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
@@ -205,14 +209,20 @@ private fun GrantChip(label: String, checked: Boolean, enabled: Boolean, onCheck
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .heightIn(min = 48.dp)
             .clip(MaterialTheme.shapes.extraSmall)
             .background(if (checked) colors.accent.copy(alpha = 0.16f) else Color.Transparent)
             .then(
                 if (checked) Modifier
                 else Modifier.border(1.dp, colors.hairlineStrong, MaterialTheme.shapes.extraSmall),
             )
-            .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Checkbox,
+                onValueChange = onCheckedChange,
+            )
+            .padding(horizontal = 10.dp),
     ) {
         if (checked) {
             Icon(

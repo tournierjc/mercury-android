@@ -2,13 +2,15 @@ package io.github.tournierjc.mercury.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -171,7 +174,9 @@ private fun RoutineRow(
                     color = colors.textSecondary,
                 )
             }
-            IconButton(onClick = onEdit, modifier = Modifier.size(ComposerControlSize)) {
+            // Sans taille imposée : l'IconButton par défaut porte son glyphe à 20 dp et sa cible
+            // de doigt à 48 dp, là où 40 dp les laissaient en deçà.
+            IconButton(onClick = onEdit) {
                 Icon(
                     Icons.Rounded.Create,
                     contentDescription = stringResource(R.string.routines_cd_edit, routine.name),
@@ -179,7 +184,7 @@ private fun RoutineRow(
                     modifier = Modifier.size(ComposerControlIcon),
                 )
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(ComposerControlSize)) {
+            IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
                     contentDescription = stringResource(R.string.routines_cd_delete, routine.name),
@@ -370,24 +375,34 @@ private fun FormLabel(text: String) {
     )
 }
 
-/** Une pastille de choix : remplie quand elle est active, cerclée sinon. */
+/**
+ * Une pastille de choix : remplie quand elle est active, cerclée sinon.
+ *
+ * Le contrôle tient 48 dp sous le doigt (le libellé garde sa taille) et se déclare comme un
+ * choix unique : la sélection n'est pas qu'une teinte, TalkBack l'annonce.
+ */
 @Composable
 private fun Pill(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = LocalMercuryColors.current
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (selected) colors.accent else colors.textSecondary,
+    Box(
         modifier = Modifier
+            .heightIn(min = 48.dp)
             .clip(MaterialTheme.shapes.extraSmall)
             .background(if (selected) colors.accent.copy(alpha = 0.16f) else Color.Transparent)
             .then(
                 if (selected) Modifier
                 else Modifier.border(1.dp, colors.hairlineStrong, MaterialTheme.shapes.extraSmall),
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-    )
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) colors.accent else colors.textSecondary,
+        )
+    }
 }
 
 @Composable

@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
@@ -49,10 +51,6 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
-
-/** Tones the contract allows, on top of the palette's accent and danger. */
-private val OkGreen = Color(0xFF3FB950)
-private val WarnAmber = Color(0xFFD29922)
 
 /**
  * A rendered `openui` block — the client half of the contract the `openui-contract`
@@ -331,10 +329,12 @@ private fun NodeView(node: OpenUiNode, spacing: Int = 10) {
     }
 }
 
+/** The tones the contract allows, taken from the palette so light mode keeps its contrast. */
+@Composable
 private fun toneColor(tone: String): Color? = when (tone) {
-    "ok" -> OkGreen
-    "warn" -> WarnAmber
-    "danger" -> Color(0xFFFF6B6B)
+    "ok" -> LocalMercuryColors.current.success
+    "warn" -> LocalMercuryColors.current.warning
+    "danger" -> LocalMercuryColors.current.danger
     else -> null
 }
 
@@ -344,8 +344,7 @@ private fun isNumericColumn(table: OpenUiNode.Table, index: Int): Boolean =
     }
 
 /** Round tick steps (1, 2, 5 × 10^k): labels read 0/5/10, never 0/2/5/7/9. */
-private fun niceStep(raw: Double): Double {
-    if (raw <= 0.0) return 1.0
+private fun niceStep(raw: Double): Double {    if (raw <= 0.0) return 1.0
     val power = 10.0.pow(floor(log10(raw)))
     val fraction = raw / power
     val nice = when {
@@ -357,9 +356,18 @@ private fun niceStep(raw: Double): Double {
     return nice * power
 }
 
+/** A value as spoken: an integral number loses its decimal tail, a fractional one stays as is. */
+private fun spokenValue(value: Double): String =
+    if (value == Math.rint(value)) Math.round(value).toString() else value.toString()
+
 @Composable
 private fun ChartView(node: OpenUiNode.Chart) {
     val colors = LocalMercuryColors.current
+    // Le dessin seul ne dit rien à TalkBack : chaque point se lit « libellé valeur ».
+    val chartSummary = stringResource(
+        R.string.openui_chart_a11y,
+        node.labels.zip(node.values).joinToString(", ") { (label, value) -> "$label ${spokenValue(value)}" },
+    )
     val dataMax = node.values.maxOrNull() ?: 1.0
     val step = niceStep(maxOf(dataMax / 4.0, 1.0))
     val max = ceil(dataMax / step) * step
@@ -390,7 +398,12 @@ private fun ChartView(node: OpenUiNode.Chart) {
                     )
                 }
             }
-            Canvas(modifier = Modifier.weight(1f).height(28.dp * (ticks.size - 1))) {
+            Canvas(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(28.dp * (ticks.size - 1))
+                    .semantics { contentDescription = chartSummary },
+            ) {
                 val height = size.height
                 val width = size.width
                 // Grid: one line per tick, the baseline included.
@@ -445,7 +458,12 @@ private fun ChartView(node: OpenUiNode.Chart) {
     }
 }
 
-/** One colour per slice, in the order the model listed them. */
+/** One colour per slice, in the order the model listed them — the first is the theme's accent,
+ * so the leading slice keeps its contrast on a light canvas too (the fixed cyan washed out). */
+@Composable
+private fun pieColors(): List<Color> =
+    listOf(LocalMercuryColors.current.accent) + PieColors.drop(1)
+
 private val PieColors = listOf(
     Color(0xFF00D4FF), Color(0xFF7BD88F), Color(0xFFFFB454), Color(0xFFFF6B6B),
     Color(0xFFB48CFF), Color(0xFF4DD0E1), Color(0xFFF78FB3), Color(0xFF9CCC65),
@@ -465,6 +483,13 @@ private fun PieView(node: OpenUiNode.Pie) {
         val share = if (value.isFinite() && value > 0) value / total else 0.0
         Triple(index, share, node.labels.getOrNull(index).orEmpty())
     }.filter { it.second > 0 }
+    // La légende est du texte, mais le disque reste une image pour TalkBack : chaque part se
+    // lit « libellé pourcentage ».
+    val pieSummary = stringResource(
+        R.string.openui_pie_a11y,
+        slices.joinToString(", ") { (_, share, label) -> "$label ${Math.round(share * 100)} %" },
+    )
+    val palette = pieColors()
 
     Column(
         modifier = Modifier
@@ -477,14 +502,18 @@ private fun PieView(node: OpenUiNode.Pie) {
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Canvas(modifier = Modifier.size(150.dp)) {
+            Canvas(
+                modifier = Modifier
+                    .size(150.dp)
+                    .semantics { contentDescription = pieSummary },
+            ) {
                 val outer = size.minDimension / 2f - 2f
                 val inner = if (node.kind == "pie") 0f else outer * 0.58f
                 val box = Rect(center - Offset(outer, outer), Size(outer * 2f, outer * 2f))
                 if (slices.size == 1) {
                     // One slice covering the circle: a 360° arc is degenerate, so draw the ring.
                     drawCircle(
-                        color = PieColors[0],
+                        color = palette[0],
                         radius = (outer + inner) / 2f,
                         style = if (inner > 0f) Stroke(width = outer - inner) else Fill,
                     )
@@ -503,7 +532,7 @@ private fun PieView(node: OpenUiNode.Pie) {
                             path.arcTo(hole, start + sweep, -sweep, forceMoveTo = false)
                         }
                         path.close()
-                        drawPath(path, PieColors[index % PieColors.size])
+                        drawPath(path, palette[index % palette.size])
                         start += sweep
                     }
                 }
@@ -515,7 +544,7 @@ private fun PieView(node: OpenUiNode.Pie) {
                             Box(
                                 modifier = Modifier
                                     .size(10.dp)
-                                    .background(PieColors[index % PieColors.size], RoundedCornerShape(3.dp)),
+                                    .background(palette[index % palette.size], RoundedCornerShape(3.dp)),
                             )
                             Text(
                                 text = label,
@@ -545,6 +574,8 @@ private fun GaugeView(node: OpenUiNode.Gauge) {
     val colors = LocalMercuryColors.current
     val ratio = (node.value / node.max).coerceIn(0.0, 1.0)
     val tint = toneColor(node.tone) ?: colors.accent
+    // L'arc se dit : à combien du maximum l'aiguille est posée.
+    val gaugeSummary = stringResource(R.string.openui_gauge_a11y, Math.round(ratio * 100))
 
     Column(
         modifier = Modifier
@@ -557,7 +588,12 @@ private fun GaugeView(node: OpenUiNode.Gauge) {
             Text(it, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
         }
         Box(contentAlignment = Alignment.BottomCenter) {
-            Canvas(modifier = Modifier.fillMaxWidth().height(96.dp)) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .semantics { contentDescription = gaugeSummary },
+            ) {
                 val stroke = 16.dp.toPx()
                 val radius = minOf(size.width / 2f, size.height) - stroke / 2f - 1f
                 val topLeft = Offset(center.x - radius, size.height - radius)

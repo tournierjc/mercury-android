@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.CodeMode
@@ -61,9 +66,13 @@ fun CodeModeBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
+            // Le déclencheur repose à 48 dp : il est juste au-dessus du champ où le pouce se pose,
+            // et le mode engagé se dit comme un état, pas seulement comme une couleur.
+            val stateText = stringResource(if (mode.engaged) R.string.chat_mode_state_on else R.string.chat_mode_state_off)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
+                    .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(50))
                     .then(
                         if (mode.engaged) {
@@ -73,6 +82,7 @@ fun CodeModeBar(
                         },
                     )
                     .clickable { open = true }
+                    .semantics { stateDescription = stateText }
                     .padding(horizontal = 9.dp, vertical = 4.dp),
             ) {
                 Icon(
@@ -113,7 +123,10 @@ fun CodeModeBar(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .selectable(
+                                selected = candidate == mode,
+                                role = Role.RadioButton,
+                            ) {
                                 open = false
                                 if (candidate != mode) onPick(candidate)
                             }

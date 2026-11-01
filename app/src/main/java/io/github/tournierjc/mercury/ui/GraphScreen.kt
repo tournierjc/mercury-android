@@ -48,6 +48,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -222,11 +228,22 @@ private fun GraphCanvas(
     }
     val touchSlop = with(density) { TOUCH_SLOP.toPx() }
 
+    // Un Canvas est invisible à TalkBack : le dessin se décrit d'un bloc (comptes et geste),
+    // et chaque nœud posé plus bas est une cible nommée à sa position, qui ouvre son souvenir —
+    // l'équivalent accessible de la liste de texte que ce canevas a remplacée.
+    val graphSummary = stringResource(
+        R.string.brain_graphe_a11y,
+        pluralStringResource(R.plurals.brain_nb_noeuds, state.nodes.size, state.nodes.size),
+        pluralStringResource(R.plurals.brain_nb_liens, state.edges.size, state.edges.size),
+    )
+    val openLabel = stringResource(R.string.brain_noeud_ouvrir)
+
     Box(
         modifier = modifier
             // A zoomed node must never spill over the header above the canvas.
             .clipToBounds()
             .onSizeChanged { canvas = it }
+            .semantics { contentDescription = graphSummary }
             // Outside the layer: the gesture sees screen pixels and the pan/zoom maths below is
             // the one the layer applies, so a tap lands on the node it was aimed at at any scale.
             .pointerInput(Unit) {
@@ -309,6 +326,30 @@ private fun GraphCanvas(
                             )
                         }
                         .width(labelWidth),
+                )
+            }
+
+            // Un nœud = un élément annonçable à l'endroit où il est dessiné. Pas de `clickable` :
+            // le geste du canevas (pinces, glissements, taps) doit rester le seul à capter le
+            // doigt, l'action d'ouverture passe par la sémantique seule (TalkBack, clavier).
+            for (point in placed) {
+                val radius = radii[point.id] ?: continue
+                val node = byId[point.id] ?: continue
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                (point.x - radius).roundToInt(),
+                                (point.y - radius).roundToInt(),
+                            )
+                        }
+                        .size(with(density) { (radius * 2f).toDp() })
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = node.fullLabel.ifBlank { node.label }
+                            if (node.id == state.detailId) selected = true
+                            onClick(openLabel) { onSelect(node); true }
+                        },
                 )
             }
         }
@@ -432,7 +473,7 @@ private fun NodePanel(
             }
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.Top) {
-            IconButton(onClick = onClose, modifier = Modifier.size(38.dp)) {
+            IconButton(onClick = onClose) {
                 Icon(
                     Icons.Rounded.Close,
                     contentDescription = stringResource(R.string.brain_noeud_fermer),
