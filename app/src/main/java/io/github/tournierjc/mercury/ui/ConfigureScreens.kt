@@ -14,7 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.vm.ConfigureUiState
 import io.github.tournierjc.mercury.vm.ConfigureSlice
@@ -71,11 +74,34 @@ fun ProvidersScreen(onBack: () -> Unit) {
             if (state.providers.isEmpty()) {
                 EmptyLine(state.loading, R.string.configure_providers_empty, ConfigureSlice.Providers in state.failed)
             }
+            var editing by remember { mutableStateOf<ProviderDto?>(null) }
             state.providers.forEach { provider ->
-                // The app already has exactly one provider row (Réglages). `busy` greys its two
-                // glyphs — edit and probe — because writing a key is Réglages' job, not this
-                // screen's; the row itself, dots, model and base URL included, is not rebuilt.
-                ProviderRow(provider = provider, busy = true, onEdit = {}, onTest = {})
+                val name = provider.name.ifBlank { "—" }
+                // Both glyphs used to be drawn greyed with empty lambdas — a pencil and a bolt
+                // that did nothing, on the one screen named after what it edits. They now write
+                // and probe through the same route Réglages uses, and the probe answers under the
+                // row it belongs to.
+                ProviderRow(
+                    provider = provider,
+                    busy = state.busy,
+                    onEdit = { editing = provider },
+                    onTest = { viewModel.testProvider(name) },
+                )
+                if (state.providerTestFor == name) {
+                    state.providerTest?.let { ProviderTestLine(it) }
+                }
+            }
+            editing?.let { provider ->
+                val id = provider.name.ifBlank { "—" }
+                ProviderEditDialog(
+                    id = id,
+                    existing = provider.routing,
+                    onDismiss = { editing = null },
+                    onConfirm = { apiKey, baseUrl, model, enabled, routing ->
+                        editing = null
+                        viewModel.saveProvider(id, apiKey, baseUrl, model, enabled, routing)
+                    },
+                )
             }
             Text(
                 text = stringResource(R.string.configure_providers_edit_note),

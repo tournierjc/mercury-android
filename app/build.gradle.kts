@@ -58,6 +58,11 @@ dependencies {
     // The app module had no test source set: the resource contract of a notice (a key spelled in
     // both locales, with the same arguments) is the first thing only this module can check.
     testImplementation(libs.junit)
+    // The Configure group now writes: a provider save and a probe are coroutines on a view model,
+    // and their two rules — no reload after a refusal, an answer shown only under its own row —
+    // can only be checked with a real dispatcher and a fake server.
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
