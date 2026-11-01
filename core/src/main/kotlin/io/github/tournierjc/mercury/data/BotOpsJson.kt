@@ -348,7 +348,22 @@ object BotOps {
         expandedChars: Int = 4_000,
     ): List<ReasoningBlockDto> {
         if (blocks.isEmpty()) return emptyList()
-        val kept = if (expanded) blocks else blocks.takeLast(collapsedSteps.coerceAtLeast(1))
+        // One step can think twice: the daemon appends a block per reasoning spurt, so a single
+        // step often yields two. Drawn apart they read as two identical "étape 2" labels — the
+        // screen is not wrong about the count, the grouping is. Joined here, before the fold, so
+        // the label says the step and the surface says the thinking.
+        val merged = blocks.fold(mutableListOf<ReasoningBlockDto>()) { acc, block ->
+            val previous = acc.lastOrNull()
+            if (previous != null && previous.step == block.step) {
+                acc[acc.lastIndex] = previous.copy(
+                    text = previous.text.trimEnd() + "\n\n" + block.text.trimStart(),
+                )
+            } else {
+                acc.add(block)
+            }
+            acc
+        }
+        val kept = if (expanded) merged else merged.takeLast(collapsedSteps.coerceAtLeast(1))
         val cap = if (expanded) expandedChars else collapsedChars
         return kept.map { block ->
             val text = block.text.trim()
