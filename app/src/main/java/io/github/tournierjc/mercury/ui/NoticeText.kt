@@ -288,6 +288,8 @@ fun noticeResId(key: NoticeKey): Int = when (key) {
     NoticeKey.INSTANCE_SAVED -> R.string.notice_instance_saved
     NoticeKey.INSTANCE_RESTART_REQUIRED -> R.string.notice_instance_restart_required
     NoticeKey.CREW_IMPORT_FAILED -> R.string.notice_crew_import_failed
+    NoticeKey.SANDBOX_UNAVAILABLE -> R.string.notice_sandbox_unavailable
+    NoticeKey.SANDBOX_ACTION_FAILED -> R.string.notice_sandbox_action_failed
 
 
 

@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.tournierjc.mercury.AppContainer
+import io.github.tournierjc.mercury.data.AuthException
+import io.github.tournierjc.mercury.data.CredentialsRefusedException
+import io.github.tournierjc.mercury.data.Notice
+import io.github.tournierjc.mercury.data.NoticeKey
 import io.github.tournierjc.mercury.data.toNotice
 import androidx.lifecycle.viewModelScope
 import io.github.tournierjc.mercury.data.MercuryApi
@@ -31,7 +35,7 @@ data class SandboxToolsState(
     val loading: Boolean = false,
     /** The tool an action is in flight for, so one row spins instead of the whole list. */
     val busy: String = "",
-    val error: String = "",
+    val error: Notice? = null,
     /** True until the first answer: an empty catalogue and "no tools" are different things. */
     val loaded: Boolean = false,
 )
@@ -43,10 +47,10 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
 
     fun refresh() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = "") }
+            _state.update { it.copy(loading = true, error = null) }
             runCatching { api.sandboxTools() }
                 .onSuccess { tools -> _state.update { it.copy(tools = tools, loading = false, loaded = true) } }
-                .onFailure { e -> _state.update { it.copy(loading = false, error = e.readable(), loaded = true) } }
+                .onFailure { e -> _state.update { it.copy(loading = false, error = e.readable(NoticeKey.SANDBOX_UNAVAILABLE), loaded = true) } }
         }
     }
 
@@ -54,7 +58,7 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
     fun install(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch {
-            _state.update { it.copy(busy = id, error = "") }
+            _state.update { it.copy(busy = id, error = null) }
             runCatching { api.installSandboxTool(id) }
                 .onSuccess { record ->
                     _state.update { it.copy(installs = it.installs + (id to record), busy = "") }
@@ -67,7 +71,7 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
     fun connect(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch {
-            _state.update { it.copy(busy = id, error = "") }
+            _state.update { it.copy(busy = id, error = null) }
             runCatching { api.connectSandboxTool(id) }
                 .onSuccess { flow ->
                     _state.update { it.copy(flows = it.flows + (id to flow), busy = "") }
@@ -110,7 +114,7 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
     fun disconnect(id: String) {
         if (_state.value.busy.isNotBlank()) return
         viewModelScope.launch {
-            _state.update { it.copy(busy = id, error = "") }
+            _state.update { it.copy(busy = id, error = null) }
             runCatching { api.disconnectSandboxTool(id) }
                 .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
             refresh()
@@ -127,7 +131,7 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
     fun remove(id: String) {
         if (id.isBlank() || _state.value.busy.isNotBlank()) return
         viewModelScope.launch {
-            _state.update { it.copy(busy = id, error = "") }
+            _state.update { it.copy(busy = id, error = null) }
             runCatching { api.removeSandboxTool(id) }
                 .onFailure { e -> _state.update { it.copy(error = e.readable()) } }
                 .onSuccess {
@@ -140,9 +144,17 @@ class SandboxToolsViewModel(private val api: MercuryApi) : ViewModel() {
         }
     }
 
-    fun clearError() = _state.update { it.copy(error = "") }
+    fun clearError() = _state.update { it.copy(error = null) }
 
-    private fun Throwable.readable(): String = toNotice().toString()
+    /**
+     * A sandbox failure as a notice: the house sentence for this screen's own keys, the daemon's
+     * own words attached as detail — never a raw string drawn straight into the screen. A dead
+     * session keeps its own key: the app must say "sign in again", not "the action failed".
+     */
+    private fun Throwable.readable(key: NoticeKey = NoticeKey.SANDBOX_ACTION_FAILED): Notice = when (this) {
+        is AuthException, is CredentialsRefusedException -> toNotice()
+        else -> Notice(key).withDetail(message)
+    }
 
     companion object {
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {

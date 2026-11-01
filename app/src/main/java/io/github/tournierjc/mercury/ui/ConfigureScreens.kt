@@ -30,6 +30,7 @@ import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
+import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.vm.ConfigureUiState
 import io.github.tournierjc.mercury.vm.ConfigureSlice
 import io.github.tournierjc.mercury.vm.ConfigureViewModel
@@ -411,8 +412,8 @@ fun UsageScreen(onBack: () -> Unit) {
         title = stringResource(R.string.configure_usage_title),
         // A daemon that could not read its tracker sends zeros; they are not a quota.
         subtitle = state.usage?.takeIf { state.usageAvailable }?.let { usage ->
-            "${formatCompact(usage.dailyUsed)} / ${
-                if (usage.dailyBudget > 0) formatCompact(usage.dailyBudget) else stringResource(R.string.configure_usage_unlimited)
+            "${formatTokens(usage.dailyUsed)} / ${
+                if (usage.dailyBudget > 0) formatTokens(usage.dailyBudget) else stringResource(R.string.configure_usage_unlimited)
             }"
         },
         onBack = onBack,
@@ -431,8 +432,8 @@ fun UsageScreen(onBack: () -> Unit) {
                 )
             } else {
                 Text(
-                    text = "${formatCompact(usage.dailyUsed)} / ${
-                        if (usage.dailyBudget > 0) formatCompact(usage.dailyBudget) else stringResource(R.string.configure_usage_unlimited)
+                    text = "${formatTokens(usage.dailyUsed)} / ${
+                        if (usage.dailyBudget > 0) formatTokens(usage.dailyBudget) else stringResource(R.string.configure_usage_unlimited)
                     }",
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (usage.dailyBudget > 0 && usage.dailyUsed >= usage.dailyBudget) {
@@ -453,7 +454,7 @@ fun UsageScreen(onBack: () -> Unit) {
                     value = if (usage.dailyBudget <= 0) {
                         stringResource(R.string.configure_usage_unlimited)
                     } else {
-                        formatCompact(usage.remaining)
+                        formatTokens(usage.remaining)
                     },
                 )
                 KeyValueRow(
@@ -470,7 +471,7 @@ fun UsageScreen(onBack: () -> Unit) {
             state.byModel.forEach { slice ->
                 KeyValueRow(
                     label = slice.label,
-                    value = "${formatCompact(slice.tokens)} · ${stringResource(R.string.configure_usage_share, slice.share)}",
+                    value = "${formatTokens(slice.tokens)} · ${stringResource(R.string.configure_usage_share, slice.share)}",
                 )
             }
         }
@@ -482,7 +483,7 @@ fun UsageScreen(onBack: () -> Unit) {
             state.byChannel.forEach { slice ->
                 KeyValueRow(
                     label = slice.label,
-                    value = "${formatCompact(slice.tokens)} · ${stringResource(R.string.configure_usage_share, slice.share)}",
+                    value = "${formatTokens(slice.tokens)} · ${stringResource(R.string.configure_usage_share, slice.share)}",
                 )
             }
         }
@@ -497,8 +498,8 @@ fun UsageScreen(onBack: () -> Unit) {
                     .joinToString(" · ")
                 val counts = stringResource(
                     R.string.configure_usage_counts,
-                    formatCompact(request.input),
-                    formatCompact(request.output),
+                    formatTokens(request.input),
+                    formatTokens(request.output),
                 )
                 ActionRow(
                     title = request.model.ifBlank { request.provider }.ifBlank { UNNAMED },

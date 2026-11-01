@@ -170,11 +170,12 @@ object BotThread {
                 // never during it. Streaming its 600-character tail on that record used to keep a
                 // finished turn marked as still writing, and hid the full reply sitting right
                 // there in the transcript: a missed `turn-end` (a dropped stream, a process the
-                // system killed) left the tail on screen as if it were the message.
-                val streaming = false
+                // system killed) left the tail on screen as if it were the message. So a journaled
+                // turn is never streaming, and the live tail belongs to the one turn the journal
+                // has no record of yet (below); there is no `streaming -> tail` branch to get it
+                // wrong.
                 val full = outputs[record.runId]?.takeIf { it.isNotBlank() }
                 val reply = when {
-                    streaming -> liveTail
                     // The journal truncates `summary` to 300 characters; the transcript keeps
                     // the whole answer, which is what a conversation must show.
                     full != null -> full
@@ -190,9 +191,9 @@ object BotThread {
                     text = reply,
                     at = record.startedAt + record.durationMs,
                     state = record.state,
-                    streaming = streaming,
+                    streaming = false,
                     // Only a summary can be cut: an error line and an empty turn are what they are.
-                    truncated = !streaming && full == null && record.summary.isNotBlank(),
+                    truncated = full == null && record.summary.isNotBlank(),
                     steps = stepsOf(traces[record.runId]),
                     reasoning = reasoning[record.runId].orEmpty(),
                     reasoningTruncated = record.runId in reasoningTruncated,

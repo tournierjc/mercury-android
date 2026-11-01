@@ -238,4 +238,6 @@
     <string name="notice_teammate_renamed">Nom enregistré.</string>
     <string name="notice_teammate_name_refused">Un nom vide n\'est pas un nom.</string>
     <string name="notice_code_mode_failed">Le mode programmation n\'a pas pu être changé.</string>
+    <string name="notice_sandbox_unavailable">Impossible de lire les outils</string>
+    <string name="notice_sandbox_action_failed">L\'action a échoué</string>
 </resources>

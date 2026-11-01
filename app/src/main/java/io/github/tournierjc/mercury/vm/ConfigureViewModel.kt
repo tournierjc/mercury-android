@@ -13,7 +13,6 @@ import io.github.tournierjc.mercury.data.dto.PermissionsDto
 import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.data.dto.ProviderRoutingDto
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
-import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
 import io.github.tournierjc.mercury.data.dto.SkillDto
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import io.github.tournierjc.mercury.data.dto.UsageEntry
@@ -144,6 +143,7 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
 
     private val _state = MutableStateFlow(ConfigureUiState())
     val state: StateFlow<ConfigureUiState> = _state.asStateFlow()
+    private val providerEditor = ProviderEditor(api)
 
     init {
         refresh()
@@ -229,24 +229,12 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
     ) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
-            var saved = false
-            runCatching {
-                api.saveProvider(
-                    id,
-                    ProviderUpdateRequest(
-                        apiKey = apiKey?.trim()?.ifBlank { null },
-                        baseUrl = baseUrl?.trim()?.ifBlank { null },
-                        model = model?.trim()?.ifBlank { null },
-                        enabled = enabled,
-                        routing = routing,
-                    ),
-                )
-            }
-                .onSuccess { saved = true; _state.update { it.copy(busy = false) } }
+            providerEditor.save(id, apiKey, baseUrl, model, enabled, routing)
+                .onSuccess { _state.update { it.copy(busy = false) } }
                 .onFailure { e -> _state.update { it.copy(busy = false, error = e.toNotice()) } }
             // Only a save reloads the list — and so it must not follow a failure, whose banner
             // refresh() would wipe before it was ever read.
-            if (saved) refresh()
+            if (_state.value.error == null) refresh()
         }
     }
 
@@ -254,13 +242,8 @@ class ConfigureViewModel(private val api: MercuryApi) : ViewModel() {
     fun testProvider(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(providerTest = null, providerTestFor = id, error = null) }
-            runCatching { api.testProvider(id) }
-                .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
-                .onFailure { e ->
-                    _state.update {
-                        it.copy(providerTest = ProviderTestResult(success = false, error = e.message.orEmpty()), providerTestFor = id)
-                    }
-                }
+            val result = providerEditor.test(id)
+            _state.update { it.copy(providerTest = result, providerTestFor = id) }
         }
     }
 

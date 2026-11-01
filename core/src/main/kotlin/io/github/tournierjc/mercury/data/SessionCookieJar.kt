@@ -10,14 +10,6 @@ interface CookieStore {
     fun save(lines: List<String>)
 }
 
-class InMemoryCookieStore : CookieStore {
-    private var lines: List<String> = emptyList()
-    override fun load(): List<String> = lines
-    override fun save(lines: List<String>) {
-        this.lines = lines
-    }
-}
-
 /**
  * Cookie jar that persists Mercury's `mercury_session` cookie.
  *

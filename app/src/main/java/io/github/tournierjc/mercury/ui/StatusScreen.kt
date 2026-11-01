@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.tournierjc.mercury.BuildConfig
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.R
+import io.github.tournierjc.mercury.util.formatCount
 import io.github.tournierjc.mercury.util.formatTokens
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.util.formatUptime
@@ -226,8 +227,8 @@ private fun UsageSection(state: StatusUiState) {
             return@CollapsibleSection
         }
         Text(
-            text = "${formatCompact(usage.dailyUsed)} / ${
-                if (usage.dailyBudget > 0) formatCompact(usage.dailyBudget) else stringResource(R.string.status_unlimited)
+            text = "${formatTokens(usage.dailyUsed)} / ${
+                if (usage.dailyBudget > 0) formatTokens(usage.dailyBudget) else stringResource(R.string.status_unlimited)
             }",
             style = MaterialTheme.typography.bodyLarge,
             color = if (usage.dailyBudget > 0 && usage.dailyUsed >= usage.dailyBudget) colors.danger else colors.textPrimary,
@@ -235,7 +236,7 @@ private fun UsageSection(state: StatusUiState) {
         ProgressLine(usage.ratio)
         KeyValueRow(
             label = stringResource(R.string.status_label_remaining),
-            value = if (usage.dailyBudget <= 0) stringResource(R.string.status_unlimited) else formatCompact(usage.remaining),
+            value = if (usage.dailyBudget <= 0) stringResource(R.string.status_unlimited) else formatTokens(usage.remaining),
             highlight = usage.remaining <= 0 && usage.dailyBudget > 0,
         )
     }

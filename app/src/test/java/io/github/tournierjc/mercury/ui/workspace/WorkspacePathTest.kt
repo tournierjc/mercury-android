@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 /**
  * The explorer's rules, asserted where they live.
@@ -78,12 +79,19 @@ class WorkspacePathTest {
 
     @Test
     fun `a size is a size not a byte count`() {
-        assertEquals("0 B", WorkspacePath.formatSize(0))
-        assertEquals("512 B", WorkspacePath.formatSize(512))
-        assertEquals("1 kB", WorkspacePath.formatSize(1024))
-        assertEquals("1.5 kB", WorkspacePath.formatSize(1536))
-        assertEquals("5 MB", WorkspacePath.formatSize(5L * 1024 * 1024))
-        assertEquals("2 GB", WorkspacePath.formatSize(2L * 1024 * 1024 * 1024))
+        // English units: the device locale must not decide what a test expects.
+        val saved = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.US)
+            assertEquals("—", WorkspacePath.formatSize(0))
+            assertEquals("512 B", WorkspacePath.formatSize(512))
+            assertEquals("1 kB", WorkspacePath.formatSize(1024))
+            assertEquals("1.5 kB", WorkspacePath.formatSize(1536))
+            assertEquals("5 MB", WorkspacePath.formatSize(5L * 1024 * 1024))
+            assertEquals("2 GB", WorkspacePath.formatSize(2L * 1024 * 1024 * 1024))
+        } finally {
+            Locale.setDefault(saved)
+        }
     }
 
     @Test

@@ -1,6 +1,7 @@
 package io.github.tournierjc.mercury.ui.workspace
 
-import kotlin.math.roundToLong
+import io.github.tournierjc.mercury.util.TerminalPaths
+import io.github.tournierjc.mercury.util.formatBytes
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -59,26 +60,13 @@ object WorkspacePath {
     /** The workspace root. Not `"/"`: the daemon's `path` is relative to it. */
     const val ROOT = ""
 
-    /** Collapses `.` and `..`, drops a leading slash, keeps the result workspace-relative. */
-    fun normalise(raw: String): String {
-        val out = ArrayDeque<String>()
-        for (segment in raw.split('/')) {
-            when (segment) {
-                "", "." -> Unit
-                ".." -> out.removeLastOrNull()
-                else -> out.addLast(segment)
-            }
-        }
-        return out.joinToString("/")
-    }
-
     /** The parent directory; the root is its own parent, so "up" at the root is not an escape. */
-    fun parent(path: String): String = normalise(path).substringBeforeLast('/', "")
+    fun parent(path: String): String = TerminalPaths.normalise(path).substringBeforeLast('/', "")
 
     /** A child of [current]; the daemon expects the joined path, not the bare name. */
     fun join(current: String, name: String): String {
-        val base = normalise(current)
-        return if (base.isEmpty()) normalise(name) else "$base/${normalise(name)}"
+        val base = TerminalPaths.normalise(current)
+        return if (base.isEmpty()) TerminalPaths.normalise(name) else "$base/${TerminalPaths.normalise(name)}"
     }
 
     /**
@@ -90,7 +78,7 @@ object WorkspacePath {
     fun breadcrumb(path: String): List<Crumb> {
         val crumbs = mutableListOf(Crumb("/", ROOT))
         var walked = ROOT
-        for (segment in normalise(path).split('/')) {
+        for (segment in TerminalPaths.normalise(path).split('/')) {
             if (segment.isEmpty()) continue
             walked = if (walked.isEmpty()) segment else "$walked/$segment"
             crumbs += Crumb(segment, walked)
@@ -112,28 +100,11 @@ object WorkspacePath {
         )
 
     /**
-     * A file size a phone can read: `512 B`, `2 kB`, `1.5 kB`, `3.4 MB`.
-     *
-     * SI-ish units with a dot: they are the same four glyphs in both locales, so no unit word
-     * needs a translation. A directory sends 0 and reads as a dash rather than `0 B`.
+     * A file size a phone can read, from the one formatter the app formats with:
+     * `512 B`, `1.5 kB`, `3.2 MB` in English, `1,5 ko`, `3,2 Mo` in French. A directory sends 0,
+     * and 0 means "nothing measured" — a dash rather than `0 B`.
      */
-    fun formatSize(bytes: Long): String {
-        if (bytes < 0) return "—"
-        if (bytes < 1024) return "$bytes B"
-        val units = listOf("kB", "MB", "GB", "TB")
-        var value = bytes / 1024.0
-        var index = 0
-        while (value >= 1024.0 && index < units.lastIndex) {
-            value /= 1024.0
-            index++
-        }
-        val tenths = (value * 10).roundToLong()
-        return if (tenths % 10 == 0L) {
-            "${tenths / 10} ${units[index]}"
-        } else {
-            "${tenths / 10}.${tenths % 10} ${units[index]}"
-        }
-    }
+    fun formatSize(bytes: Long): String = formatBytes(bytes)
 
     /**
      * Whether a preview should refuse to print the bytes.

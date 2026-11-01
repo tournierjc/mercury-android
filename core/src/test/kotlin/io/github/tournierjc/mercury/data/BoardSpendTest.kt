@@ -2,6 +2,7 @@ package io.github.tournierjc.mercury.data
 
 import io.github.tournierjc.mercury.util.formatCost
 import io.github.tournierjc.mercury.util.formatTokens
+import java.util.Locale
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
@@ -97,11 +98,11 @@ class BoardSpendTest {
 
     @Test
     fun `tokens and costs print the way the rest of the app prints them`() {
-        assertEquals("140,6k", formatTokens(140_600))
-        assertEquals("$0,47", formatCost(0.47))
-        assertEquals("$12", formatCost(12.0))
+        assertEquals("140,6 k", formatTokens(140_600, Locale.FRENCH))
+        assertEquals("$0,47", formatCost(0.47, Locale.FRENCH))
+        assertEquals("$12", formatCost(12.0, Locale.FRENCH))
         // A cost that would round to zero must not read as free.
-        assertEquals("<$0,001", formatCost(0.0009))
-        assertEquals("$0", formatCost(0.0))
+        assertEquals("<$0,001", formatCost(0.0009, Locale.FRENCH))
+        assertEquals("$0", formatCost(0.0, Locale.FRENCH))
     }
 }

@@ -176,12 +176,3 @@ fun MercuryTheme(
         )
     }
 }
-
-object MercuryTheme {
-    val dimensions: Dimensions = Dimensions()
-}
-
-data class Dimensions(
-    val gutter: androidx.compose.ui.unit.Dp = 20.dp,
-    val bubbleRadius: androidx.compose.ui.unit.Dp = 22.dp,
-)

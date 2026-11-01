@@ -17,7 +17,6 @@ import io.github.tournierjc.mercury.data.dto.ModelsResponse
 import io.github.tournierjc.mercury.data.dto.ProviderDto
 import io.github.tournierjc.mercury.data.dto.ProviderTestResult
 import io.github.tournierjc.mercury.data.dto.ProviderRoutingDto
-import io.github.tournierjc.mercury.data.dto.ProviderUpdateRequest
 import io.github.tournierjc.mercury.data.dto.UsageDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,6 +64,7 @@ class SettingsViewModel(
 
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
+    private val providerEditor = ProviderEditor(api)
 
     init {
         refresh()
@@ -121,18 +121,7 @@ class SettingsViewModel(
     ) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null, message = null) }
-            runCatching {
-                api.saveProvider(
-                    id,
-                    ProviderUpdateRequest(
-                        apiKey = apiKey?.trim()?.ifBlank { null },
-                        baseUrl = baseUrl?.trim()?.ifBlank { null },
-                        model = model?.trim()?.ifBlank { null },
-                        enabled = enabled,
-                        routing = routing,
-                    ),
-                )
-            }
+            providerEditor.save(id, apiKey, baseUrl, model, enabled, routing)
                 .onSuccess {
                     _state.update { s -> s.copy(busy = false, message = Notice(NoticeKey.PROVIDER_SAVED, args = listOf(id))) }
                     refresh()
@@ -144,15 +133,8 @@ class SettingsViewModel(
     fun testProvider(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(providerTest = null, providerTestFor = id, error = null) }
-            runCatching { api.testProvider(id) }
-                .onSuccess { result -> _state.update { it.copy(providerTest = result, providerTestFor = id) } }
-                .onFailure { e ->
-                    _state.update {
-                        // The DTO mirrors the server's own answer: its `error` is server words
-                        // (the `detail` of the contract), not a sentence this app writes.
-                        it.copy(providerTest = ProviderTestResult(success = false, error = e.message.orEmpty()), providerTestFor = id)
-                    }
-                }
+            val result = providerEditor.test(id)
+            _state.update { it.copy(providerTest = result, providerTestFor = id) }
         }
     }
 
