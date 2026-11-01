@@ -50,15 +50,19 @@ class WatchService : Service() {
             return START_NOT_STICKY
         }
 
+        // `startForegroundService()` demands a `startForeground()` even if the service is
+        // about to stop itself: going foreground first is what keeps a fresh install —
+        // nothing configured yet — from crashing the moment the app opens.
+        goForeground(summaryText(0, 0))
         val app = application as? MercuryApp
         if (app == null || app.container.serverUrl.isBlank()) {
             // Nothing configured, nothing to watch: a persistent notification promising a
-            // watch that cannot exist is worse than no service at all.
+            // watch that cannot exist is worse than no service at all. The foreground call
+            // above already satisfied the platform; stopping now just clears it.
             stopSelf()
             return START_NOT_STICKY
         }
 
-        goForeground(summaryText(0, 0))
         app.container.botWatcher.start()
         observe(app)
         return START_STICKY
