@@ -146,22 +146,23 @@
     <string name="prov_ready">prêt</string>
     <string name="prov_routing_order">Ordre des fournisseurs (séparés par des virgules)</string>
     <string name="prov_routing_quant">Quantisation (fp8, fp4…)</string>
-    <string name="prov_routing_hint">Épingle un endpoint précis du modèle. Vide, la passerelle choisit.</string>
+    <string name="prov_routing_hint">Vide : la passerelle choisit l\'endpoint.</string>
     <string name="prov_edit">Modifier %1$s</string>
     <string name="prov_test">Tester %1$s</string>
     <string name="prov_connected">Connecté · %1$d modèle(s)</string>
     <string name="prov_recommended"> · conseillé %1$s</string>
     <string name="prov_failed">Échec · </string>
     <string name="prov_refused">connexion refusée</string>
-    <string name="prov_key_label">Clé API (vide = inchangée)</string>
+    <string name="prov_key_label">Clé API</string>
     <string name="prov_section_access">Accès</string>
     <string name="prov_section_model">Modèle</string>
     <string name="prov_section_routing">Routage</string>
-    <string name="prov_enabled_hint">Les bots peuvent choisir ce fournisseur</string>
-    <string name="prov_key_saved">Clé enregistrée · modifiable</string>
+    <string name="prov_enabled_hint">Les bots peuvent l\'utiliser</string>
+    <string name="prov_key_saved">Clé enregistrée</string>
+    <string name="prov_empty_keeps">Vide : la valeur enregistrée est gardée</string>
     <string name="prov_key_none">Aucune clé</string>
-    <string name="prov_url_label">URL de base (vide = inchangée)</string>
-    <string name="prov_model_label">Modèle par défaut (vide = inchangé)</string>
+    <string name="prov_url_label">URL de base</string>
+    <string name="prov_model_label">Modèle</string>
     <string name="prov_enabled">Activé</string>
     <string name="prov_save">Enregistrer</string>
     <string name="prov_cancel">Annuler</string>

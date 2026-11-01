@@ -3,6 +3,7 @@ package io.github.tournierjc.mercury.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -209,12 +211,18 @@ internal fun ProviderEditDialog(
     var model by remember(id) { mutableStateOf(savedModel) }
     var enabled by remember(id) { mutableStateOf(savedEnabled) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    // `usePlatformDefaultWidth = false` gives the sheet its own width: the platform default hugs
+    // the edges on a phone and leaves the fields cramped, and it also stops the panel from
+    // stretching across a tablet.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             shape = RoundedCornerShape(26.dp),
             color = colors.surface,
             border = BorderStroke(1.dp, colors.hairline),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .widthIn(max = 560.dp)
+                .fillMaxWidth(),
         ) {
             Column(
                 modifier = Modifier
@@ -233,6 +241,8 @@ internal fun ProviderEditDialog(
                             text = stringResource(if (hasKey) R.string.prov_key_saved else R.string.prov_key_none),
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                     IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
@@ -244,17 +254,25 @@ internal fun ProviderEditDialog(
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { apiKey = it },
-                        label = { Text(stringResource(R.string.prov_key_label)) },
+                        label = { Text(stringResource(R.string.prov_key_label), maxLines = 1) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         shape = RoundedCornerShape(14.dp),
+                        supportingText = {
+                            Text(
+                                text = stringResource(R.string.prov_empty_keeps),
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
                         value = baseUrl,
                         onValueChange = { baseUrl = it },
-                        label = { Text(stringResource(R.string.prov_url_label)) },
+                        label = { Text(stringResource(R.string.prov_url_label), maxLines = 1) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -267,7 +285,7 @@ internal fun ProviderEditDialog(
                     OutlinedTextField(
                         value = model,
                         onValueChange = { model = it },
-                        label = { Text(stringResource(R.string.prov_model_label)) },
+                        label = { Text(stringResource(R.string.prov_model_label), maxLines = 1) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
@@ -281,7 +299,7 @@ internal fun ProviderEditDialog(
                         OutlinedTextField(
                             value = endpointOrder,
                             onValueChange = { endpointOrder = it },
-                            label = { Text(stringResource(R.string.prov_routing_order)) },
+                            label = { Text(stringResource(R.string.prov_routing_order), maxLines = 1) },
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth(),
@@ -289,7 +307,7 @@ internal fun ProviderEditDialog(
                         OutlinedTextField(
                             value = quantizations,
                             onValueChange = { quantizations = it },
-                            label = { Text(stringResource(R.string.prov_routing_quant)) },
+                            label = { Text(stringResource(R.string.prov_routing_quant), maxLines = 1) },
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth(),
@@ -367,7 +385,7 @@ internal fun ProviderEditDialog(
 @Composable
 private fun SheetGroup(label: String, content: @Composable () -> Unit) {
     val colors = LocalMercuryColors.current
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
