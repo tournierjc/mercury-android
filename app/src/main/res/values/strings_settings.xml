@@ -48,6 +48,10 @@
     <string name="settings_account_password_hint">Le mot de passe actuel est demandé</string>
     <string name="settings_account_revoke">Révoquer la session serveur</string>
     <string name="settings_account_revoke_hint">Déconnecte aussi les autres onglets</string>
+    <string name="settings_revoke_titre">Révoquer la session serveur ?</string>
+    <string name="settings_revoke_corps">Tu seras déconnecté de cet appareil, et les autres onglets avec. Il faudra se reconnecter.</string>
+    <string name="settings_revoke_action">Révoquer</string>
+    <string name="settings_value_min_length">Au moins %1$d caractères.</string>
     <string name="settings_chat_model">Modèle de la conversation</string>
     <string name="settings_close">Fermer</string>
     <string name="settings_save">Enregistrer</string>

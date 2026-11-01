@@ -336,6 +336,9 @@ private fun FleetBlock(
     val unreadableFile = stringResource(R.string.bots_error_unreadable_file)
     var overwrite by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
+    // With « Écraser » on, the import replaces the bots that share an id: the bundle is held
+    // here until the dialog says so, the way a pending destructive git action is held.
+    var pendingImport by remember { mutableStateOf<String?>(null) }
 
     // `import_bot_bundle` is a .json file; some pickers report it as text or octet-stream.
     val bundlePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -345,9 +348,12 @@ private fun FleetBlock(
         }.getOrNull()
         if (text.isNullOrBlank()) {
             importError = unreadableFile
+        } else if (overwrite) {
+            importError = null
+            pendingImport = text
         } else {
             importError = null
-            viewModel.importBundle(text, overwrite)
+            viewModel.importBundle(text, false)
         }
     }
 
@@ -379,6 +385,33 @@ private fun FleetBlock(
         )
         importError?.let { message ->
             Text(message, style = MaterialTheme.typography.labelSmall, color = colors.danger)
+        }
+        pendingImport?.let { bundleText ->
+            AlertDialog(
+                onDismissRequest = { pendingImport = null },
+                containerColor = colors.surface,
+                title = { Text(stringResource(R.string.bots_fleet_overwrite_titre), color = colors.textPrimary) },
+                text = {
+                    Text(
+                        text = stringResource(R.string.bots_fleet_overwrite_corps),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pendingImport = null
+                        viewModel.importBundle(bundleText, true)
+                    }) {
+                        Text(stringResource(R.string.bots_action_import), color = colors.danger)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingImport = null }) {
+                        Text(stringResource(R.string.newbot_action_cancel), color = colors.textSecondary)
+                    }
+                },
+            )
         }
         if (leads.isEmpty()) {
             Text(
@@ -681,6 +714,8 @@ private fun BotDetail(
     val id = state.selectedId.orEmpty()
     // Deleting is irreversible: the button asks, this remembers the question.
     var confirmDelete by remember { mutableStateOf(false) }
+    // Removing the photo erases something the owner chose, for the same reason bot delete asks.
+    var confirmPhoto by remember { mutableStateOf(false) }
     // Two steps, one form: the picker lists what is free, "Créer un bot" opens NewBotDialog.
     var showNewCrew by remember { mutableStateOf(false) }
     var showModelPicker by remember { mutableStateOf(false) }
@@ -809,6 +844,7 @@ private fun BotDetail(
                     icon = Icons.Rounded.DeleteOutline,
                     label = stringResource(R.string.bots_action_delete),
                     tint = colors.danger,
+                    enabled = !state.busy,
                     onClick = { confirmDelete = true },
                 ),
             ),
@@ -819,7 +855,7 @@ private fun BotDetail(
                     QuickAction(
                         icon = Icons.Rounded.HideImage,
                         label = stringResource(R.string.bots_action_remove_photo),
-                        onClick = { viewModel.removeAvatar(id) },
+                        onClick = { confirmPhoto = true },
                     ),
                 ),
             )
@@ -1449,6 +1485,33 @@ private fun BotDetail(
             onConfirm = {
                 confirmDelete = false
                 viewModel.delete(id)
+            },
+        )
+    }
+    if (confirmPhoto) {
+        AlertDialog(
+            onDismissRequest = { confirmPhoto = false },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.bots_photo_remove_titre), color = colors.textPrimary) },
+            text = {
+                Text(
+                    text = stringResource(R.string.bots_photo_remove_corps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmPhoto = false
+                    viewModel.removeAvatar(id)
+                }) {
+                    Text(stringResource(R.string.bots_photo_remove_action), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmPhoto = false }) {
+                    Text(stringResource(R.string.newbot_action_cancel), color = colors.textSecondary)
+                }
             },
         )
     }

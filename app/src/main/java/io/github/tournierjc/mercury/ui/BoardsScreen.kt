@@ -42,6 +42,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -79,6 +81,9 @@ fun BoardsScreen(onBack: () -> Unit) {
     var showNewCard by remember { mutableStateOf(false) }
     var showPlan by remember { mutableStateOf(false) }
     var showContext by remember { mutableStateOf(false) }
+    // « Nettoyer » deletes every done card of the board at once: a menu verb that loses work
+    // deserves the same dialog the bin glyph gets.
+    var confirmClearDone by remember { mutableStateOf(false) }
 
     // The board stream lives exactly as long as the board is on screen: opening a board
     // subscribes, going back to the list — or leaving the screen — unsubscribes.
@@ -183,7 +188,7 @@ fun BoardsScreen(onBack: () -> Unit) {
                     onHaltAll = viewModel::haltAll,
                     onPlan = { viewModel.loadPlan(); showPlan = true },
                     onContext = { viewModel.loadContext(); showContext = true },
-                    onClearDone = viewModel::clearDone,
+                    onClearDone = { confirmClearDone = true },
                     onGenerate = { viewModel.generate(null) },
                     onNewCard = { showNewCard = true },
                 )
@@ -285,6 +290,34 @@ fun BoardsScreen(onBack: () -> Unit) {
 
     if (showContext) {
         ContextDialog(state = state, viewModel = viewModel, onDismiss = { showContext = false })
+    }
+
+    if (confirmClearDone) {
+        AlertDialog(
+            onDismissRequest = { confirmClearDone = false },
+            containerColor = colors.surface,
+            title = { Text(stringResource(R.string.boards_nettoyer_titre), color = colors.textPrimary) },
+            text = {
+                Text(
+                    text = stringResource(R.string.boards_nettoyer_corps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClearDone = false
+                    viewModel.clearDone()
+                }) {
+                    Text(stringResource(R.string.boards_nettoyer), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClearDone = false }) {
+                    Text(stringResource(R.string.boards_annuler), color = colors.textSecondary)
+                }
+            },
+        )
     }
 
     state.cardDetail?.let { detail ->
@@ -396,6 +429,9 @@ private fun CardDetailDialog(
     var attachmentPath by remember { mutableStateOf("") }
     var dependencyId by remember { mutableStateOf("") }
     var parentId by remember { mutableStateOf("") }
+    // The ×s of the card's children ask first: one dialog, the pending delete held here the way
+    // the workspace git tab holds its pending action.
+    var confirmChild by remember { mutableStateOf<ChildDelete?>(null) }
     val card = state.cards.firstOrNull { BoardJson.id(it) == detail.cardId }
 
     AlertDialog(
@@ -427,8 +463,15 @@ private fun CardDetailDialog(
                         )
                         val commentId = BoardJson.id(entry)
                         if (commentId.isNotBlank()) {
-                            TextButton(onClick = { viewModel.deleteComment(commentId) }) {
-                                Text("×", color = colors.danger)
+                            val commentDeleteLabel = stringResource(R.string.boards_carte_commentaire_supprimer)
+                            TextButton(onClick = {
+                                confirmChild = ChildDelete(commentDeleteLabel) { viewModel.deleteComment(commentId) }
+                            }) {
+                                Text(
+                                    text = "×",
+                                    color = colors.danger,
+                                    modifier = Modifier.semantics { contentDescription = commentDeleteLabel },
+                                )
                             }
                         }
                     }
@@ -456,7 +499,16 @@ private fun CardDetailDialog(
                         )
                         val labelId = BoardJson.id(label)
                         if (labelId.isNotBlank()) {
-                            TextButton(onClick = { viewModel.removeLabel(labelId) }) { Text("×", color = colors.danger) }
+                            val labelDeleteLabel = stringResource(R.string.boards_carte_etiquette_supprimer)
+                            TextButton(onClick = {
+                                confirmChild = ChildDelete(labelDeleteLabel) { viewModel.removeLabel(labelId) }
+                            }) {
+                                Text(
+                                    text = "×",
+                                    color = colors.danger,
+                                    modifier = Modifier.semantics { contentDescription = labelDeleteLabel },
+                                )
+                            }
                         }
                     }
                 }
@@ -504,8 +556,15 @@ private fun CardDetailDialog(
                         }
                         val attachmentId = BoardJson.id(attachment)
                         if (attachmentId.isNotBlank()) {
-                            TextButton(onClick = { viewModel.deleteAttachment(attachmentId) }) {
-                                Text("×", color = colors.danger)
+                            val attachmentDeleteLabel = stringResource(R.string.boards_carte_piece_supprimer)
+                            TextButton(onClick = {
+                                confirmChild = ChildDelete(attachmentDeleteLabel) { viewModel.deleteAttachment(attachmentId) }
+                            }) {
+                                Text(
+                                    text = "×",
+                                    color = colors.danger,
+                                    modifier = Modifier.semantics { contentDescription = attachmentDeleteLabel },
+                                )
                             }
                         }
                     }
@@ -534,8 +593,15 @@ private fun CardDetailDialog(
                         )
                         val dependencyIdValue = BoardJson.id(dependency)
                         if (dependencyIdValue.isNotBlank()) {
-                            TextButton(onClick = { viewModel.removeDependency(dependencyIdValue) }) {
-                                Text("×", color = colors.danger)
+                            val dependencyDeleteLabel = stringResource(R.string.boards_carte_dependance_supprimer)
+                            TextButton(onClick = {
+                                confirmChild = ChildDelete(dependencyDeleteLabel) { viewModel.removeDependency(dependencyIdValue) }
+                            }) {
+                                Text(
+                                    text = "×",
+                                    color = colors.danger,
+                                    modifier = Modifier.semantics { contentDescription = dependencyDeleteLabel },
+                                )
                             }
                         }
                     }
@@ -574,7 +640,36 @@ private fun CardDetailDialog(
             }
         },
     )
+
+    confirmChild?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { confirmChild = null },
+            containerColor = colors.surface,
+            title = { Text(pending.title, color = colors.textPrimary) },
+            text = {
+                Text(
+                    text = stringResource(R.string.boards_carte_retirer_corps),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmChild = null
+                    pending.action()
+                }) { Text(stringResource(R.string.boards_supprimer), color = colors.danger) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmChild = null }) {
+                    Text(stringResource(R.string.boards_annuler), color = colors.textSecondary)
+                }
+            },
+        )
+    }
 }
+
+/** A pending child delete of the card dialog: what the × is about to remove, and how. */
+private class ChildDelete(val title: String, val action: () -> Unit)
 
 @Composable
 private fun ContextDialog(state: BoardsUiState, viewModel: BoardsViewModel, onDismiss: () -> Unit) {

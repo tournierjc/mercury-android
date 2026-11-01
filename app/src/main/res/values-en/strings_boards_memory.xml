@@ -23,6 +23,19 @@
     <string name="boards_inactif">inactive</string>
     <string name="boards_action_ouvrir">open</string>
     <string name="boards_supprimer">Delete</string>
+    <string name="boards_supprimer_titre">Delete “%1$s”?</string>
+    <string name="boards_supprimer_corps">The board and every card on it will be lost. This is final.</string>
+    <string name="boards_nettoyer_titre">Clear the done cards?</string>
+    <string name="boards_nettoyer_corps">The board\'s done cards will be deleted.</string>
+    <string name="boards_carte_commentaire_retirer_titre">Remove this comment?</string>
+    <string name="boards_carte_etiquette_retirer_titre">Remove this label?</string>
+    <string name="boards_carte_piece_retirer_titre">Remove this attachment?</string>
+    <string name="boards_carte_dependance_retirer_titre">Remove this dependency?</string>
+    <string name="boards_carte_retirer_corps">The item is removed from the card. This is final.</string>
+    <string name="boards_carte_commentaire_supprimer">Delete this comment</string>
+    <string name="boards_carte_etiquette_supprimer">Delete this label</string>
+    <string name="boards_carte_piece_supprimer">Delete this attachment</string>
+    <string name="boards_carte_dependance_supprimer">Delete this dependency</string>
     <string name="boards_nouveau_plateau">New board</string>
     <string name="boards_nom">Name</string>
     <string name="boards_description_optionnelle">Description (optional)</string>
@@ -90,6 +103,7 @@
     <string name="memory_confirmer_croyance">Confirm this belief</string>
     <string name="memory_corriger_croyance_action">Correct this belief</string>
     <string name="memory_oublier_croyance">Forget this belief</string>
+    <string name="memory_oublier_croyance_titre">Forget this belief?</string>
     <string name="memory_quarantaine_titre">Set aside by the brain</string>
     <string name="memory_quarantaine_intro">Memories set aside because they contradicted something stronger. Restoring them puts them back in circulation.</string>
     <string name="memory_quarantaine_vide">Nothing in quarantine.</string>

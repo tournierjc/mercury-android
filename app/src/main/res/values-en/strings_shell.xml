@@ -51,6 +51,10 @@
     <string name="bridge_show_token">Show token</string>
     <string name="bridge_hide_token">Hide token</string>
     <string name="bridge_revoke">Revoke the token</string>
+    <string name="bridge_revoke_titre">Revoke the token?</string>
+    <string name="bridge_revoke_corps">A new token replaces the old one: paired devices must enter it again, and the bridge restarts.</string>
+    <string name="bridge_revoke_action">Revoke</string>
+    <string name="bridge_cancel">Cancel</string>
     <string name="bridge_readable_title">What the agent can read</string>
     <string name="bridge_endpoints">GET /health · answers, revealing nothing (no token)\nGET /device/status · battery, network, timezone\nGET /calendar?from=&amp;to=&amp;limit= · events (ISO 8601)\nGET /contacts?q=&amp;limit= · names, numbers, emails\nGET /sms?limit=&amp;address= · received SMS\nGET /messages?limit= · SMS + app notifications\nRequired header: Authorization: Bearer ***</string>
     <string name="bridge_footer">Without the bridge, the agent sees nothing of the phone. With it, it sees only what you allowed, while the service runs. « Revoke » invalidates the old token.</string>

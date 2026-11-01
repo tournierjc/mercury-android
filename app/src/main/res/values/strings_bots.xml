@@ -21,6 +21,8 @@
     <string name="bots_action_overwrite">Écraser</string>
     <string name="bots_action_overwrite_on">Écraser : oui</string>
     <string name="bots_fleet_import_hint">Un bundle importé arrive désactivé : la flotte ne dépense rien avant que tu l\'actives.</string>
+    <string name="bots_fleet_overwrite_titre">Importer en écrasant ?</string>
+    <string name="bots_fleet_overwrite_corps">Les bots du bundle remplaceront ceux qui portent le même identifiant : leur profil, leur historique et leurs fichiers de travail seront perdus.</string>
     <string name="bots_fleet_no_lead">Aucun chef de flotte. Un chef engendre ses spécialistes depuis sa fiche.</string>
     <string name="bots_role_fleet_lead">chef de flotte</string>
     <string name="bots_crew_running">%1$d en cours</string>
@@ -53,6 +55,9 @@
     <string name="bots_action_share">Partager</string>
     <string name="bots_action_delete">Supprimer</string>
     <string name="bots_action_remove_photo">Sans photo</string>
+    <string name="bots_photo_remove_titre">Retirer la photo ?</string>
+    <string name="bots_photo_remove_corps">Le bot reprendra son monogramme sur les écrans de l\'équipage.</string>
+    <string name="bots_photo_remove_action">Retirer</string>
     <string name="bots_bundle_hint">Le bundle contient l\'identité, le persona, les permissions et les skills — jamais les secrets ni le journal. Un chef de flotte exporte toute son équipe.</string>
 
     <!-- BotsScreen : lui écrire -->

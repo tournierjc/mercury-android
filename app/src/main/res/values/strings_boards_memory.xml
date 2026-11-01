@@ -23,6 +23,19 @@
     <string name="boards_inactif">inactif</string>
     <string name="boards_action_ouvrir">ouvrir</string>
     <string name="boards_supprimer">Supprimer</string>
+    <string name="boards_supprimer_titre">Supprimer « %1$s » ?</string>
+    <string name="boards_supprimer_corps">Le plateau et toutes ses cartes seront perdus. C\'est définitif.</string>
+    <string name="boards_nettoyer_titre">Nettoyer les cartes terminées ?</string>
+    <string name="boards_nettoyer_corps">Les cartes terminées de ce plateau seront supprimées.</string>
+    <string name="boards_carte_commentaire_retirer_titre">Retirer ce commentaire ?</string>
+    <string name="boards_carte_etiquette_retirer_titre">Retirer cette étiquette ?</string>
+    <string name="boards_carte_piece_retirer_titre">Retirer cette pièce jointe ?</string>
+    <string name="boards_carte_dependance_retirer_titre">Retirer cette dépendance ?</string>
+    <string name="boards_carte_retirer_corps">L\'élément sera retiré de la carte. C\'est définitif.</string>
+    <string name="boards_carte_commentaire_supprimer">Supprimer ce commentaire</string>
+    <string name="boards_carte_etiquette_supprimer">Supprimer cette étiquette</string>
+    <string name="boards_carte_piece_supprimer">Supprimer cette pièce jointe</string>
+    <string name="boards_carte_dependance_supprimer">Supprimer cette dépendance</string>
     <string name="boards_nouveau_plateau">Nouveau plateau</string>
     <string name="boards_nom">Nom</string>
     <string name="boards_description_optionnelle">Description (optionnel)</string>
@@ -90,6 +103,7 @@
     <string name="memory_confirmer_croyance">Confirmer cette croyance</string>
     <string name="memory_corriger_croyance_action">Corriger cette croyance</string>
     <string name="memory_oublier_croyance">Oublier cette croyance</string>
+    <string name="memory_oublier_croyance_titre">Oublier cette croyance ?</string>
     <string name="memory_quarantaine_titre">Écartés par le cerveau</string>
     <string name="memory_quarantaine_intro">Souvenirs mis de côté parce qu\'ils contredisaient quelque chose de plus solide. Les réintégrer les remet dans le circuit.</string>
     <string name="memory_quarantaine_vide">Rien en quarantaine.</string>
