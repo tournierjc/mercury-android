@@ -21,10 +21,23 @@ object ToolTrace {
 
     const val HEADER = "[Tool activity in my previous turn]"
 
+    /**
+     * The header of the context-compression entry the daemon writes when its keeper cuts. The line
+     * underneath uses the same `- name args → outcome` grammar as a `run_command` line, so the
+     * block below parses it for free — the header is the only thing that says *what kind* of event
+     * this trace is.
+     */
+    const val COMPRESSION_HEADER = "[Context compression]"
+    const val COMPRESSION_TOOL = "context_compression"
+
     private const val ARROW = " → "
 
     /** True when a stored message is one of these summaries, whatever its `kind` says. */
-    fun looksLike(text: String): Boolean = text.trimStart().startsWith(HEADER)
+    fun looksLike(text: String): Boolean =
+        text.trimStart().startsWith(HEADER) || text.trimStart().startsWith(COMPRESSION_HEADER)
+
+    /** True when a stored message is specifically a context-compression event. */
+    fun looksLikeCompression(text: String): Boolean = text.trimStart().startsWith(COMPRESSION_HEADER)
 
     /**
      * The steps of a summary, in the order they ran.

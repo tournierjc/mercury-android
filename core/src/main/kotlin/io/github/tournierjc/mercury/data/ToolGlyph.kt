@@ -54,6 +54,7 @@ object ToolGlyph {
         return when {
             name.isBlank() -> FALLBACK
             name == "…" || name.startsWith("…") -> "⋯"
+            name == "context_compression" || name.startsWith("context_compress") -> "🗜️"
             name.startsWith("run_command") || name.startsWith("command") ||
                 name == "exec" || name == "shell" || name == "bash" || name == "terminal" ||
                 name == "cd" || name == "awk" || name == "sed" || name == "grep" -> "💻"
