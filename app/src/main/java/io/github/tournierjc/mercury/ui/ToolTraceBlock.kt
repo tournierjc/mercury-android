@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.rounded.Terminal
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.data.ToolGlyph
 import io.github.tournierjc.mercury.data.ToolStep
+import io.github.tournierjc.mercury.data.ToolTrace
 import io.github.tournierjc.mercury.data.TraceLine
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 
@@ -43,10 +45,16 @@ import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
  * glued to the answer.
  *
  * Each call is one line the way a terminal conversation shows it: an emoji for the kind of call
- * (💻 a command, 📄 a read, 📚 a skill, 📦 a delivery), the tool's name, and its argument as the
- * command it ran, in a code block. A turn that ran twenty calls is unreadable as a wall of
- * monospace names, and unreadable as chips that truncate the command: the emoji says what kind of
- * thing happened without reading a word, and the command is the only part worth reading in full.
+ * (💻 a command, 📄 a read, 📚 a skill, 📦 a delivery, 🗜️ a context compression), the tool's name,
+ * and its argument as the command it ran, in a code block. A turn that ran twenty calls is unreadable
+ * as a wall of monospace names, and unreadable as chips that truncate the command: the emoji says what
+ * kind of thing happened without reading a word, and the command is the only part worth reading in
+ * full.
+ *
+ * A context compression ([ToolTrace.looksLikeCompression]) is the one event that is not a tool call
+ * but shares this block's grammar — the daemon writes it as one `- context_compression … → …` line.
+ * Its header therefore says « compression du contexte » rather than counting "outils": the owner
+ * reads "1 outil" under a compression line and rightly wonders which tool they never saw run.
  *
  * [folded] says whether it starts closed: history is context (closed, with the last calls still
  * legible), the turn in progress is the thing you are watching (open).
@@ -61,6 +69,7 @@ fun ToolTraceBlock(
     var open by rememberSaveable { mutableStateOf(!folded) }
     val lines = remember(steps) { steps.map { ToolGlyph.lineOf(it) } }
     val failures = lines.count { it.failed }
+    val compression = steps.size == 1 && steps[0].tool.trim() == ToolTrace.COMPRESSION_TOOL
 
     Column(
         modifier = modifier
@@ -73,13 +82,18 @@ fun ToolTraceBlock(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Rounded.Terminal,
+                if (compression) Icons.Rounded.Archive else Icons.Rounded.Terminal,
                 contentDescription = null,
                 tint = if (failures > 0) colors.danger else colors.accent,
                 modifier = Modifier.size(13.dp),
             )
             Text(
-                text = stringResource(R.string.chat_trace_count, steps.size).uppercase(),
+                text = stringResource(
+                    if (compression) R.string.chat_trace_compression
+                    else if (steps.size == 1) R.string.chat_trace_count_one
+                    else R.string.chat_trace_count,
+                    steps.size,
+                ).uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = if (failures > 0) colors.danger else colors.textSecondary,

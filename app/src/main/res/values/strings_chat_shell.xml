@@ -32,6 +32,8 @@
     <string name="composer_commands_none">Aucune commande ne correspond.</string>
     <!-- L'activité outils relue depuis l'historique : un bloc replié, pas un paragraphe. -->
     <string name="chat_trace_count">%1$d outils</string>
+    <string name="chat_trace_count_one">1 outil</string>
+    <string name="chat_trace_compression">compression du contexte</string>
     <string name="chat_trace_failures">%1$d en échec</string>
     <string name="chat_trace_show">déplier</string>
     <string name="chat_trace_hide">replier</string>

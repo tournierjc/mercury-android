@@ -30,6 +30,8 @@
     <string name="composer_commands_search">Search a command</string>
     <string name="composer_commands_none">No command matches.</string>
     <string name="chat_trace_count">%1$d tools</string>
+    <string name="chat_trace_count_one">1 tool</string>
+    <string name="chat_trace_compression">context compression</string>
     <string name="chat_trace_failures">%1$d failed</string>
     <string name="chat_trace_show">expand</string>
     <string name="chat_trace_hide">collapse</string>
