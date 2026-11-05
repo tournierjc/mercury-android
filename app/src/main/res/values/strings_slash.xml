@@ -16,6 +16,10 @@
     <string name="slash_stop">Arrêter les agents et vider les tâches</string>
     <string name="slash_permissions">Changer le mode de permissions</string>
     <string name="slash_exit">Éteindre Mercury</string>
+    <string name="slash_compact">Contexte utilisé : tokens, pourcentage, coupes du keeper</string>
+    <string name="slash_compact_now">Compresser maintenant la conversation (coupe du keeper)</string>
+    <string name="slash_compact_on">Activer le context keeper</string>
+    <string name="slash_compact_off">Désactiver le context keeper</string>
     <string name="slash_agents">Lister les sous-agents actifs et leur état</string>
     <string name="slash_agents_kill">Tuer un sous-agent précis</string>
     <string name="slash_bg">Lancer une commande shell en arrière-plan</string>

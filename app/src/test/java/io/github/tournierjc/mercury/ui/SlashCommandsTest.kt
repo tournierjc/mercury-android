@@ -65,6 +65,10 @@ class SlashCommandsTest {
                 listOf("/help", "/progress", "/halt", "/stop", "/agents", "/bg list", "/models use", "/code plan", "/budget set"),
             ),
         )
+        // The context keeper's handle, typed from the palette like any other command.
+        assertTrue(
+            commands.containsAll(listOf("/compact", "/compact now", "/compact on", "/compact off")),
+        )
         // Every command starts with a slash and has no trailing space: it is typed, not prose.
         assertTrue(SlashCommands.all.all { it.command.startsWith("/") && it.command.trim() == it.command })
     }
