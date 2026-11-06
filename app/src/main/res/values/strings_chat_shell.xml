@@ -49,5 +49,6 @@
     <string name="chat_mode_execute_hint">Il modifie les fichiers du Spark directement.</string>
     <!-- L'état du déclencheur, annoncé par TalkBack : la teinte ne suffit pas. -->
     <string name="chat_mode_state_on">mode programmation activé</string>
+    <string name="context_gauge_next_turn">compression au prochain tour</string>
     <string name="chat_mode_state_off">mode programmation désactivé</string>
 </resources>

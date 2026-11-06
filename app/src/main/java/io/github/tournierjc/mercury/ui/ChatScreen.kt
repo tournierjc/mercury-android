@@ -119,6 +119,7 @@ import io.github.tournierjc.mercury.data.RelativeAge
 import io.github.tournierjc.mercury.data.isAtBottom
 import io.github.tournierjc.mercury.data.relativeAge
 import io.github.tournierjc.mercury.data.ThreadDto
+import io.github.tournierjc.mercury.data.dto.ContextSnapshotDto
 import io.github.tournierjc.mercury.util.MediaPicker
 import io.github.tournierjc.mercury.ui.theme.LocalMercuryColors
 import io.github.tournierjc.mercury.R
@@ -174,6 +175,10 @@ fun ChatScreen(
     codeMode: CodeMode = CodeMode.Off,
     codeModeAvailable: Boolean = false,
     onCodeMode: (CodeMode) -> Unit = {},
+    /** The keeper's reading of this conversation's context; null hides the gauge. */
+    contextGauge: ContextSnapshotDto? = null,
+    /** Tap on the gauge: asks the daemon for the `/compact` reading in chat. */
+    onGaugeTap: () -> Unit = {},
 ) {
     val colors = LocalMercuryColors.current
     var screen by rememberSaveable { mutableStateOf(AppScreen.Chat) }
@@ -816,6 +821,10 @@ fun ChatScreen(
                         available = codeModeAvailable,
                         onPick = onCodeMode,
                     )
+
+                    // How full the model's view of this conversation is — read here, at the
+                    // moment the owner decides what to send next.
+                    ContextGaugeBar(snapshot = contextGauge, onClick = onGaugeTap)
 
                     replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
                     Composer(

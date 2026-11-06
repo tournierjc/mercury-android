@@ -18,6 +18,7 @@ import io.github.tournierjc.mercury.data.toNotice
 import io.github.tournierjc.mercury.data.ChatState
 import io.github.tournierjc.mercury.data.CodeMode
 import io.github.tournierjc.mercury.data.MercuryApi
+import io.github.tournierjc.mercury.data.dto.ContextSnapshotDto
 import io.github.tournierjc.mercury.data.PendingFile
 import io.github.tournierjc.mercury.data.ThreadDto
 import io.github.tournierjc.mercury.data.ToolTrace
@@ -60,6 +61,9 @@ class ChatViewModel(
     private var eventsJob: Job? = null
     private var streamSession: String? = null
 
+    /** The session whose turn just started; the gauge refreshes when its stream falls silent. */
+    private var gaugeSession: String? = null
+
     /**
      * The programming mode, as the daemon reports it. Held here because the choice now lives in the
      * conversation: the console used to own it, on a screen about disk and plugins.
@@ -71,11 +75,37 @@ class ChatViewModel(
     private val _codeModeAvailable = MutableStateFlow(false)
     val codeModeAvailable: StateFlow<Boolean> = _codeModeAvailable.asStateFlow()
 
+    /**
+     * The context gauge for the open conversation: what the keeper says the model's
+     * view costs. Null (hidden) on a runtime without the keeper route, on a brand-new
+     * chat with no session, and while a fetch is not in flight for this session yet.
+     */
+    private val _contextGauge = MutableStateFlow<ContextSnapshotDto?>(null)
+    val contextGauge: StateFlow<ContextSnapshotDto?> = _contextGauge.asStateFlow()
+
     init {
         if (api.hasSession()) {
             _state.update { it.copy(connected = true) }
             refreshThreads()
             refreshCodeMode()
+        }
+    }
+
+    /**
+     * Asks the keeper how full this conversation is. Silent on any failure — the
+     * gauge is decoration, not a dependency: a 404 (older runtime) hides it, a
+     * timeout keeps the last number. Called when a turn ends and when a thread opens.
+     */
+    fun refreshContextGauge() {
+        val sessionId = _state.value.sessionId
+        if (sessionId == null) {
+            _contextGauge.value = null
+            return
+        }
+        viewModelScope.launch {
+            runCatching { api.contextSnapshot(sessionId) }
+                .onSuccess { snapshot -> if (_state.value.sessionId == sessionId) _contextGauge.value = snapshot }
+                .onFailure { if (_state.value.sessionId == sessionId) _contextGauge.value = null }
         }
     }
 
@@ -197,6 +227,8 @@ class ChatViewModel(
                     // The drawer used to stay empty until the next launch: a send that created
                     // a session is exactly when the list changes.
                     refreshThreads()
+                    // The gauge answers once the turn is over: the stream says so, not a timer.
+                    gaugeSession = sessionId
                 }
             } catch (e: AuthException) {
                 _signedIn.value = false
@@ -228,6 +260,8 @@ class ChatViewModel(
         eventsJob?.cancel()
         eventsJob = null
         streamSession = null
+        gaugeSession = null
+        _contextGauge.value = null
         _state.value = ChatReducer.newChat(_state.value)
         ensureEvents(null)
     }
@@ -264,6 +298,7 @@ class ChatViewModel(
         _state.update {
             it.copy(sessionId = thread.id, title = thread.title.ifBlank { thread.alias }, messages = emptyList())
         }
+        _contextGauge.value = null
         viewModelScope.launch {
             runCatching { api.threadMessages(thread.id) }
                 .onSuccess { messages ->
@@ -284,6 +319,7 @@ class ChatViewModel(
                         })
                     }
                     ensureEvents(thread.id)
+                    refreshContextGauge()
                 }
                 .onFailure { e ->
                     _state.update { ChatReducer.setError(it, Notice(NoticeKey.HISTORY_UNAVAILABLE).withDetail(e.message)) }
@@ -343,6 +379,18 @@ class ChatViewModel(
                         attempt = 0
                         val now = System.currentTimeMillis()
                         _state.update { state -> ChatReducer.onEvent(state, event, now) }
+                        // The keeper cuts at the start of a turn that overflows: the trace line
+                        // announces it, so that is the moment the number is worth re-reading.
+                        if (event is ChatEvent.StepDone && event.tool == ToolTrace.COMPRESSION_TOOL) {
+                            refreshContextGauge()
+                        }
+                        if (event is ChatEvent.SessionSwitched) refreshContextGauge()
+                    }
+                    // The gauge answers once the turn is over: the stream falling silent is the
+                    // end of the turn, and the keeper has had the last word on the view.
+                    if (streamSession != null && gaugeSession == streamSession) {
+                        gaugeSession = null
+                        refreshContextGauge()
                     }
                     return@launch
                 } catch (interrupted: StreamInterrupted) {

@@ -139,6 +139,7 @@ private fun MercuryRoot(
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val codeMode by viewModel.codeMode.collectAsStateWithLifecycle()
     val codeModeAvailable by viewModel.codeModeAvailable.collectAsStateWithLifecycle()
+    val contextGauge by viewModel.contextGauge.collectAsStateWithLifecycle()
 
     if (!signedIn) {
         ConnectScreen(
@@ -171,6 +172,8 @@ private fun MercuryRoot(
             codeMode = codeMode,
             codeModeAvailable = codeModeAvailable,
             onCodeMode = viewModel::setCodeMode,
+            contextGauge = contextGauge,
+            onGaugeTap = { viewModel.send("/compact") },
             openBotId = openBotId,
             openBotNonce = openBotNonce,
             onOpenBotConsumed = onBotOpened,

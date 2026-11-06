@@ -46,5 +46,6 @@
     <string name="chat_mode_execute_hint">It edits files on the Spark directly.</string>
     <!-- The trigger's state, announced by TalkBack: the tint alone is not enough. -->
     <string name="chat_mode_state_on">programming mode on</string>
+    <string name="context_gauge_next_turn">compression next turn</string>
     <string name="chat_mode_state_off">programming mode off</string>
 </resources>

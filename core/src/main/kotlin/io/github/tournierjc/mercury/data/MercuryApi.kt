@@ -35,6 +35,7 @@ import io.github.tournierjc.mercury.data.dto.BrainStatusDto
 import io.github.tournierjc.mercury.data.dto.ChatSettings
 import io.github.tournierjc.mercury.data.dto.ChatSettingsUpdate
 import io.github.tournierjc.mercury.data.dto.CodeStatusDto
+import io.github.tournierjc.mercury.data.dto.ContextSnapshotDto
 import io.github.tournierjc.mercury.data.dto.DeleteThreadRequest
 import io.github.tournierjc.mercury.data.dto.HealthDto
 import io.github.tournierjc.mercury.data.dto.ConnectFlowDto
@@ -1082,6 +1083,13 @@ class MercuryApi(
         getDecoded("/api/mcp", McpServersResponse.serializer())
 
     suspend fun codeStatus(): CodeStatusDto = getDecoded("/api/code/status", CodeStatusDto.serializer())
+
+    /**
+     * The context gauge: `GET /api/context/threads/:id`. A runtime without the
+     * keeper answers 404 — the caller treats any failure as "no gauge".
+     */
+    suspend fun contextSnapshot(threadId: String): ContextSnapshotDto =
+        getDecoded("/api/context/threads/${encode(threadId)}", ContextSnapshotDto.serializer())
 
     /** Programming mode: `off`, `auto`, `plan` or `execute`. */
     suspend fun setCodeMode(state: String): CodeStatusDto = postJson(
