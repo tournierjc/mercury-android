@@ -61,8 +61,17 @@ class MainActivity : ComponentActivity() {
         //
         // The watch is on by default: a bot answering while the phone sits in a pocket is the
         // case it exists for, and asking the owner to find a switch first was the wrong default.
+        //
+        // The start is deferred one loop turn, and never runs inline: on One UI / Android 16
+        // (SM-A546B) the binder answer inside startForegroundService() parked this thread long
+        // enough that the system killed the process with ForegroundServiceDidNotStartInTime
+        // before Service.onStartCommand was ever delivered. Handler.post keeps onCreate short;
+        // the service itself (WatchService) guarantees the startForeground() promise the moment
+        // it is delivered, whatever thread asked for it.
         if (AttentionPrefs(this).persistent) {
-            if (!WatchService.start(this)) AttentionSchedule.apply(this)
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                if (!WatchService.start(this)) AttentionSchedule.apply(this)
+            }
         }
         setContent {
             MercuryTheme {
