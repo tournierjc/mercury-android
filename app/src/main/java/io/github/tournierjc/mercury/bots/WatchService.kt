@@ -14,6 +14,7 @@ import io.github.tournierjc.mercury.R
 import io.github.tournierjc.mercury.ui.noticeText
 import io.github.tournierjc.mercury.MainActivity
 import io.github.tournierjc.mercury.MercuryApp
+import io.github.tournierjc.mercury.StartupCrashReport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,24 +45,44 @@ class WatchService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            AttentionPrefs(this).watchDisabled = true
+        // THE promise, first — before anything the intent can make us do. The ANR-killer
+        // clock ("startForegroundService() did not then call Service.startForeground()")
+        // starts when the system delivers this command, and on One UI / Android 16 it has
+        // fired before our first line could run — the exact ForegroundServiceDidNotStartInTime
+        // crash of 0.61.39. Everything that can throw or block (prefs reads, locale
+        // resolution, building the notification body, reading the container) therefore runs
+        // AFTER the promise is kept. The bare minimum that can survive ten seconds: title
+        // literal, neutral body, no translation, no prefs — `observe()` repaints the real
+        // text as soon as the watcher has state.
+        goForegroundMinimal()
+        try {
+            if (intent?.action == ACTION_STOP) {
+                AttentionPrefs(this).watchDisabled = true
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+
+            val app = application as? MercuryApp
+            if (app == null || app.container.serverUrl.isBlank()) {
+                // Nothing configured, nothing to watch: the promise was already kept by the
+                // minimal notification, so there is no ANR to inherit — just drop the shell.
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            // Real words now that the promise is safe.
+            notify(summaryText(0, 0))
+            app.container.botWatcher.start()
+            observe(app)
+            return START_STICKY
+        } catch (e: Throwable) {
+            // A throw after the promise is merely a broken watch, not a dead process.
+            runCatching { StartupCrashReport.writeExternal(this, e, "WatchService") }
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return START_NOT_STICKY
         }
-
-        val app = application as? MercuryApp
-        if (app == null || app.container.serverUrl.isBlank()) {
-            // Nothing configured, nothing to watch: a persistent notification promising a
-            // watch that cannot exist is worse than no service at all.
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        goForeground(summaryText(0, 0))
-        app.container.botWatcher.start()
-        observe(app)
-        return START_STICKY
     }
 
     override fun onDestroy() {
@@ -83,6 +104,40 @@ class WatchService : Service() {
     /** `3 équipiers · 1 vous attend`, resolved in the owner's language. */
     private fun summaryText(bots: Int, waiting: Int): String =
         WatchSummary.notices(bots, waiting).joinToString(" · ") { noticeText(this, it) }
+
+    /**
+     * The promise, kept with no dependencies: a channel created by hand, a literal body, no
+     * resource strings (a missing translation crashed the old one), no prefs, no PendingIntent.
+     * `observe()` replaces the text with the real summary as soon as the watcher has state.
+     */
+    private fun goForegroundMinimal() {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getSystemService(NotificationManager::class.java)
+                    ?.createNotificationChannel(
+                        NotificationChannel(CHANNEL_ID, "Mercury", NotificationManager.IMPORTANCE_LOW),
+                    )
+            }
+            val notification = Notification.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setContentTitle("Mercury")
+                .setContentText("…")
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val type = if (Build.VERSION.SDK_INT >= 34) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING
+                } else {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                }
+                startForeground(NOTIFICATION_ID, notification, type)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        }
+    }
 
     private fun goForeground(text: String) {
         ensureChannel()

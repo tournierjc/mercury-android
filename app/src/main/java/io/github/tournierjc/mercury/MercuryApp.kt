@@ -1,7 +1,10 @@
 package io.github.tournierjc.mercury
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.os.Bundle
 import io.github.tournierjc.mercury.bots.BotOrderMemory
 import io.github.tournierjc.mercury.bots.BotNotifyMemory
 import io.github.tournierjc.mercury.bots.BotNotifier
@@ -93,6 +96,13 @@ class MercuryApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // A release build that dies at start shows nothing: record the exception
+        // first, then let the system handle the crash as usual.
+        StartupCrashReport.install(this)
+        // The same for a death inside the activity: attachBaseContext and MainActivity's
+        // own onCreate run after this one, so a crash there never reaches the handler
+        // installed above. Catching activity callbacks covers that second window.
+        StartupCrashReport.installActivityHooks(this)
         container = AppContainer(this)
         container.botWatcher.start()
         // La vérification de fond survit au process : WorkManager la reprend au boot.
