@@ -359,6 +359,18 @@ private fun FleetBlock(
 
     val leads = watch.bots.filter { BotJson.isLead(it) }
 
+    // The watcher's error banner: the stream died (socket closed, auth lost) or a poll
+    // failed — without this the header's " · hors ligne" was the only trace, easy to
+    // miss at the top of a long screen. The ingest path clears it by setting it null.
+    watch.error?.let { message ->
+        Text(
+            text = stringResource(R.string.bots_watch_error_prefix, message),
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.danger,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+
     CollapsibleSection(stringResource(R.string.bots_section_fleet)) {
         IconActionBar(
             listOf(

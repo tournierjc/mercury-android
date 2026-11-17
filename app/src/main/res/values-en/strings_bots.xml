@@ -11,6 +11,7 @@
     <string name="bots_error_share_failed">Could not share</string>
     <string name="bots_error_unreadable_file">Unreadable file</string>
     <string name="bots_error_unreadable_photo">Unreadable photo</string>
+    <string name="bots_watch_error_prefix">Fleet: %1$s</string>
 
     <!-- BotsScreen: recent activity -->
     <string name="bots_section_recent_activity">Recent activity</string>

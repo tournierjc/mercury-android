@@ -11,6 +11,7 @@
     <string name="bots_error_share_failed">Partage impossible</string>
     <string name="bots_error_unreadable_file">Fichier illisible</string>
     <string name="bots_error_unreadable_photo">Photo illisible</string>
+    <string name="bots_watch_error_prefix">Flotte : %1$s</string>
 
     <!-- BotsScreen : activité récente -->
     <string name="bots_section_recent_activity">Activité récente</string>
