@@ -669,6 +669,20 @@ private fun DrawerBotRow(
                     .semantics { contentDescription = needsYou },
             )
         }
+        val unreadMail = BotJson.unread(bot)
+        if (unreadMail > 0) {
+            // Mail the owner has not seen, counted by the daemon in every roster push. A badge,
+            // not a word: the count is the message, like on any messaging app.
+            Text(
+                text = unreadMail.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textPrimary,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(colors.accent.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+        }
         trailing?.invoke()
     }
 }

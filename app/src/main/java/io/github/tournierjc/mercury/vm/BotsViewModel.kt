@@ -391,6 +391,27 @@ class BotsViewModel(
         }
     }
 
+    // -------------------------------------------------------------------
+    // Mailbox: showing the sheet's inbox section marks it read
+    // -------------------------------------------------------------------
+
+    /**
+     * Marks this bot's mailbox read, the moment the owner sees it.
+     *
+     * Nothing ever called `/api/bots/inbox/read`: the fleet inbox only grew — 151 entries on the
+     * production daemon, none cleared — and the `unread` counter the roster carries never moved.
+     * Seeing the section IS reading it; the daemon answers `{ok, unread}`, and the roster push
+     * that follows the write repaints the badge from the source of truth.
+     */
+    fun markInboxRead(id: String) {
+        if (id.isBlank()) return
+        viewModelScope.launch {
+            runCatching { api.markInboxRead() }
+                .onSuccess { /* the next roster push carries the new unread count */ }
+                .onFailure { /* unread stays: the badge is honest about what it could not do */ }
+        }
+    }
+
     fun reloadConversation(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch {

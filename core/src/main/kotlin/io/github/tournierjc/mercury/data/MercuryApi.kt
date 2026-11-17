@@ -394,6 +394,32 @@ class MercuryApi(
         getDecoded("/api/bots/${encode(id)}/inbox", JsonObject.serializer())
 
     /**
+     * `POST /api/bots/inbox/read` — marks mail read. `ids` empty marks everything up to now.
+     *
+     * The screen calls this when the owner has seen the mailbox section: without it the fleet
+     * inbox only ever grew — 151 entries, zero cleared — and the daemon's `unread` counter
+     * (carried in every roster summary) never moved.
+     */
+    suspend fun markInboxRead(ids: List<String> = emptyList()): JsonObject = withContext(Dispatchers.IO) {
+        val payload = if (ids.isEmpty()) "{}" else json.encodeToString(
+            JsonObject.serializer(),
+            JsonObject(mapOf("ids" to kotlinx.serialization.json.JsonArray(ids.map { kotlinx.serialization.json.JsonPrimitive(it) }))),
+        )
+        val request = Request.Builder()
+            .url(url("/api/bots/inbox/read"))
+            .post(payload.toRequestBody(jsonMedia))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (response.code == 401) throw AuthException("session expired")
+            if (!response.isSuccessful) {
+                throw MercuryException(apiError(body) ?: "HTTP ${response.code}")
+            }
+            runCatching { json.decodeFromString(JsonObject.serializer(), body) }.getOrDefault(JsonObject(emptyMap()))
+        }
+    }
+
+    /**
      * Live roster and activity of the whole bot fleet. Reconnection is the caller's job:
      * the flow completes when the stream ends.
      */

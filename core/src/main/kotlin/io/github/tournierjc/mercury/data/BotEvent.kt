@@ -46,6 +46,24 @@ sealed interface BotEvent {
 
     data class Notice(val message: String) : BotEvent
 
+    /**
+     * `bot_approval` — a bot asks the owner mid-run ("Write to file: …?"). The daemon's
+     * fail-closed clock (auto-deny at `expiresAt`) makes this the one event that cannot wait
+     * for the next roster push: a question that only shows up fifteen minutes later has already
+     * been refused by then. `settled` events are parsed but ignored by the watcher — the
+     * answer's own consequence (the run resuming or dying) comes through the roster.
+     */
+    data class Approval(
+        val id: String,
+        val botId: String,
+        val botName: String,
+        val runId: String,
+        val prompt: String,
+        val expiresAt: Long = 0,
+        /** `new` raises; `settled` is the daemon telling the question is over. */
+        val phase: String,
+    ) : BotEvent
+
     data class Unknown(val type: String) : BotEvent
 
     data class QueueSnapshot(val pending: Int = 0, val claimed: Int = 0, val dlq: Int = 0)
@@ -73,13 +91,22 @@ sealed interface BotEvent {
                     detail = text(payload, "detail"),
                     status = text(payload, "status"),
                     stepIndex = intValue(payload["stepIndex"]),
-                    elapsedMs = long(payload["elapsedMs"]),
+                    elapsedMs = long(payload, "elapsedMs"),
                     reasoningTail = text(payload, "reasoningTail"),
                     textTail = text(payload, "textTail"),
                     trigger = text(payload, "trigger"),
                     mode = text(payload, "mode"),
                 )
                 "bot_notice" -> Notice(text(payload, "message"))
+                "bot_approval" -> Approval(
+                    id = text(payload, "id"),
+                    botId = text(payload, "botId"),
+                    botName = text(payload, "botName"),
+                    runId = text(payload, "runId"),
+                    prompt = text(payload, "prompt"),
+                    expiresAt = long(payload, "expiresAt"),
+                    phase = text(payload, "type"),
+                )
                 else -> Unknown(type.orEmpty())
             }
         }
@@ -93,7 +120,7 @@ sealed interface BotEvent {
         private fun intValue(node: kotlinx.serialization.json.JsonElement?): Int =
             (node as? JsonPrimitive)?.intOrNull ?: 0
 
-        private fun long(node: kotlinx.serialization.json.JsonElement?): Long =
-            (node as? JsonPrimitive)?.let { it.longOrNull ?: it.contentOrNull?.toDoubleOrNull()?.toLong() } ?: 0L
+        private fun long(node: JsonObject, key: String): Long =
+            (node[key] as? JsonPrimitive)?.let { it.longOrNull ?: it.contentOrNull?.toDoubleOrNull()?.toLong() } ?: 0L
     }
 }

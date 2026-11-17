@@ -671,6 +671,15 @@ private fun BotRosterRow(
                 if (BotJson.needsYou(bot)) {
                     Text("  ⚠", color = colors.danger, style = MaterialTheme.typography.labelSmall)
                 }
+                val unreadMail = BotJson.unread(bot)
+                if (unreadMail > 0) {
+                    // Mail the owner has not seen, counted by the daemon in every roster push.
+                    Text(
+                        text = "  $unreadMail",
+                        color = colors.accent,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
             }
             Text(
                 // The parent is the tree above now; repeating it here would say it twice.
@@ -1287,6 +1296,11 @@ private fun BotDetail(
     }
 
     if (state.inbox.isNotEmpty()) {
+        // The section being drawn IS the read: without this the fleet inbox only ever grew —
+        // 151 entries, none cleared — and the roster's unread counter never moved.
+        LaunchedEffect(state.selectedId, state.inbox.size) {
+            viewModel.markInboxRead(state.selectedId.orEmpty())
+        }
         CollapsibleSection(stringResource(R.string.bots_section_mailbox)) {
             state.inbox.forEach { mail ->
                 KeyValueRow(

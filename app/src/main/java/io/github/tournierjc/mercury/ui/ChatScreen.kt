@@ -562,8 +562,13 @@ fun ChatScreen(
                 ) {
                     val botId = botChat
                     // The screen knows which teammate it is showing; the notifier needs the same fact to
-                    // stay quiet about a message that is already on screen.
-                    LaunchedEffect(botId) { AppVisibility.openBotId = botId }
+                    // stay quiet about a message that is already on screen — and to retire the shade's
+                    // card for it: reading the thread IS the notification, so a banner that outlives
+                    // the read is noise ("posted-and-gone", the rule the roster diff applies too).
+                    LaunchedEffect(botId) {
+                        AppVisibility.openBotId = botId
+                        if (botId != null) container.botNotifier.dismissMessage(botId)
+                    }
                     DisposableEffect(Unit) { onDispose { AppVisibility.openBotId = null } }
                     val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }
                     val botLive = botId?.let { botWatch.live[it] }

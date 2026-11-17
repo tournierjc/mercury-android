@@ -47,6 +47,26 @@ class BotNotifier(private val context: Context) {
 
     private fun messageId(botId: String): Int = MESSAGE_NOTIFICATION_ID + slot(botId) * 2 + 1
 
+    /**
+     * Cancels everything this bot still holds in the shade.
+     *
+     * Posted-and-gone: a question answered, a run served, a bot deleted — none of it deserves a
+     * permanent card. Both slots go (attention and message) because the roster diff says the
+     * whole state is over, not just one of its two kinds. An unknown id simply cancels ids that
+     * are not posted, which the notification manager ignores without complaint.
+     */
+    fun dismissBot(botId: String) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        runCatching { manager.cancel(attentionId(botId)) }
+        runCatching { manager.cancel(messageId(botId)) }
+    }
+
+    /** Cancels just the message card — the conversation screen is showing it instead. */
+    fun dismissMessage(botId: String) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        runCatching { manager.cancel(messageId(botId)) }
+    }
+
     fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -163,7 +183,7 @@ class BotNotifier(private val context: Context) {
             .setStyle(Notification.BigTextStyle().bigText(message))
             .setAutoCancel(true)
             .build()
-        runCatching { manager.notify(NOTIFICATION_ID + message.hashCode(), notification) }
+        runCatching { manager.notify(attentionId("notice:$message"), notification) }
     }
 
     companion object {

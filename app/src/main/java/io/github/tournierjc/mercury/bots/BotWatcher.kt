@@ -68,6 +68,31 @@ class BotWatcher(
 
     private var job: Job? = null
 
+    /**
+     * Cancels the notifications a bot no longer earns.
+     *
+     * The attention notification was raised once per transition — but nothing removed it: the
+     * shade kept "Scribe a besoin de vous" for as long as the tap never came, even after the
+     * run was served. When a bot's needsYou flips off (its next run answered the question, its
+     * DLQ was replayed or drained), both of its attention kinds go; a bot that vanished from
+     * the roster (deleted) goes entirely. Posted-and-gone, like every messaging app does.
+     */
+    private fun dismissStaleNotifications(previous: List<JsonObject>, current: List<JsonObject>) {
+        val currentIds = current.map { BotJson.id(it) }.toSet()
+        for (bot in previous) {
+            val botId = BotJson.id(bot)
+            if (botId.isBlank()) continue
+            val now = current.firstOrNull { BotJson.id(it) == botId }
+            val done = when {
+                // The bot is gone: nothing it owns stays in the shade.
+                botId !in currentIds -> true
+                // Its question was answered or timed out; the run-finished card is moot too.
+                else -> BotJson.needsYou(bot) && now != null && !BotJson.needsYou(now)
+            }
+            if (done) notifier.dismissBot(botId)
+        }
+    }
+
     @Synchronized
     fun start() {
         if (job?.isActive == true) return
@@ -82,7 +107,12 @@ class BotWatcher(
                             is BotEvent.Roster -> {
                                 val previous = _state.value.bots
                                 _state.update { it.copy(bots = event.bots, queue = event.queue, connected = true, error = null) }
+                                // Both directions of the same transition, read from one diff:
+                                // a bot that starts needing you raises a card, a bot whose
+                                // question is answered — or that no longer exists — drops its
+                                // card. One without the other is the sticky notification.
                                 BotJson.attention(previous, event.bots).forEach(notifier::notify)
+                                dismissStaleNotifications(previous, event.bots)
                             }
                             is BotEvent.Activity -> {
                                 _state.update { current ->
@@ -132,6 +162,19 @@ class BotWatcher(
                                 }
                             }
                             is BotEvent.Notice -> if (event.message.isNotBlank()) notifier.notice(event.message)
+                            is BotEvent.Approval -> {
+                                if (event.phase == "new") {
+                                    // A question the daemon's fail-closed clock will refuse in minutes:
+                                    // it rings now, on the message channel, whatever the trigger rules —
+                                    // this is the one event that cannot wait for a roster push or for
+                                    // the fifteen-minute poll to catch it.
+                                    val name = event.botName.ifBlank { event.botId }
+                                    notifier.message(event.botId, name, event.prompt.ifBlank { "a question for you" })
+                                } else {
+                                    // Answered or timed out: the card goes the moment the question is over.
+                                    notifier.dismissMessage(event.botId)
+                                }
+                            }
                             is BotEvent.Unknown -> Unit
                         }
                     }

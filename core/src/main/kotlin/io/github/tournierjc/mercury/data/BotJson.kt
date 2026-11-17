@@ -79,6 +79,9 @@ object BotJson {
 
     fun crewWorking(bot: JsonObject?): Int? = (bot?.get("crewWorking") as? JsonPrimitive)?.intOrNull
 
+    /** Mail the owner has not seen in this bot's mailbox — the daemon counts it per roster push. */
+    fun unread(bot: JsonObject?): Int = (bot?.get("unread") as? JsonPrimitive)?.intOrNull ?: 0
+
     fun lastRunAt(bot: JsonObject?): String = string(bot, "lastRunAt")
 
     fun lastRunState(bot: JsonObject?): String = string(bot, "lastRunState")
