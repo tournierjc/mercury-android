@@ -109,6 +109,9 @@ import io.github.tournierjc.mercury.bots.BotThread
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeSeverity
 import io.github.tournierjc.mercury.data.BotJson
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import io.github.tournierjc.mercury.data.ChatMessage
 import io.github.tournierjc.mercury.vm.BotsViewModel
 import io.github.tournierjc.mercury.data.ChatState
@@ -568,6 +571,22 @@ fun ChatScreen(
                     LaunchedEffect(botId) {
                         AppVisibility.openBotId = botId
                         if (botId != null) container.botNotifier.dismissMessage(botId)
+                        // Reading the thread also reads its mail: the drawer's unread badge clears the
+                        // moment the conversation is open, not only when the sheet's mailbox section is
+                        // drawn. Scope: this bot's CURRENT entry ids only — new mail arriving while the
+                        // thread is open stays unread, and other bots' badges are untouched.
+                        if (botId != null) {
+                            runCatching {
+                                val inbox = container.api.botInbox(botId)
+                                val entries = inbox["inbox"] as? JsonArray ?: JsonArray(emptyList())
+                                val ids = entries.mapNotNull { e ->
+                                    (e as? JsonObject)?.get("id")
+                                        ?.let { it as? JsonPrimitive }
+                                        ?.takeIf { it.isString }?.content
+                                }
+                                if (ids.isNotEmpty()) container.api.markInboxRead(ids)
+                            }
+                        }
                     }
                     DisposableEffect(Unit) { onDispose { AppVisibility.openBotId = null } }
                     val bot = botId?.let { id -> botWatch.bots.firstOrNull { BotJson.id(it) == id } }

@@ -94,6 +94,11 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         AppVisibility.foreground = true
+        // A fresh install may have lost the POST_NOTIFICATIONS ask (denied by reflex, or the
+        // dialog never surfaced). Re-asking at every foregrounding is the standard pattern:
+        // harmless when already granted, and it gives the permission back a path that does not
+        // go through Réglages → Applis → Mercury → Notifications.
+        askForNotifications()
     }
 
     override fun onStop() {
