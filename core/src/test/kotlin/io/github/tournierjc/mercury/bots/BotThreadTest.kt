@@ -392,4 +392,25 @@ class BotThreadTest {
 
         assertTrue(threeHoursLater.isEmpty())
     }
+
+    /**
+     * A retried turn writes SEVERAL journal records with the same run id — three rows of
+     * `Turn failed: Failed after 3 attempts` were the real shape of the dgx crash. Every
+     * bubble must carry a distinct LazyColumn key, or scrolling a duplicated row into
+     * composition throws "Key was already used".
+     */
+    @Test
+    fun `a retried turn with the same run id gets unique keys`() {
+        val records = listOf(
+            run("f3b0a015", at = 10_000, state = "failed", summary = "Turn failed: attempt 1", error = "Failed after 3 attempts."),
+            run("f3b0a015", at = 10_001, state = "failed", summary = "Turn failed: attempt 2", error = "Failed after 3 attempts."),
+            run("f3b0a015", at = 10_002, state = "failed", summary = "Turn failed: attempt 3", error = "Failed after 3 attempts."),
+        )
+
+        val messages = BotThread.build(records, emptyMap())
+
+        assertEquals(3, messages.size)
+        val keys = messages.map { it.key }
+        assertEquals(keys.size, keys.toSet().size)
+    }
 }

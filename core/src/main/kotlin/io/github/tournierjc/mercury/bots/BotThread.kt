@@ -153,6 +153,21 @@ object BotThread {
         liveReasoning: String = "",
     ): List<BotMessage> {
         val messages = mutableListOf<BotMessage>()
+        // A journal can hold SEVERAL records for one run id: a turn that failed is retried and
+        // every attempt appends its own line (`Turn failed: Failed after 3 attempts` lands as
+        // three rows). Each bubble needs its own LazyColumn key — a duplicated key throws
+        // "Key was already used" the moment the row scrolls into composition. The record's
+        // start time separates the attempts, so it rides in the key.
+        val keys = HashSet<String>()
+        fun uniqueKey(base: String): String {
+            var key = base
+            var n = 2
+            while (!keys.add(key)) {
+                key = "$base#$n"
+                n += 1
+            }
+            return key
+        }
         records
             .filter { it.runId.isNotBlank() }
             .sortedBy { it.startedAt }
@@ -160,7 +175,7 @@ object BotThread {
                 val prompt = prompts[record.runId].orEmpty().trim()
                 if (prompt.isNotEmpty()) {
                     messages += BotMessage(
-                        key = "${record.runId}-me",
+                        key = uniqueKey("${record.runId}-me"),
                         fromBot = false,
                         text = prompt,
                         at = record.startedAt,
@@ -186,7 +201,7 @@ object BotThread {
                     else -> ""
                 }
                 messages += BotMessage(
-                    key = "${record.runId}-bot",
+                    key = uniqueKey("${record.runId}-bot"),
                     fromBot = true,
                     text = reply,
                     at = record.startedAt + record.durationMs,
@@ -218,7 +233,7 @@ object BotThread {
             val waiting = liveTail.isBlank()
             if (liveTail.isNotBlank() || liveThinking.isNotEmpty() || liveActivity.isNotBlank()) {
                 messages += BotMessage(
-                    key = "$liveJobId-live",
+                    key = uniqueKey("$liveJobId-live"),
                     fromBot = true,
                     text = liveTail,
                     at = System.currentTimeMillis(),
