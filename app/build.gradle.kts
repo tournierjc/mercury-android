@@ -16,8 +16,8 @@ android {
         applicationId = "io.github.tournierjc.mercury"
         minSdk = 26
         targetSdk = 35
-        versionCode = 119
-        versionName = "0.61.46-r2"
+        versionCode = 118
+        versionName = "0.61.46"
     }
 
     signingConfigs {
