@@ -118,9 +118,9 @@ Toggle **Pont appareil** in the drawer:
 
 - **Calendrier** (`READ_CALENDAR`) — events, `GET /calendar?from=&to=&limit=`
 - **Contacts** (`READ_CONTACTS`) — names, numbers, e-mails, `GET /contacts?q=&limit=`
-- **Messages** — notification access, `GET /sms?limit=&address=` and
-  `GET /messages?limit=` (SMS + WhatsApp/Signal/Messenger notifications; SMS are
-  captured as notifications too — no SMS inbox history)
+- **SMS** (`READ_SMS`) — inbox, `GET /sms?limit=&address=`
+- **Messages d'apps** — notification access, `GET /messages?limit=` (SMS + notifications,
+  the only way to see WhatsApp/Signal/Messenger content: Android has no readable store for them)
 - **Statut** — battery, network, timezone, `GET /device/status`
 - `GET /health` — liveness probe only, answers `{"ok":true}` (no token, no instance facts);
   the version/device/providers summary is the tokened `GET /device` route
@@ -145,10 +145,9 @@ Mercury side: `MERCURY_ALLOW_PRIVATE_FETCH=1` in `mercury.env` (SSRF protection
 otherwise blocks private addresses), then copy `mercury-skills/phone-bridge/SKILL.md`
 into `~/.mercury/skills/phone-bridge/` and paste the URL + token from the app.
 
-No sensitive permissions beyond calendar/contacts read: `READ_SMS` was removed —
-Google Play treats it as restricted and Play Protect was blocking sideloaded
-installs of signed releases because of it. SMS now arrive through the
-notification listener like every other messaging app.
+Caveat: `READ_SMS` is a **restricted permission** for Google Play — an app whose core
+function is not SMS cannot ship there with it. Sideloading is unaffected. The
+notification-based message access has no such restriction.
 
 ## Build
 

@@ -33,6 +33,7 @@
     <string name="bridge_read_events">lire les événements</string>
     <string name="bridge_contacts">Contacts</string>
     <string name="bridge_contacts_detail">noms, numéros, e-mails</string>
+    <string name="bridge_read_received">lire les messages reçus</string>
     <string name="bridge_intro">Mercury lit ton téléphone en lecture seule, à la demande, via le tailnet. Rien n\'est copié sur le Spark : chaque requête de l\'agent relit la donnée locale.</string>
     <string name="bridge_active">Pont actif</string>
     <string name="bridge_listening">Le serveur écoute sur le port %1$d</string>
