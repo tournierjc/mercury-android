@@ -55,8 +55,8 @@ l'utilisateur de lancer Tailscale des deux côtés.
 | Batterie, réseau, fuseau, heure | `GET $PHONE_URL/device/status?token=$PHONE_TOKEN` |
 | Agenda | `GET $PHONE_URL/calendar?from=<ISO8601>&to=<ISO8601>&limit=20&token=$PHONE_TOKEN` |
 | Contacts | `GET $PHONE_URL/contacts?q=<nom>&limit=10&token=$PHONE_TOKEN` |
-| SMS reçus | `GET $PHONE_URL/sms?limit=20&token=$PHONE_TOKEN` |
-| SMS + messages d'apps (WhatsApp, Signal…) | `GET $PHONE_URL/messages?limit=15&token=$PHONE_TOKEN` |
+| SMS + messages (WhatsApp, Signal…) | `GET $PHONE_URL/messages?limit=15&token=$PHONE_TOKEN` |
+| Messages filtrés sur un expéditeur | `GET $PHONE_URL/sms?address=<numéro ou nom>&limit=20&token=$PHONE_TOKEN` |
 
 `from`/`to` sont en ISO 8601 avec fuseau, par exemple `2026-10-25T00:00:00+01:00`.
 Sans `from`, le pont prend aujourd'hui 00:00 ; sans `to`, +7 jours.
@@ -76,8 +76,10 @@ Sans `from`, le pont prend aujourd'hui 00:00 ; sans `to`, +7 jours.
 - Lecture seule : aucune route n'écrit, ne supprime ni n'envoie.
 - Ne lis pas les messages sans demande explicite. Résume, ne recopie pas des
   conversations entières, et ne mélange pas deux fils.
-- Les messages d'apps viennent des **notifications** : contenu parfois tronqué,
-  pièces jointes invisibles, exhaustivité non garantie — dis-le si ça compte.
+- Les messages viennent des **notifications** (SMS comme WhatsApp/Signal) :
+  contenu parfois tronqué, pièces jointes invisibles, exhaustivité non garantie —
+  dis-le si ça compte. Pas d'historique : seuls les messages arrivés depuis que le
+  listener tourne sont visibles.
 - N'affiche jamais le token dans une réponse.
 - Codes d'erreur : `401` token invalide ou révoqué (l'utilisateur doit le recopier
   depuis l'app), `403` permission non accordée sur le téléphone, `429` trop de
