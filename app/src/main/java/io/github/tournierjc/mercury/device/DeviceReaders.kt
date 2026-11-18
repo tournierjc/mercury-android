@@ -7,7 +7,6 @@ import android.net.ConnectivityManager
 import android.os.BatteryManager
 import android.provider.CalendarContract
 import android.provider.ContactsContract
-import android.provider.Telephony
 import android.content.ContentUris
 import androidx.core.content.ContextCompat
 import java.time.Instant
@@ -27,7 +26,6 @@ class DeviceReaders(private val context: Context) {
         val providers = mutableListOf("status")
         if (has(Manifest.permission.READ_CALENDAR)) providers += "calendar"
         if (has(Manifest.permission.READ_CONTACTS)) providers += "contacts"
-        if (has(Manifest.permission.READ_SMS)) providers += "sms"
         if (NotificationStore.isAccessGranted(context)) providers += "notifications"
         return providers
     }
@@ -130,32 +128,18 @@ class DeviceReaders(private val context: Context) {
         return ContactsResponse(query = search, contacts = contacts)
     }
 
+    /**
+     * SMS reçus, captés par le listener de notifications (les apps SMS postent
+     * une notification par message). READ_SMS est une permission restreinte
+     * côté Play et déclenche un blocage Play Protect en sideload : le pont la
+     * contourne via les notifications. En mémoire seulement — pas d'historique
+     * antérieur au démarrage du listener.
+     */
     fun sms(limit: Int, address: String?): List<PhoneMessage> {
-        if (!has(Manifest.permission.READ_SMS)) {
-            throw BridgeException("READ_SMS: permission not granted")
-        }
-        val messages = mutableListOf<PhoneMessage>()
-        val selection = address?.takeIf { it.isNotBlank() }?.let { "${Telephony.Sms.ADDRESS} = ?" }
-        val args = address?.takeIf { it.isNotBlank() }?.let { arrayOf(it) }
-        context.contentResolver.query(
-            Telephony.Sms.Inbox.CONTENT_URI,
-            arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
-            selection,
-            args,
-            "${Telephony.Sms.DATE} DESC",
-        )?.use { cursor ->
-            while (cursor.moveToNext() && messages.size < limit) {
-                messages += PhoneMessage(
-                    id = cursor.getLong(0).toString(),
-                    source = "sms",
-                    app = "sms",
-                    sender = cursor.getString(1).orEmpty(),
-                    text = cursor.getString(2).orEmpty(),
-                    timestamp = isoFromMillis(cursor.getLong(3)),
-                )
-            }
-        }
-        return messages
+        val needle = address?.trim().orEmpty()
+        val messages = NotificationStore.snapshot(200)
+        val filtered = if (needle.isEmpty()) messages else messages.filter { it.sender.contains(needle, ignoreCase = true) }
+        return filtered.take(limit)
     }
 
     /** SMS + messages captés par le listener de notifications, du plus récent au plus ancien. */

@@ -86,12 +86,10 @@ fun BridgeScreen(onBack: () -> Unit) {
     val calendarDetail = stringResource(R.string.bridge_read_events)
     val contactsLabel = stringResource(R.string.bridge_contacts)
     val contactsDetail = stringResource(R.string.bridge_contacts_detail)
-    val smsDetail = stringResource(R.string.bridge_read_received)
-    val rows = remember(calendarLabel, calendarDetail, contactsLabel, contactsDetail, smsDetail) {
+    val rows = remember(calendarLabel, calendarDetail, contactsLabel, contactsDetail) {
         listOf(
             PermissionRow(Manifest.permission.READ_CALENDAR, calendarLabel, calendarDetail),
             PermissionRow(Manifest.permission.READ_CONTACTS, contactsLabel, contactsDetail),
-            PermissionRow(Manifest.permission.READ_SMS, "SMS", smsDetail),
         )
     }
 
