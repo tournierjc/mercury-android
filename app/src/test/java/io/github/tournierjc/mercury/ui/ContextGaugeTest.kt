@@ -35,9 +35,9 @@ class ContextGaugeTest {
 
     @Test
     fun `thousands read as k, millions as M`() {
-        assertEquals("12k", fmtK(12_400))
-        assertEquals("999", fmtK(999))
-        assertEquals("1k", fmtK(1_000))
-        assertEquals("2M", fmtK(2_500_000))
+        assertEquals("12k", fmtK(12_400L))
+        assertEquals("999", fmtK(999L))
+        assertEquals("1k", fmtK(1_000L))
+        assertEquals("2M", fmtK(2_500_000L))
     }
 }

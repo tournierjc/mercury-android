@@ -59,4 +59,6 @@
     <string name="chat_bot_deliverables">Livrables de %1$s</string>
     <string name="chat_bot_settings">Réglages de %1$s</string>
     <string name="chat_bot_write">Écrire à %1$s…</string>
+    <!-- La jauge d\'une conversation d\'équipier : ce que le fil a coûté, pas une fenêtre à remplir. -->
+    <string name="chat_bot_context">Contexte du fil · %1$s</string>
 </resources>
