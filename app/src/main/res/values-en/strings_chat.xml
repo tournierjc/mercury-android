@@ -59,4 +59,6 @@
     <string name="chat_bot_deliverables">Deliverables from %1$s</string>
     <string name="chat_bot_settings">Settings for %1$s</string>
     <string name="chat_bot_write">Message %1$s…</string>
+    <!-- A teammate conversation's gauge: what the thread has cost, not a window to fill. -->
+    <string name="chat_bot_context">Thread context · %1$s</string>
 </resources>

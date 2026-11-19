@@ -48,7 +48,7 @@ fun ContextGaugeBar(
     val hot = snapshot.fraction >= 0.8f
     val track = if (hot) colors.warning else colors.accent
     val label = remember(snapshot.viewTokens, snapshot.budget, snapshot.percent) {
-        "${snapshot.percent}% · ${fmtK(snapshot.viewTokens)}/${fmtK(snapshot.budget)}"
+        "${snapshot.percent}% · ${fmtK(snapshot.viewTokens.toLong())}/${fmtK(snapshot.budget.toLong())}"
     }
     Row(
         modifier = modifier
@@ -89,8 +89,37 @@ fun ContextGaugeBar(
 }
 
 /** 12 400 → "12k" — the gauge has no room for thousands separators. */
-internal fun fmtK(tokens: Int): String = when {
+internal fun fmtK(tokens: Long): String = when {
     tokens >= 1_000_000 -> "${tokens / 1_000_000}M"
     tokens >= 1_000 -> "${tokens / 1_000}k"
     else -> tokens.toString()
+}
+
+/**
+ * The gauge of a bot conversation: what the thread has cost so far, from the journal.
+ *
+ * A bot answers each message from a fresh context — there is no keeper window here, so no bar
+ * filling toward a budget. What the number answers is the same question from the other side: how
+ * much this conversation has made the model read and write. Tap asks the daemon for its own
+ * `/compact` reading, which lands in the thread like any answer.
+ */
+@Composable
+fun BotContextBar(
+    tokens: Long,
+    turns: Int,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    if (tokens <= 0) return
+    val colors = LocalMercuryColors.current
+    val label = remember(tokens, turns) { "${fmtK(tokens)} · $turns" }
+    Text(
+        text = stringResource(R.string.chat_bot_context, label),
+        fontSize = 11.sp,
+        color = colors.textSecondary,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 2.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    )
 }

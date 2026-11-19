@@ -105,6 +105,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.tournierjc.mercury.MercuryApp
 import io.github.tournierjc.mercury.bots.AppVisibility
+import io.github.tournierjc.mercury.bots.BotGauge
 import io.github.tournierjc.mercury.bots.BotThread
 import io.github.tournierjc.mercury.data.Notice
 import io.github.tournierjc.mercury.data.NoticeSeverity
@@ -742,6 +743,17 @@ fun ChatScreen(
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                                 )
                             }
+                        }
+                        // The teammate's gauge: what this thread has cost so far, read from the
+                        // journal — the same numbers the daemon's own /compact answers with. Tapping
+                        // asks the daemon for its reading, which lands in the thread like any answer.
+                        val botContext = remember(botsState.records) { BotGauge.view(botsState.records) }
+                        if (botId != null) {
+                            BotContextBar(
+                                tokens = botContext.tokens,
+                                turns = botContext.turns,
+                                onClick = { botsVm.dispatch("/compact", chat = true) },
+                            )
                         }
                         AttachmentStrip(attachments = botFiles, onRemove = { index -> botFiles = botFiles.filterIndexed { i, _ -> i != index } })
                         replyTo?.let { quoted -> ReplyChip(quoted) { replyTo = null } }
