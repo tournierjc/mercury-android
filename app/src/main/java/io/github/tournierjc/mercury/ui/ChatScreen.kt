@@ -328,15 +328,33 @@ fun ChatScreen(
             }
 
             AppScreen.Sessions -> {
+                // The forum's data is the fleet's: the same BotsViewModel the conversation uses
+                // (one instance per screen identity, shared), read once when the screen opens.
+                val container = remember { (context.applicationContext as MercuryApp).container }
+                val botsVm: BotsViewModel = viewModel(factory = BotsViewModel.factory(container))
+                val botsState by botsVm.state.collectAsState()
+                val botWatch by container.botWatcher.state.collectAsState()
+                val botAvatars by botsVm.avatars.collectAsState()
+                LaunchedEffect(botWatch.bots) {
+                    botsVm.loadAvatars(botWatch.bots)
+                    botsVm.loadForum(botWatch.bots)
+                }
                 SessionsScreen(
                     threads = threads,
                     currentSessionId = state.sessionId,
+                    bots = botWatch.bots,
+                    forum = botsState.forum,
+                    forumLoading = botsState.forumLoading,
+                    avatars = botAvatars,
                     onBack = ::goBack,
                     onOpenThread = { thread ->
                         onOpenThread(thread)
                         go(AppScreen.Chat)
                     },
                     onDeleteThread = onDeleteThread,
+                    onOpenBot = { id ->
+                        go(AppScreen.Chat, conversation = id)
+                    },
                 )
             }
 

@@ -11,6 +11,9 @@
     <string name="sessions_no_match">No session matches this filter.</string>
     <string name="sessions_delete_title">Delete this session?</string>
     <string name="sessions_delete_confirm">Delete</string>
+    <!-- The sessions forum: every teammate's conversation, newest activity first. -->
+    <string name="sessions_bots_title">Teammate conversations</string>
+    <string name="sessions_open_bot">Open %1$s\'s conversation</string>
     <string name="common_cancel">Cancel</string>
     <string name="nav_bots">Bots</string>
     <string name="nav_tasks">Tasks</string>
