@@ -26,6 +26,7 @@ import io.github.tournierjc.mercury.data.RunRow
 import io.github.tournierjc.mercury.data.BotSlug
 import io.github.tournierjc.mercury.data.dto.BotCrewResponse
 import io.github.tournierjc.mercury.bots.BotMessage
+import io.github.tournierjc.mercury.bots.BotForum
 import io.github.tournierjc.mercury.bots.BotThread
 import io.github.tournierjc.mercury.data.dto.BotRunDto
 import io.github.tournierjc.mercury.data.dto.DeliverableDto
@@ -119,6 +120,14 @@ data class BotsUiState(
      * read from this list, and it only receives the state.
      */
     val roster: List<JsonObject> = emptyList(),
+    /**
+     * The sessions forum: per bot, the newest journal lines the screen asked for
+     * (`botRunJournal(id, limit = 3)`), keyed by bot id. Filled by [loadForum] when the
+     * sessions screen opens — the conversation screen does not read it.
+     */
+    val forum: Map<String, List<BotRunDto>> = emptyMap(),
+    /** True while the forum's per-bot journal reads are in flight. */
+    val forumLoading: Boolean = false,
     /** Filled by the bundle download, consumed by the share sheet, then cleared. */
     val bundle: String? = null,
     val bundleFor: String = "",
@@ -388,6 +397,38 @@ class BotsViewModel(
             if (!BotThread.isStale(_state.value.records.lastOrNull()?.runId, newest)) return@launch
             if (_state.value.selectedId != id) return@launch
             reloadConversation(id)
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Sessions forum: the newest lines of every teammate's conversation
+    // -------------------------------------------------------------------
+
+    /**
+     * Reads the newest journal lines of the bots the forum shows.
+     *
+     * The forum is the sessions screen's own list: it names each teammate's conversation and what
+     * its last turn was, so the owner opens the right thread without walking the roster. The read
+     * is one cheap journal call per bot (`limit = 3`), side by side — the same shape `select()`
+     * uses for twelve transcripts of one bot, spread over the fleet instead.
+     *
+     * A bot whose read fails keeps its place with an empty line list: the row still opens the
+     * conversation, it just says less until the next read.
+     */
+    fun loadForum(bots: List<JsonObject>) {
+        if (bots.isEmpty()) return
+        viewModelScope.launch {
+            _state.update { it.copy(forumLoading = true) }
+            val ids = BotForum.ids(bots)
+            val lines = ids.map { id ->
+                async { id to runCatching { api.botRunJournal(id, limit = 3) }.getOrNull().orEmpty() }
+            }.awaitAll().toMap()
+            _state.update {
+                it.copy(
+                    forum = it.forum + lines,
+                    forumLoading = false,
+                )
+            }
         }
     }
 
